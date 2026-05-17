@@ -1,0 +1,85 @@
+.section {
+  padding: 80px 0;
+}
+
+.sectionLabel {
+  color: var(--brand-deep);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.section h2 {
+  font-size: 40px;
+  font-weight: 400;
+  margin-bottom: 18px;
+  max-width: 720px;
+  font-variation-settings: "opsz" 144, "SOFT" 40;
+}
+
+.section h2 em {
+  font-style: italic;
+  color: var(--brand);
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+}
+
+.problemVisual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.chaosChart {
+  width: 100%;
+  max-width: 460px;
+}
+
+.problemStats {
+  display: grid;
+  gap: 14px;
+}
+
+.problemStat {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.problemStatNum {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 36px;
+  color: var(--brand);
+  font-weight: 500;
+  line-height: 1;
+  min-width: 72px;
+  font-variation-settings: "opsz" 144, "SOFT" 60;
+}
+
+.problemStatText {
+  font-size: 14px;
+  color: var(--body);
+}
+
+.problemStatText strong {
+  color: var(--ink);
+  display: block;
+  margin-bottom: 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .section h2 { font-size: 30px; }
+  .problemVisual { grid-template-columns: 1fr; gap: 36px; }
+}
+
+@media (max-width: 540px) {
+  .section h2 { font-size: 24px; }
+}

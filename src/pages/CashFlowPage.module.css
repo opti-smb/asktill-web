@@ -1,0 +1,5 @@
+.main {
+  padding: 24px 0 80px;
+  background: var(--bg-soft);
+  min-height: calc(100vh - 120px);
+}

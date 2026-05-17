@@ -1,0 +1,40 @@
+.headerStrip {
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+  padding: 20px 0;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.periodMeta {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.h1 {
+  font-size: 26px;
+  font-weight: 400;
+  font-variation-settings: "opsz" 144, "SOFT" 40;
+}
+
+.h1 em {
+  font-style: italic;
+  color: var(--brand);
+}
+
+@media (max-width: 600px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

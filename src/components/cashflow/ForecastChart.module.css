@@ -1,0 +1,125 @@
+.heroCard {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
+  align-items: center;
+}
+
+.heroNow {
+  border-right: 1px solid var(--rule);
+  padding-right: 32px;
+}
+
+.heroLabel {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.heroAmount {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 48px;
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1;
+  margin-bottom: 8px;
+  font-variation-settings: "opsz" 144;
+}
+
+.heroMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--body);
+}
+
+.heroMetaText {
+  color: var(--muted);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.up {
+  background: var(--pos-bg);
+  color: var(--pos);
+}
+
+.hero3mo {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.hero3mo strong {
+  color: var(--ink);
+}
+
+.pos {
+  color: var(--pos);
+  font-weight: 600;
+}
+
+.heroForecast {
+  padding: 0 8px;
+}
+
+.forecastLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.forecastTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 16px;
+  color: var(--ink);
+  font-weight: 500;
+  font-variation-settings: "opsz" 60;
+}
+
+.forecastLegend {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.legendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+@media (max-width: 1000px) {
+  .heroCard {
+    grid-template-columns: 1fr;
+  }
+  .heroNow {
+    border-right: none;
+    border-bottom: 1px solid var(--rule);
+    padding-right: 0;
+    padding-bottom: 24px;
+  }
+}

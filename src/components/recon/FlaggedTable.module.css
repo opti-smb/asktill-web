@@ -1,0 +1,129 @@
+.txSection {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.txHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.txTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 18px;
+  color: var(--ink);
+  font-weight: 500;
+  font-variation-settings: "opsz" 60;
+}
+
+.txTitle em {
+  font-style: italic;
+  color: var(--brand);
+}
+
+.txFilterRow {
+  display: flex;
+  gap: 6px;
+}
+
+.txFilter {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+.txTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.txTable th {
+  text-align: left;
+  padding: 10px 24px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--rule);
+}
+
+.txTable td {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--body);
+}
+
+.txTable tr:last-child td {
+  border-bottom: none;
+}
+
+.txMeta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.txStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.flagged {
+  background: var(--neg-soft);
+  color: var(--neg);
+}
+
+.pending {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.txAmount {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-variation-settings: "opsz" 144;
+}
+
+.txLink {
+  color: var(--brand-deep);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.txLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1000px) {
+  .txTable th:nth-child(4),
+  .txTable td:nth-child(4) {
+    display: none;
+  }
+}

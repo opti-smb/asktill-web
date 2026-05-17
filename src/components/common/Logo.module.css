@@ -1,0 +1,20 @@
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  font-variation-settings: "opsz" 120;
+}
+
+.logoMark:hover {
+  text-decoration: none;
+}
+
+.logoMark span {
+  color: var(--brand);
+}
