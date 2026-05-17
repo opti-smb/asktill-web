@@ -1,0 +1,141 @@
+.pickerIntro {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pickerIcon {
+  width: 36px;
+  height: 36px;
+  background: var(--brand-tint);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.pickerText {
+  flex: 1;
+  font-size: 13px;
+  color: var(--body);
+}
+
+.pickerText strong {
+  color: var(--ink);
+}
+
+.pickerCounter {
+  background: var(--brand);
+  color: var(--bg);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pickerCard {
+  background: var(--bg);
+  border: 2px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.pickerCard:hover {
+  border-color: var(--brand-soft);
+  background: var(--brand-tint);
+}
+
+.selected {
+  border-color: var(--brand);
+  background: var(--brand-tint);
+}
+
+.expanded {
+  grid-column: span 2;
+  border-color: var(--brand);
+}
+
+.pickerCheck {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--rule);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-top: 1px;
+}
+
+.selected .pickerCheck,
+.expanded .pickerCheck {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--bg);
+}
+
+.pickerContent {
+  flex: 1;
+}
+
+.pickerQ {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 14px;
+  color: var(--ink);
+  font-style: italic;
+  line-height: 1.4;
+  font-variation-settings: "opsz" 60, "SOFT" 70;
+}
+
+.pickerAnswer {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--body);
+  line-height: 1.55;
+}
+
+.pickerAnswer strong {
+  color: var(--ink);
+}
+
+.pickerChart {
+  margin-top: 12px;
+  width: 100%;
+  height: 120px;
+}
+
+.pickerAnswerMeta {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .pickerGrid {
+    grid-template-columns: 1fr;
+  }
+  .expanded {
+    grid-column: span 1;
+  }
+}

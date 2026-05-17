@@ -1,0 +1,142 @@
+.hero {
+  padding: 64px 0 56px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.tagPill {
+  display: inline-block;
+  color: var(--brand-deep);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding: 6px 12px;
+  background: var(--brand-tint);
+  border-radius: 999px;
+  border: 1px solid var(--brand-soft);
+}
+
+.hero h1 {
+  font-size: 60px;
+  font-weight: 400;
+  margin-bottom: 16px;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--brand);
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+}
+
+.tagline {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 20px;
+  color: var(--brand-deep);
+  margin-bottom: 24px;
+  font-style: italic;
+  font-variation-settings: "opsz" 60, "SOFT" 60;
+  font-weight: 400;
+}
+
+.heroSub {
+  font-size: 17px;
+  color: var(--muted);
+  margin-bottom: 28px;
+  max-width: 440px;
+}
+
+.ctaRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 14px 24px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--ink);
+  text-decoration: none;
+}
+
+.btnPrimary:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.arrow {
+  transition: transform 0.2s ease;
+}
+
+.btnPrimary:hover .arrow {
+  transform: translateX(3px);
+}
+
+.micro {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.heroVisual {
+  position: relative;
+  animation: fadeUp 0.7s ease 0.5s backwards;
+}
+
+.tillIllustration {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: block;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes receiptOut {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes displayPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.tillReceipt {
+  animation: receiptOut 4s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.tillDisplayText {
+  animation: displayPulse 3s ease-in-out infinite;
+}
+
+@media (max-width: 900px) {
+  .hero h1 { font-size: 40px; }
+  .heroGrid { grid-template-columns: 1fr; gap: 36px; }
+}
+
+@media (max-width: 540px) {
+  .hero h1 { font-size: 32px; }
+}

@@ -1,0 +1,36 @@
+:root {
+  --ink: #0B1220;
+  --body: #1E293B;
+  --muted: #64748B;
+  --rule: #E2E8F0;
+  --bg: #FFFFFF;
+  --bg-soft: #F8FAFC;
+  --bg-warm: #F1F5F9;
+
+  --brand: #1E40AF;
+  --brand-deep: #1E3A8A;
+  --brand-bright: #3B82F6;
+  --brand-soft: #DBEAFE;
+  --brand-tint: #EFF6FF;
+  --brand-light: #93C5FD;
+
+  --accent: #B45309;
+  --accent-soft: #FEF3C7;
+  --pos: #047857;
+  --pos-soft: #DCFCE7;
+  --pos-bg: #ECFDF5;
+  --neg: #B91C1C;
+  --neg-soft: #FEE2E2;
+  --warn: #B45309;
+  --warn-soft: #FEF3C7;
+  --orange: #EA580C;
+  --orange-soft: #FED7AA;
+
+  --max: 1180px;
+}
+
+.wrap {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px;
+}
