@@ -1,0 +1,173 @@
+.panel {
+  margin-top: 32px;
+  padding: 20px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.panelDrawer {
+  margin-top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(11, 18, 32, 0.18);
+  overflow: hidden;
+}
+
+.headRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.closeBtn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.closeBtn:hover {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+.head {
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.welcome p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.sampleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sampleBtn {
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--body);
+}
+
+.sampleBtn:hover {
+  border-color: var(--brand-soft);
+  background: var(--brand-tint);
+}
+
+.messageList {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.messageListDrawer {
+  max-height: none;
+  flex: 1;
+  min-height: 120px;
+}
+
+.msgUser,
+.msgBot {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.msgUser {
+  background: var(--brand-tint);
+  align-self: flex-end;
+  max-width: 85%;
+}
+
+.msgBot {
+  background: var(--bg-soft);
+  align-self: flex-start;
+  max-width: 90%;
+}
+
+.msgLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.msgText {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--body);
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.sendBtn {
+  padding: 10px 18px;
+  background: var(--brand);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sendBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

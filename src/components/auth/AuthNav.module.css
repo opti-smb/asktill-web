@@ -1,0 +1,81 @@
+.nav {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: saturate(180%) blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.logoLink {
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.navLink {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 999px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.navLink:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.navLinkActive {
+  color: var(--ink);
+  background: var(--brand-tint);
+  font-weight: 600;
+}
+
+.navCta {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.navCta:hover {
+  background: var(--brand);
+  text-decoration: none;
+}
+
+.navCtaActive {
+  background: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-tint);
+}
+
+@media (max-width: 480px) {
+  .navLink {
+    padding: 8px 12px;
+  }
+
+  .navCta {
+    padding: 8px 14px;
+  }
+}

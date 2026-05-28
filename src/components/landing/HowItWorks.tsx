@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import styles from './HowItWorks.module.css';
 
 export default function HowItWorks() {
@@ -190,48 +191,18 @@ export default function HowItWorks() {
         </div>
       </section>
 
-      {/* Signup CTA */}
+      {/* Sign up CTA */}
       <section className={styles.signup} id="signup">
         <div className="wrap">
-          <div className={styles.signupSectionLabel}>Apply to the pilot</div>
-          <h2>100 spots. <em>Apply by April 30.</em></h2>
-          <p className={styles.lead}>We admit founding members in waves. Tell us about your business and we'll let you know within 48 hours.</p>
-
-          <div className={styles.capacity}>
-            <div className={styles.capacityRow}>
-              <span className={styles.capacityLabel}>Spots filled</span>
-              <span className={styles.capacityCount}>38 of 100</span>
-            </div>
-            <div className={styles.capacityBar}>
-              <div className={styles.capacityFill} />
-            </div>
-          </div>
-
-          <form className={styles.signupForm} onSubmit={(e) => e.preventDefault()}>
-            <div className={styles.signupRow}>
-              <input type="email" placeholder="you@yourbusiness.com" required aria-label="Email" className={styles.signupInput} />
-            </div>
-            <div className={styles.signupRow}>
-              <select name="business_type" required aria-label="Business type" className={styles.signupSelect}>
-                <option value="" disabled>What kind of business?</option>
-                <option value="cafe">Café or restaurant</option>
-                <option value="retail">Boutique or retail</option>
-                <option value="services">Home or professional services</option>
-                <option value="mobile">Food truck or mobile</option>
-                <option value="ecommerce">Ecommerce only</option>
-                <option value="other">Something else</option>
-              </select>
-              <select name="revenue" required aria-label="Annual revenue" className={styles.signupSelect}>
-                <option value="" disabled>Annual revenue</option>
-                <option value="under_200k">Under $200K</option>
-                <option value="200k_1m">$200K – $1M</option>
-                <option value="1m_5m">$1M – $5M</option>
-                <option value="5m_plus">Over $5M</option>
-              </select>
-            </div>
-            <button type="submit" className={styles.signupBtn}>Apply for a spot →</button>
-            <p className={styles.signupNote}>No card required · Free forever · We'll respond within 48 hours</p>
-          </form>
+          <div className={styles.signupSectionLabel}>Get started</div>
+          <h2>Create your <em>free account.</em></h2>
+          <p className={styles.lead}>
+            Sign up with your email, verify your address, and start connecting your business data.
+          </p>
+          <Link to="/register" className={styles.signupBtn}>
+            Create your account →
+          </Link>
+          <p className={styles.signupNote}>No card required · Free analytics</p>
         </div>
       </section>
 

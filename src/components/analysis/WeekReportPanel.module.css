@@ -1,0 +1,61 @@
+.weekPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.weekBtn {
+  border: 1px solid var(--rule);
+  background: var(--bg-soft);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.weekTitle {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.weekDates {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.weekBtn:hover {
+  border-color: var(--brand);
+  color: var(--brand-deep);
+}
+
+.weekBtnActive {
+  background: var(--brand-tint);
+  border-color: var(--brand);
+  color: var(--brand-deep);
+  font-weight: 600;
+}
+
+.activity {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}

@@ -19,8 +19,15 @@ export default function FileDropZone({
   icon,
   register,
 }: FileDropZoneProps) {
+  const hasWarning = Boolean(uploadState.warning);
+  const cardClass = hasWarning
+    ? styles.warn
+    : uploadState.uploaded
+      ? styles.done
+      : '';
+
   return (
-    <div className={`${styles.uploadCard} ${uploadState.uploaded ? styles.done : ''}`}>
+    <div className={`${styles.uploadCard} ${cardClass}`}>
       <div className={styles.uploadIcon}>{icon}</div>
       <h3>{label}</h3>
       <div className={styles.sub}>{subLabel}</div>
@@ -33,12 +40,19 @@ export default function FileDropZone({
         />
         {uploadState.uploaded ? (
           <>
-            <div className={styles.dropText}>✓ Uploaded</div>
+            <div className={hasWarning ? styles.dropTextWarn : styles.dropText}>
+              {hasWarning ? 'Wrong file' : '✓ Uploaded'}
+            </div>
             {uploadState.fileName && (
               <div className={styles.fileName}>{uploadState.fileName}</div>
             )}
-            {uploadState.detail && (
-              <div className={styles.dropMeta} style={{ marginTop: 6 }}>{uploadState.detail}</div>
+            {uploadState.detail && !hasWarning && (
+              <div className={styles.dropMeta} style={{ marginTop: 6 }}>
+                {uploadState.detail}
+              </div>
+            )}
+            {hasWarning && (
+              <div className={styles.warning}>{uploadState.warning}</div>
             )}
           </>
         ) : (

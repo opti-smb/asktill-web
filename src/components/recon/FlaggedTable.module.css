@@ -104,6 +104,11 @@
   color: var(--warn);
 }
 
+.cash {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
 .txAmount {
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 600;

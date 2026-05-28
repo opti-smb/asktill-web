@@ -61,6 +61,16 @@
   color: var(--pos);
 }
 
+.down {
+  background: var(--neg-soft, #fef2f2);
+  color: var(--neg);
+}
+
+.flat {
+  background: var(--bg-soft);
+  color: var(--muted);
+}
+
 .hero3mo {
   font-size: 11px;
   color: var(--muted);
@@ -110,6 +120,38 @@
   height: 8px;
   border-radius: 2px;
   margin-right: 4px;
+}
+
+.reconList {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.reconRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.reconRow:last-child {
+  border-bottom: none;
+}
+
+.reconRow dt {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.reconRow dd {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
 }
 
 @media (max-width: 1000px) {

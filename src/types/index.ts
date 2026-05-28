@@ -84,33 +84,11 @@ export interface LandingStat {
   sublabel: string;
 }
 
-export interface HowStep {
-  title: string;
-  description: string;
-  iconPath: string;
-}
-
-export interface IntelFeature {
-  title: string;
-  description: string;
-  iconPath: string;
-}
-
-export interface QCard {
-  text: string;
-  iconPath: string;
-}
-
-export interface GrowFeature {
-  title: string;
-  description: string;
-  iconPath: string;
-}
-
 export type Period = 'Week' | 'Month' | 'Quarter';
 
 export interface FileUploadState {
   uploaded: boolean;
   fileName?: string;
   detail?: string;
+  warning?: string;
 }

@@ -1,0 +1,43 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 4px;
+  gap: 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 20px;
+  border: 3px solid var(--rule);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: oauthSpin 0.85s linear infinite;
+}
+
+@keyframes oauthSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 10px;
+  font-variation-settings: 'opsz' 144, 'SOFT' 40;
+}
+
+.hint {
+  margin: 0;
+  max-width: 280px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}

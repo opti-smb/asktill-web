@@ -1,0 +1,64 @@
+.row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.box {
+  width: 44px;
+  height: 48px;
+  border: 1.5px solid var(--rule);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.box:focus {
+  outline: none;
+  border-color: var(--brand-bright);
+  box-shadow: 0 0 0 3px var(--brand-tint);
+}
+
+.box:disabled {
+  opacity: 0.6;
+}
+
+.boxSuccess {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.boxError {
+  border-color: #ef4444;
+  background: #fef2f2;
+  color: #b91c1c;
+  animation: otpShake 0.35s ease;
+}
+
+@keyframes otpShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 480px) {
+  .row {
+    gap: 8px;
+  }
+
+  .box {
+    width: 40px;
+    height: 44px;
+  }
+}
