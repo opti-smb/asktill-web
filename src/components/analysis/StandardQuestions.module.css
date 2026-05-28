@@ -59,6 +59,50 @@
   margin-left: 4px;
 }
 
+.payrollVerdict {
+  margin-bottom: 10px;
+}
+
+.payrollYesNo {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.1;
+  display: block;
+  font-variation-settings: "opsz" 144;
+}
+
+.payrollYes {
+  color: var(--pos);
+}
+
+.payrollNo {
+  color: var(--neg);
+}
+
+.payrollAmountBlock {
+  margin-top: 8px;
+}
+
+.payrollAmount {
+  display: block;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 22px;
+  color: var(--brand-deep);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.payrollAmountLabel {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .up {
   color: var(--pos);
 }

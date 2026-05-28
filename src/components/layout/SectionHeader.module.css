@@ -12,6 +12,10 @@
   flex-wrap: wrap;
 }
 
+.headerActions {
+  flex-shrink: 0;
+}
+
 .periodMeta {
   font-size: 11px;
   color: var(--muted);

@@ -1,12 +1,13 @@
-import PeriodPicker from './PeriodPicker';
+import type { ReactNode } from 'react';
 import styles from './SectionHeader.module.css';
 
 interface SectionHeaderProps {
   periodMeta: string;
-  title: React.ReactNode;
+  title: ReactNode;
+  actions?: ReactNode;
 }
 
-export default function SectionHeader({ periodMeta, title }: SectionHeaderProps) {
+export default function SectionHeader({ periodMeta, title, actions }: SectionHeaderProps) {
   return (
     <div className={styles.headerStrip}>
       <div className="wrap">
@@ -15,7 +16,7 @@ export default function SectionHeader({ periodMeta, title }: SectionHeaderProps)
             <div className={styles.periodMeta}>{periodMeta}</div>
             <h1 className={styles.h1}>{title}</h1>
           </div>
-          <PeriodPicker />
+          {actions ? <div className={styles.headerActions}>{actions}</div> : null}
         </div>
       </div>
     </div>

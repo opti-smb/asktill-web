@@ -10,6 +10,10 @@
   align-items: center;
 }
 
+.reconHeroFour {
+  grid-template-columns: 1fr 1px 1fr 1px 1fr 1px 1fr;
+}
+
 .reconDivider {
   background: var(--rule);
   height: 80px;
@@ -40,6 +44,7 @@
 
 .matched { color: var(--pos); }
 .pending { color: var(--warn); }
+.cash { color: #B45309; }
 .flagged { color: var(--neg); }
 
 .reconStatSub {
@@ -102,8 +107,69 @@
   margin-top: 20px;
 }
 
-.bigQAnswer strong {
+.bigQAnswerLead {
+  margin: 0 0 12px;
   color: var(--ink);
+  font-weight: 600;
+}
+
+.bigQSections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bigQSection {
+  margin: 0;
+}
+
+.bigQSectionTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bigQBullets {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bigQLegacyBody {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--body);
+}
+
+.bigQBullets li {
+  padding-left: 4px;
+}
+
+.bigQBullets li::marker {
+  color: var(--brand);
+}
+
+.bigQBulletsNumbered {
+  margin: 0;
+  padding-left: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: decimal;
+}
+
+.bigQBulletsNumbered li {
+  padding-left: 6px;
+}
+
+.bigQBulletsNumbered li::marker {
+  color: var(--brand-deep);
   font-weight: 600;
 }
 
@@ -208,6 +274,10 @@
   margin-bottom: 24px;
 }
 
+.bucketsFour {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .bucket {
   background: var(--bg);
   border: 1px solid var(--rule);
@@ -231,6 +301,7 @@
 
 .bucketDot.match { background: var(--pos); }
 .bucketDot.pending { background: var(--warn); }
+.bucketDot.cash { background: #B45309; }
 .bucketDot.flagged { background: var(--neg); }
 
 .bucketTitle {
@@ -271,6 +342,7 @@
 
 .bucketBarFill.match { background: var(--pos); }
 .bucketBarFill.pending { background: var(--warn); }
+.bucketBarFill.cash { background: #B45309; }
 .bucketBarFill.flagged { background: var(--neg); }
 
 .bucketPct {

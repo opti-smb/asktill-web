@@ -4,7 +4,7 @@
 }
 
 .nav {
-  padding: 18px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--rule);
   background: var(--bg);
 }
@@ -39,7 +39,7 @@
 .stepper {
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
-  padding: 16px 0;
+  padding: 10px 0;
 }
 
 .stepperInner {
@@ -52,8 +52,8 @@
 .stepPill {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -67,15 +67,15 @@
 }
 
 .stepNum {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--rule);
   color: var(--muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -97,32 +97,37 @@
 }
 
 .page {
-  padding: 48px 0;
+  padding: 28px 0 36px;
 }
 
 .pageHeader {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+}
+
+.pageHeader .duplicateBanner {
+  margin-top: 16px;
+  margin-bottom: 0;
 }
 
 .pageEyebrow {
   display: inline-block;
   color: var(--brand-deep);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: 12px;
-  padding: 5px 12px;
+  margin-bottom: 8px;
+  padding: 4px 10px;
   background: var(--brand-tint);
   border-radius: 999px;
   border: 1px solid var(--brand-soft);
 }
 
 .page h1 {
-  font-size: 40px;
+  font-size: 28px;
   font-weight: 400;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   font-variation-settings: "opsz" 144, "SOFT" 40;
 }
 
@@ -134,35 +139,39 @@
 
 .pageSub {
   color: var(--muted);
-  font-size: 16px;
-  max-width: 560px;
+  font-size: 14px;
+  max-width: 520px;
   margin: 0 auto;
+  line-height: 1.45;
 }
 
 .uploadGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
+  gap: 14px;
+  margin-bottom: 20px;
+  max-width: 920px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .privacy {
-  max-width: 760px;
-  margin: 0 auto 32px;
-  padding: 18px 24px;
+  max-width: 680px;
+  margin: 0 auto 20px;
+  padding: 12px 16px;
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .privacyIcon {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   background: var(--brand-tint);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -171,9 +180,9 @@
 }
 
 .privacyText {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--body);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .privacyText strong {
@@ -187,9 +196,9 @@
 .btnPrimary {
   background: var(--ink);
   color: var(--bg);
-  padding: 16px 36px;
+  padding: 11px 26px;
   border-radius: 999px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   border: 1px solid var(--ink);
   cursor: pointer;
@@ -197,7 +206,7 @@
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .btnPrimary:hover {
@@ -207,31 +216,50 @@
 }
 
 .micro {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
-.helpLink {
+.uploadPrompt {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.uploadPrompt strong {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #1e40af;
+}
+
+.duplicateBanner {
+  max-width: 640px;
+  margin: 0 auto 20px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #78350f;
   text-align: center;
-  margin-top: 28px;
+}
+
+.duplicateMessage {
+  margin: 0;
   font-size: 13px;
-  color: var(--muted);
-}
-
-.helpLink a {
-  color: var(--brand-deep);
-  text-decoration: none;
-}
-
-.helpLink a:hover {
-  text-decoration: underline;
+  line-height: 1.5;
 }
 
 @media (max-width: 800px) {
-  .uploadGrid { grid-template-columns: 1fr; }
-  .page h1 { font-size: 30px; }
-  .stepperInner { gap: 8px; }
+  .uploadGrid { grid-template-columns: 1fr; max-width: 420px; }
+  .page h1 { font-size: 24px; }
+  .stepperInner { gap: 6px; }
   .stepLabel { display: none; }
-  .stepDivider { width: 12px; }
+  .stepDivider { width: 10px; }
 }

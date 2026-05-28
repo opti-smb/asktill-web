@@ -1,0 +1,200 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import {
+  analyzeWithProgress,
+  extractStatementDuplicate,
+  extractUploadMismatches,
+  getApiError,
+  type StatementDuplicateInfo,
+  USER_LOGOUT_EVENT,
+  type UploadFiles,
+  type UploadValidationResult,
+} from '../lib/api';
+import {
+  applyPipelineEvent,
+  buildInitialAnalyzeProgress,
+  PIPELINE_TICK_MS,
+  tickPipelineForward,
+  type AnalyzeProgressState,
+} from '../lib/analyzeProgress';
+import type { AnalyzeResult, WeekReportsViewApi } from '../lib/analyzeResponse';
+
+interface AnalysisContextValue {
+  files: UploadFiles;
+  result: AnalyzeResult | null;
+  loading: boolean;
+  analyzeProgress: AnalyzeProgressState | null;
+  error: string | null;
+  uploadMismatch: UploadValidationResult | null;
+  statementDuplicate: StatementDuplicateInfo | null;
+  setFiles: (files: UploadFiles) => void;
+  runAnalyze: (files?: UploadFiles) => Promise<AnalyzeResult | null>;
+  applyStatementDuplicate: (info: StatementDuplicateInfo | null) => void;
+  clearError: () => void;
+  clearUploadMismatch: () => void;
+  clearStatementDuplicate: () => void;
+  mergeWeekReports: (weekReports: WeekReportsViewApi) => void;
+}
+
+const AnalysisContext = createContext<AnalysisContextValue | null>(null);
+
+export function AnalysisProvider({ children }: { children: ReactNode }) {
+  const [files, setFilesState] = useState<UploadFiles>({});
+  const [result, setResult] = useState<AnalyzeResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState<AnalyzeProgressState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadMismatch, setUploadMismatch] = useState<UploadValidationResult | null>(null);
+  const [statementDuplicate, setStatementDuplicate] = useState<StatementDuplicateInfo | null>(null);
+
+  const setFiles = useCallback((next: UploadFiles) => {
+    setFilesState(next);
+  }, []);
+
+  const clearError = useCallback(() => setError(null), []);
+  const clearUploadMismatch = useCallback(() => setUploadMismatch(null), []);
+  const clearStatementDuplicate = useCallback(() => setStatementDuplicate(null), []);
+  const applyStatementDuplicate = useCallback(
+    (info: StatementDuplicateInfo | null) => setStatementDuplicate(info),
+    [],
+  );
+
+  const resetSession = useCallback(() => {
+    setFilesState({});
+    setResult(null);
+    setLoading(false);
+    setAnalyzeProgress(null);
+    setError(null);
+    setUploadMismatch(null);
+    setStatementDuplicate(null);
+  }, []);
+
+  useEffect(() => {
+    const onLogout = () => resetSession();
+    window.addEventListener(USER_LOGOUT_EVENT, onLogout);
+    return () => window.removeEventListener(USER_LOGOUT_EVENT, onLogout);
+  }, [resetSession]);
+
+  useEffect(() => {
+    if (!analyzeProgress || analyzeProgress.activeIndex >= analyzeProgress.targetIndex) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setAnalyzeProgress((prev) => {
+        if (!prev) return prev;
+        return tickPipelineForward(prev) ?? prev;
+      });
+    }, PIPELINE_TICK_MS);
+    return () => window.clearTimeout(timer);
+  }, [analyzeProgress]);
+
+  const runAnalyze = useCallback(async (override?: UploadFiles) => {
+    const active = override ?? files;
+    if (!active.bank && !active.pos && !active.ecommerce) {
+      setError(
+        'Please upload at least one statement — bank, POS, or ecommerce — before continuing.',
+      );
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+    setUploadMismatch(null);
+
+    setAnalyzeProgress(buildInitialAnalyzeProgress());
+
+    try {
+      const data = await analyzeWithProgress(active, (event) => {
+        setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
+      });
+
+      setFilesState(active);
+      setResult(data);
+      setStatementDuplicate(null);
+      setAnalyzeProgress(null);
+      return data;
+    } catch (err) {
+      setAnalyzeProgress(null);
+      const duplicate = extractStatementDuplicate(err);
+      if (duplicate) {
+        setStatementDuplicate(duplicate);
+        setUploadMismatch(null);
+        setError(null);
+        return null;
+      }
+      const mismatch = extractUploadMismatches(err);
+      if (mismatch) {
+        setUploadMismatch(mismatch);
+        setStatementDuplicate(null);
+        setError(null);
+      } else {
+        setUploadMismatch(null);
+        setError(getApiError(err, 'Analysis failed.'));
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [files]);
+
+  const mergeWeekReports = useCallback((weekReports: WeekReportsViewApi) => {
+    setResult((prev) => {
+      if (!prev?.analysis) return prev;
+      return {
+        ...prev,
+        analysis: { ...prev.analysis, week_reports: weekReports },
+      };
+    });
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      files,
+      result,
+      loading,
+      analyzeProgress,
+      error,
+      uploadMismatch,
+      statementDuplicate,
+      setFiles,
+      runAnalyze,
+      applyStatementDuplicate,
+      clearError,
+      clearUploadMismatch,
+      clearStatementDuplicate,
+      mergeWeekReports,
+    }),
+    [
+      files,
+      result,
+      loading,
+      analyzeProgress,
+      error,
+      uploadMismatch,
+      statementDuplicate,
+      setFiles,
+      runAnalyze,
+      applyStatementDuplicate,
+      clearError,
+      clearUploadMismatch,
+      clearStatementDuplicate,
+      mergeWeekReports,
+    ]
+  );
+
+  return <AnalysisContext.Provider value={value}>{children}</AnalysisContext.Provider>;
+}
+
+export function useAnalysis() {
+  const ctx = useContext(AnalysisContext);
+  if (!ctx) throw new Error('useAnalysis must be used within AnalysisProvider');
+  return ctx;
+}
+

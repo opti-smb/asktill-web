@@ -1,0 +1,60 @@
+.footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  text-align: center;
+}
+
+.lead {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  margin-bottom: 14px;
+}
+
+.primary {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.primary:hover {
+  text-decoration: underline;
+}
+
+.secondary {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.secondary:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+.sep {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.home {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.home:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}

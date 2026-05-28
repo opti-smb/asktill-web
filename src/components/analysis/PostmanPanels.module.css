@@ -1,0 +1,171 @@
+.panel {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.head {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.sub code {
+  font-size: 12px;
+  background: var(--bg-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.reportTitle {
+  font-size: 15px;
+  font-weight: 500;
+  margin: 0 0 16px;
+}
+
+.block {
+  margin-top: 20px;
+}
+
+.blockTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.table code {
+  font-size: 11px;
+}
+
+.totalRow td {
+  font-weight: 600;
+  border-top: 2px solid var(--rule);
+}
+
+.fileCell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notesList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--body);
+}
+
+.notesList li + li {
+  margin-top: 6px;
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 8px 16px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.dl dt {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.dl dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.processorList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.processorList li + li {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbarHint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.downloadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--brand);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.downloadBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
