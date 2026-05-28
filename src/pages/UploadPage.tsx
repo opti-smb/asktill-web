@@ -1,27 +1,25 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/common/Logo';
+import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
+import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
+import { useAnalysis } from '../context/AnalysisContext';
+import {
+  duplicateInfoFromValidation,
+  isAlreadyStoredMessage,
+  hasStoredPeriodConflict,
+  storedPeriodMessage,
+  validateUploads,
+  warningsBySlot,
+  type UploadValidationResult,
+} from '../lib/api';
 import type { FileUploadState } from '../types';
 import styles from './UploadPage.module.css';
 
 type FormData = Record<string, FileList>;
-
-const bankState: FileUploadState = {
-  uploaded: true,
-  fileName: 'chase_business_mar2026.pdf',
-  detail: '214 transactions detected',
-};
-
-const posState: FileUploadState = {
-  uploaded: true,
-  fileName: 'square_mar2026.csv',
-  detail: 'Square POS detected · 31 days',
-};
-
-const ecommerceState: FileUploadState = {
-  uploaded: false,
-};
+type UploadSlot = 'bank' | 'pos' | 'ecommerce';
 
 const steps = [
   { label: 'Account', status: 'done' },
@@ -30,20 +28,266 @@ const steps = [
   { label: 'First insight', status: '' },
 ];
 
+function fileFromList(list: FileList | undefined): File | undefined {
+  return list?.[0];
+}
+
+function uploadStateFromFile(
+  file: File | undefined,
+  slot: UploadSlot,
+  validation: UploadValidationResult | null,
+  slotWarnings: ReturnType<typeof warningsBySlot>,
+): FileUploadState {
+  if (!file) return { uploaded: false };
+  const period = validation?.detected_periods?.[slot];
+  const size = `${Math.round(file.size / 1024)} KB`;
+  return {
+    uploaded: true,
+    fileName: file.name,
+    detail: period ? `${size} · ${period}` : size,
+    warning:
+      slotWarnings[slot] && !isAlreadyStoredMessage(slotWarnings[slot])
+        ? slotWarnings[slot]
+        : undefined,
+  };
+}
+
+function mergeValidation(
+  live: UploadValidationResult | null,
+  fromAnalyze: UploadValidationResult | null,
+): UploadValidationResult | null {
+  if (!live && !fromAnalyze) return null;
+  if (!live) return fromAnalyze;
+  if (!fromAnalyze) return live;
+  return {
+    ok: live.ok && fromAnalyze.ok,
+    slot_mismatches: [...live.slot_mismatches, ...fromAnalyze.slot_mismatches],
+    period_mismatches: [...live.period_mismatches, ...fromAnalyze.period_mismatches],
+    missing_period_warnings: [
+      ...(live.missing_period_warnings ?? []),
+      ...(fromAnalyze.missing_period_warnings ?? []),
+    ],
+    stored_period_warnings: (live.stored_period_warnings?.length ?? 0) > 0
+      ? live.stored_period_warnings
+      : (fromAnalyze.stored_period_warnings ?? []),
+    detected_periods: { ...fromAnalyze.detected_periods, ...live.detected_periods },
+  };
+}
+
+function fileKey(file: File | undefined): string {
+  return file ? `${file.name}:${file.size}:${file.lastModified}` : '';
+}
+
 export default function UploadPage() {
-  const { register } = useForm<FormData>();
+  const { register, watch } = useForm<FormData>();
   const navigate = useNavigate();
+  const {
+    runAnalyze,
+    loading,
+    analyzeProgress,
+    error,
+    uploadMismatch,
+    statementDuplicate,
+    applyStatementDuplicate,
+    clearError,
+    clearUploadMismatch,
+    clearStatementDuplicate,
+  } = useAnalysis();
+  const [validation, setValidation] = useState<UploadValidationResult | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [validationFailed, setValidationFailed] = useState(false);
+  const [uploadPrompt, setUploadPrompt] = useState<string | null>(null);
+  const validatedFileKeysRef = useRef('');
+
+  const bankFile = fileFromList(watch('bank'));
+  const posFile = fileFromList(watch('pos'));
+  const ecommerceFile = fileFromList(watch('ecommerce'));
+  const bankKey = fileKey(bankFile);
+  const posKey = fileKey(posFile);
+  const ecommerceKey = fileKey(ecommerceFile);
+  const uploadedCount = [bankFile, posFile, ecommerceFile].filter(Boolean).length;
+  const currentFileKeys = `${bankKey}|${posKey}|${ecommerceKey}`;
+
+  useEffect(() => {
+    clearUploadMismatch();
+    clearStatementDuplicate();
+    setValidation(null);
+    validatedFileKeysRef.current = '';
+    if (uploadedCount > 0) setUploadPrompt(null);
+    if (uploadedCount === 0) setValidationFailed(false);
+  }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate]);
+
+  useEffect(() => {
+    if (uploadedCount < 1) {
+      setValidation(null);
+      setValidationFailed(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setValidating(true);
+      setValidationFailed(false);
+      try {
+        const { data } = await validateUploads({
+          bank: bankFile,
+          pos: posFile,
+          ecommerce: ecommerceFile,
+        });
+        if (!cancelled) {
+          setValidation(data);
+          setValidationFailed(false);
+          validatedFileKeysRef.current = currentFileKeys;
+        }
+      } catch {
+        if (!cancelled) {
+          setValidation(null);
+          setValidationFailed(true);
+        }
+      } finally {
+        if (!cancelled) setValidating(false);
+      }
+    }, 900);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [bankFile, posFile, ecommerceFile, uploadedCount, currentFileKeys]);
+
+  const validationMatchesFiles = validatedFileKeysRef.current === currentFileKeys;
+  const mergedValidation = useMemo(
+    () => mergeValidation(validation, uploadMismatch),
+    [validation, uploadMismatch],
+  );
+  const activeValidation =
+    validationMatchesFiles && !validating ? mergedValidation : validation;
+  const slotWarnings = useMemo(() => warningsBySlot(activeValidation), [activeValidation]);
+  const hasBoxWarnings = Boolean(slotWarnings.bank || slotWarnings.pos || slotWarnings.ecommerce);
+
+  const bankState = useMemo(
+    () => uploadStateFromFile(bankFile, 'bank', activeValidation, slotWarnings),
+    [bankFile, activeValidation, slotWarnings],
+  );
+  const posState = useMemo(
+    () => uploadStateFromFile(posFile, 'pos', activeValidation, slotWarnings),
+    [posFile, activeValidation, slotWarnings],
+  );
+  const ecommerceState = useMemo(
+    () => uploadStateFromFile(ecommerceFile, 'ecommerce', activeValidation, slotWarnings),
+    [ecommerceFile, activeValidation, slotWarnings],
+  );
+
+  const headerNotice = useMemo(() => {
+    if (!validationMatchesFiles || validating) return null;
+    if (statementDuplicate?.message) {
+      return statementDuplicate.message;
+    }
+    const fromValidation = storedPeriodMessage(mergedValidation);
+    if (fromValidation) return fromValidation;
+    if (error && isAlreadyStoredMessage(error)) return error;
+    return null;
+  }, [statementDuplicate, mergedValidation, error, validationMatchesFiles, validating]);
+
+  useEffect(() => {
+    if (validating || !validationMatchesFiles || !mergedValidation) return;
+    if (hasStoredPeriodConflict(mergedValidation)) {
+      const fromValidation = duplicateInfoFromValidation(mergedValidation);
+      if (fromValidation) applyStatementDuplicate(fromValidation);
+    } else {
+      clearStatementDuplicate();
+    }
+  }, [
+    mergedValidation,
+    validating,
+    validationMatchesFiles,
+    applyStatementDuplicate,
+    clearStatementDuplicate,
+  ]);
+
+  const hasStoredConflict =
+    validationMatchesFiles &&
+    !validating &&
+    (Boolean(statementDuplicate) || hasStoredPeriodConflict(mergedValidation));
+  const validationReady =
+    validation != null &&
+    validation.ok &&
+    !validationFailed &&
+    validatedFileKeysRef.current === currentFileKeys;
+  const canSubmitAnalyze =
+    uploadedCount >= 1 &&
+    !loading &&
+    !validating &&
+    !hasStoredConflict &&
+    !hasBoxWarnings &&
+    (validationReady || validation === null || validationFailed);
+
+  useEffect(() => {
+    if (headerNotice && error && isAlreadyStoredMessage(error)) {
+      clearError();
+    }
+  }, [headerNotice, error, clearError]);
+
+  const onContinue = async () => {
+    if (loading || validating || hasStoredConflict || uploadedCount < 1) return;
+
+    clearError();
+    clearUploadMismatch();
+    setUploadPrompt(null);
+
+    const useCachedValidation =
+      validation?.ok &&
+      !validationFailed &&
+      validatedFileKeysRef.current === currentFileKeys &&
+      !hasStoredPeriodConflict(validation);
+
+    if (!useCachedValidation) {
+      setValidating(true);
+      try {
+        const { data: freshValidation } = await validateUploads({
+          bank: bankFile,
+          pos: posFile,
+          ecommerce: ecommerceFile,
+        });
+        setValidation(freshValidation);
+        setValidationFailed(false);
+        validatedFileKeysRef.current = currentFileKeys;
+        if (hasStoredPeriodConflict(freshValidation)) {
+          const dup = duplicateInfoFromValidation(freshValidation);
+          if (dup) applyStatementDuplicate(dup);
+          return;
+        }
+        if (!freshValidation.ok) {
+          setUploadPrompt(
+            'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
+          );
+          return;
+        }
+      } catch {
+        setValidationFailed(true);
+        setUploadPrompt('Could not verify uploads. Check your connection and try again.');
+        return;
+      } finally {
+        setValidating(false);
+      }
+    }
+
+    const result = await runAnalyze({
+      bank: bankFile,
+      pos: posFile,
+      ecommerce: ecommerceFile,
+    });
+    if (result) navigate('/dashboard/overview');
+  };
 
   return (
     <div className={styles.pageBg}>
+      {analyzeProgress && <AnalyzeProgressOverlay progress={analyzeProgress} />}
       <nav className={styles.nav}>
         <div className="wrap">
           <div className={styles.navInner}>
             <Logo />
-            <div className={styles.navUser}>
-              <span>Maria's Café</span>
-              <div className={styles.avatar}>M</div>
-            </div>
+            <UserAccountMenu showName showProfile={false} />
           </div>
         </div>
       </nav>
@@ -74,6 +318,11 @@ export default function UploadPage() {
             <p className={styles.pageSub}>
               Drop in your bank statement, POS export, and ecommerce file. PDFs and CSVs both work. We'll do the rest.
             </p>
+            {headerNotice ? (
+              <div className={styles.duplicateBanner} role="alert">
+                <p className={styles.duplicateMessage}>{headerNotice}</p>
+              </div>
+            ) : null}
           </div>
 
           <div className={styles.uploadGrid}>
@@ -128,20 +377,55 @@ export default function UploadPage() {
             </div>
           </div>
 
+          {validating && !loading && uploadedCount >= 1 && (
+            <div className={styles.micro} style={{ marginBottom: 12, color: 'var(--muted)' }}>
+              Checking file type and month…
+            </div>
+          )}
+
+          {uploadPrompt && (
+            <div className={styles.uploadPrompt} role="alert">
+              <strong>Upload required</strong>
+              {uploadPrompt}
+            </div>
+          )}
+
+          {error && !headerNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) && (
+            <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
+
           <div className={styles.ctaWrap}>
             <button
+              type="button"
               className={styles.btnPrimary}
-              onClick={() => navigate('/dashboard/overview')}
+              disabled={!canSubmitAnalyze}
+              onClick={() => void onContinue()}
             >
-              Continue to confirmation
+              {loading ? 'Analyzing…' : 'Continue to dashboard'}
               <span>→</span>
             </button>
-            <div className={styles.micro}>2 of 3 sources uploaded · 1 more to unlock full reconciliation</div>
+            <div className={styles.micro}>
+              {uploadedCount} of 3 sources uploaded
+              {loading
+                ? ' · analyzing your statements'
+                : uploadedCount < 1
+                  ? ' · add at least one file to continue'
+                  : validating
+                    ? ' · checking uploads'
+                    : uploadedCount < 3
+                      ? ' · add all 3 sources for full reconciliation'
+                      : hasStoredConflict
+                        ? ' · this month is already on file'
+                        : hasBoxWarnings
+                          ? ' · fix the highlighted upload boxes'
+                          : validationReady || validationFailed
+                            ? ' · ready to analyze'
+                            : ' · checking uploads'}
+            </div>
           </div>
 
-          <div className={styles.helpLink}>
-            Don't have your files handy? <a href="#">See where to download them →</a>
-          </div>
         </div>
       </div>
     </div>

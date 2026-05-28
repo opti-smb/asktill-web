@@ -19,7 +19,32 @@ npm run build     # Type-check then bundle for production
 npm run preview   # Preview the production build locally
 ```
 
-> There is no test runner configured.
+Copy `.env.example` to `.env` (defaults point at local services on E: drive).
+
+### Backend services (run before the UI)
+
+| Service | Port | Role |
+|---------|------|------|
+| **E:\\backend** | 8000 | Reconciliation API (`/api/analyze`, `/api/ask`, …) |
+| **Authentication Service** | 8002 | Login + JWT (`POST /api/auth/login`) |
+| **Registration-Service** | 8003 | User registration (`POST /api/register`) |
+
+Start the backend from `E:\backend`:
+
+```bash
+python run.py
+```
+
+Start auth and registration the same way in their folders. The Vite dev server proxies `/api/*` to the correct ports so you avoid CORS during development.
+
+### Auth + upload flow
+
+1. Sign in at `/login` — stores JWT in `localStorage`.
+2. Upload bank / POS / ecommerce files at `/onboarding`.
+3. Continue runs `POST /api/analyze` and navigates to `/dashboard/overview` with live KPIs.
+4. Use **Ask anything** (floating button) for `POST /api/ask` on the same uploads.
+
+> There is no test suite configured.
 
 ## Project Structure
 
@@ -78,7 +103,7 @@ Each component and page has a co-located `.module.css` file. Global design token
 
 ## Data
 
-All data is currently static, hardcoded in `src/data/`. Files:
+Dashboard pages fall back to static mock data in `src/data/` when no analysis has been run. After upload + analyze, overview KPIs and period labels come from `POST /api/analyze` via `AnalysisContext`.
 
 - `kpis.ts` — KPI cards for the overview page
 - `cashflow.ts` — Forecast and inflow/outflow data

@@ -12,23 +12,26 @@ export default function KPICard({ kpi }: KPICardProps) {
     <div className={styles.kpi}>
       <div className={styles.kpiLabel}>{kpi.label}</div>
       <div className={styles.kpiValue}>{kpi.value}</div>
-      <div className={styles.kpiComparison}>
-        <span className={`${styles.kpiDelta} ${styles[kpi.deltaType]}`}>{kpi.delta}</span>
-        <span className={styles.kpiPrev}>{kpi.prev}</span>
-      </div>
+      {(kpi.delta || kpi.prev) && (
+        <div className={styles.kpiComparison}>
+          <span className={`${styles.kpiDelta} ${styles[kpi.deltaType]}`}>{kpi.delta}</span>
+          <span className={styles.kpiPrev}>{kpi.prev}</span>
+        </div>
+      )}
+      {kpi.sparkBars.length > 0 && (
       <svg className={styles.spark} viewBox="0 0 200 32" preserveAspectRatio="none" style={{ height: 32 }}>
         {kpi.sparkBars.map((bar, i) => (
           <g key={bar.x}>
             <rect x={bar.x} y={bar.y} width="50" height={bar.height} rx="2" fill={bar.fill} />
             {bar.label && (
               <text
-                x={labelX[i]}
+                x={labelX[i] ?? 64}
                 y={bar.y - 2}
                 textAnchor="middle"
                 fontFamily="Inter"
                 fontSize="7"
                 fill={bar.labelFill}
-                fontWeight={i === 2 ? '700' : undefined}
+                fontWeight={i === kpi.sparkBars.length - 1 ? '700' : undefined}
               >
                 {bar.label}
               </text>
@@ -36,9 +39,16 @@ export default function KPICard({ kpi }: KPICardProps) {
           </g>
         ))}
       </svg>
+      )}
       <div className={styles.kpiAvg}>
-        {kpi.avgLabel} ·{' '}
-        <span className={styles[`avgNote_${kpi.avgNoteType}`]}>{kpi.avgNote}</span>
+        {kpi.avgLabel ? (
+          <>
+            {kpi.avgLabel} ·{' '}
+            <span className={styles[`avgNote_${kpi.avgNoteType}`]}>{kpi.avgNote}</span>
+          </>
+        ) : kpi.avgNote ? (
+          <span className={styles[`avgNote_${kpi.avgNoteType}`]}>{kpi.avgNote}</span>
+        ) : null}
       </div>
     </div>
   );

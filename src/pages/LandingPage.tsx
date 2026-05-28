@@ -15,7 +15,7 @@ export default function LandingPage() {
             <Logo size={32} />
             <div className={styles.navRight}>
               <Link to="/login" className={styles.navLogin}>Sign in</Link>
-              <Link to="/signup" className={styles.navCta}>Apply</Link>
+              <Link to="/register" className={styles.navCta}>Sign up</Link>
             </div>
           </div>
         </div>
