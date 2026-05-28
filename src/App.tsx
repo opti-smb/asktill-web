@@ -1,10 +1,16 @@
 import AppRouter from './routes/AppRouter';
-import { PeriodProvider } from './context/PeriodContext';
+import { AuthProvider } from './context/AuthContext';
+import { AnalysisProvider } from './context/AnalysisContext';
+import { ChatProvider } from './context/ChatContext';
 
 export default function App() {
   return (
-    <PeriodProvider>
-      <AppRouter />
-    </PeriodProvider>
+    <AuthProvider>
+      <AnalysisProvider>
+        <ChatProvider>
+          <AppRouter />
+        </ChatProvider>
+      </AnalysisProvider>
+    </AuthProvider>
   );
 }

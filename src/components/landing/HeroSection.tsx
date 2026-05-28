@@ -7,18 +7,18 @@ export default function HeroSection() {
       <div className="wrap">
         <div className={styles.heroGrid}>
           <div>
-            <span className={styles.tagPill}>Private pilot · 100 founding members</span>
+            <span className={styles.tagPill}>Built for owner-operators</span>
             <h1>Free analytics. <em>Real financial services.</em></h1>
-            <div className={styles.tagline}>Built for owner-operators.</div>
+            <div className={styles.tagline}>Plain-English answers from your business data.</div>
             <p className={styles.heroSub}>
               Connect your bank, POS, and ecommerce. Get plain-English answers — free, forever. Tap working capital, banking, and cards when you're ready.
             </p>
             <div className={styles.ctaRow}>
-              <Link to="/signup" className={styles.btnPrimary}>
-                Apply for the pilot
+              <Link to="/register" className={styles.btnPrimary}>
+                Create your account
                 <span className={styles.arrow}>→</span>
               </Link>
-              <span className={styles.micro}>100 spots · free analytics · no card required</span>
+              <span className={styles.micro}>Free analytics · no card required</span>
             </div>
           </div>
 
