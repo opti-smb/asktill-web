@@ -14,6 +14,7 @@ import {
   getApiError,
   type StatementDuplicateInfo,
   USER_LOGOUT_EVENT,
+  USER_STATE_RESET_EVENT,
   type UploadFiles,
   type UploadValidationResult,
 } from '../lib/api';
@@ -77,9 +78,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const onLogout = () => resetSession();
-    window.addEventListener(USER_LOGOUT_EVENT, onLogout);
-    return () => window.removeEventListener(USER_LOGOUT_EVENT, onLogout);
+    const onReset = () => resetSession();
+    window.addEventListener(USER_LOGOUT_EVENT, onReset);
+    window.addEventListener(USER_STATE_RESET_EVENT, onReset);
+    return () => {
+      window.removeEventListener(USER_LOGOUT_EVENT, onReset);
+      window.removeEventListener(USER_STATE_RESET_EVENT, onReset);
+    };
   }, [resetSession]);
 
   useEffect(() => {

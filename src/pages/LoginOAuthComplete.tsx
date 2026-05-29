@@ -4,12 +4,14 @@ import { useClerk, useUser } from '@clerk/clerk-react';
 import AuthNav from '../components/auth/AuthNav';
 import AuthOAuthProgress from '../components/auth/AuthOAuthProgress';
 import { useAuth } from '../context/AuthContext';
-import { checkEmail, extractNotRegistered, getApiError, getToken } from '../lib/api';
+import { checkEmail, extractNotRegistered, getApiError, getToken, warmupServices } from '../lib/api';
 import {
   clearClerkSession,
   clearGoogleSignInAttempt,
+  getGoogleOAuthMode,
   GOOGLE_SIGNIN_CANCELLED_MSG,
   GOOGLE_SIGNIN_NOT_REGISTERED_MSG,
+  GOOGLE_SIGNUP_ALREADY_REGISTERED_MSG,
   persistLoginFlash,
   persistRegisterFromGoogle,
   wasGoogleSignInAttempt,
@@ -46,11 +48,26 @@ export default function LoginOAuthComplete() {
   const [slowHint, setSlowHint] = useState(false);
 
   useEffect(() => {
+    warmupServices();
     let cancelled = false;
     const flowStarted = Date.now();
     const slowTimer = window.setTimeout(() => {
       if (!finishedRef.current) setSlowHint(true);
     }, SLOW_HINT_MS);
+
+    async function sendToLoginExistingAccount(googleEmail: string) {
+      if (finishedRef.current || cancelled) return;
+      finishedRef.current = true;
+      const addr = normalizeEmail(googleEmail);
+      const message = GOOGLE_SIGNUP_ALREADY_REGISTERED_MSG;
+      persistLoginFlash(message);
+      navigate('/login', {
+        replace: true,
+        state: { email: addr, error: message },
+      });
+      clearGoogleSignInAttempt();
+      await clearClerkSession(clerk);
+    }
 
     async function sendToLogin(error: string) {
       if (finishedRef.current || cancelled) return;
@@ -76,9 +93,10 @@ export default function LoginOAuthComplete() {
     async function finish() {
       if (!clerk.loaded || finishedRef.current || cancelled) return;
 
-      const fromGoogleSignIn = wasGoogleSignInAttempt();
+      const fromGoogleOAuth = wasGoogleSignInAttempt();
+      const oauthMode = getGoogleOAuthMode();
 
-      if (fromGoogleSignIn && !clerkUserLoaded) return;
+      if (fromGoogleOAuth && !clerkUserLoaded) return;
 
       if (Date.now() - flowStarted > FLOW_TIMEOUT_MS) {
         await sendToLogin(
@@ -95,24 +113,42 @@ export default function LoginOAuthComplete() {
       const accountEmail = resolvedEmail || googleEmail;
 
       if (!sessionId) {
-        if (fromGoogleSignIn && accountEmail) {
+        if (fromGoogleOAuth && accountEmail) {
           try {
             const { data } = await checkEmail(normalizeEmail(accountEmail));
             if (!data.registered) {
               await sendToRegister(accountEmail);
               return;
             }
+            if (oauthMode === 'signup') {
+              await sendToLoginExistingAccount(accountEmail);
+              return;
+            }
           } catch {
-            await sendToRegister(accountEmail);
-            return;
+            if (oauthMode === 'signup') {
+              await sendToRegister(accountEmail);
+              return;
+            }
           }
         }
         await sendToLogin(
-          fromGoogleSignIn
+          fromGoogleOAuth
             ? 'Google sign-in did not finish. Try again or use email and password.'
             : GOOGLE_SIGNIN_CANCELLED_MSG,
         );
         return;
+      }
+
+      if (oauthMode === 'signup' && accountEmail) {
+        try {
+          const { data } = await checkEmail(normalizeEmail(accountEmail));
+          if (data.registered) {
+            await sendToLoginExistingAccount(accountEmail);
+            return;
+          }
+        } catch {
+          /* continue — clerk-login will confirm registration status */
+        }
       }
 
       try {
@@ -160,16 +196,21 @@ export default function LoginOAuthComplete() {
     navigate,
   ]);
 
+  const oauthMode = getGoogleOAuthMode();
+  const title =
+    oauthMode === 'signup' ? 'Checking your Google account' : 'Signing in with Google';
   const hint = slowHint
-    ? 'Still working… If this takes more than a minute, ensure Authentication Service (port 8002) is running.'
-    : 'Checking your AskTill account…';
+    ? 'Still working… If this takes more than a minute, wait a moment and try again.'
+    : oauthMode === 'signup'
+      ? 'Checking whether this email is already registered…'
+      : 'Checking your AskTill account…';
 
   return (
     <div className={styles.page}>
-      <AuthNav active="signin" />
+      <AuthNav active={oauthMode === 'signup' ? 'signup' : 'signin'} />
       <main className={styles.main}>
         <div className={styles.card}>
-          <AuthOAuthProgress title="Signing in with Google" hint={hint} />
+          <AuthOAuthProgress title={title} hint={hint} />
         </div>
       </main>
     </div>

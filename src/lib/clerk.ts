@@ -100,7 +100,11 @@ export const GOOGLE_SIGNIN_CANCELLED_MSG =
   'Google sign-in was cancelled. Try again or use email and password.';
 
 export const GOOGLE_SIGNIN_ATTEMPT_KEY = 'asktill:google-sign-in-attempt';
+export const GOOGLE_OAUTH_MODE_KEY = 'asktill:google-oauth-mode';
 const LOGIN_FLASH_ERROR_KEY = 'asktill:login-flash-error';
+
+export const GOOGLE_SIGNUP_ALREADY_REGISTERED_MSG =
+  'An account with this email already exists. Sign in instead.';
 
 export function persistLoginFlash(error: string) {
   try {
@@ -153,17 +157,33 @@ export function consumeRegisterFromGoogle(): { message: string; email: string } 
   }
 }
 
-export function markGoogleSignInAttempt() {
+export function markGoogleOAuthAttempt(mode: 'signin' | 'signup') {
   try {
     sessionStorage.setItem(GOOGLE_SIGNIN_ATTEMPT_KEY, '1');
+    sessionStorage.setItem(GOOGLE_OAUTH_MODE_KEY, mode);
   } catch {
     /* ignore */
+  }
+}
+
+/** @deprecated Use markGoogleOAuthAttempt */
+export function markGoogleSignInAttempt() {
+  markGoogleOAuthAttempt('signin');
+}
+
+export function getGoogleOAuthMode(): 'signin' | 'signup' | null {
+  try {
+    const mode = sessionStorage.getItem(GOOGLE_OAUTH_MODE_KEY);
+    return mode === 'signin' || mode === 'signup' ? mode : null;
+  } catch {
+    return null;
   }
 }
 
 export function clearGoogleSignInAttempt() {
   try {
     sessionStorage.removeItem(GOOGLE_SIGNIN_ATTEMPT_KEY);
+    sessionStorage.removeItem(GOOGLE_OAUTH_MODE_KEY);
   } catch {
     /* ignore */
   }
@@ -193,7 +213,7 @@ type SignInOAuth = {
   }) => Promise<void>;
 };
 
-/** Start Google OAuth — create() alone does not leave the page; we must follow the redirect URL. */
+/** Start Google OAuth on sign-in (login page). */
 export async function startGoogleOAuth(signIn: SignInOAuth, clerk: ClerkClient) {
   const { redirectUrl, redirectUrlComplete } = clerkOAuthUrls();
 
@@ -213,6 +233,27 @@ export async function startGoogleOAuth(signIn: SignInOAuth, clerk: ClerkClient) 
   }
 
   await signIn.authenticateWithRedirect({
+    strategy: 'oauth_google',
+    redirectUrl,
+    redirectUrlComplete,
+    oidcPrompt: 'select_account',
+  });
+}
+
+type SignUpOAuth = {
+  authenticateWithRedirect: (params: {
+    strategy: 'oauth_google';
+    redirectUrl: string;
+    redirectUrlComplete: string;
+    oidcPrompt?: string;
+  }) => Promise<void>;
+};
+
+/** Start Google OAuth on sign-up (register page). Uses /client/sign_ups, not sign_ins. */
+export async function startGoogleOAuthSignUp(signUp: SignUpOAuth, clerk: ClerkClient) {
+  const { redirectUrl, redirectUrlComplete } = clerkOAuthUrls();
+  await clearClerkSession(clerk, { stayOnPage: true });
+  await signUp.authenticateWithRedirect({
     strategy: 'oauth_google',
     redirectUrl,
     redirectUrlComplete,
@@ -252,7 +293,12 @@ export function clerkErrorMessage(err: unknown, fallback = 'Something went wrong
   }
   if (first?.longMessage) return first.longMessage;
   if (first?.message) return first.message;
-  if (typeof e.message === 'string') return e.message;
+  if (typeof e.message === 'string') {
+    if (/failed to fetch|network error|load failed/i.test(e.message)) {
+      return 'Could not reach Clerk. Check your connection, disable ad blockers for this site, and try again.';
+    }
+    return e.message;
+  }
   return fallback;
 }
 

@@ -24,7 +24,7 @@
 }
 
 .title {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 26px;
   font-weight: 400;
   color: var(--ink);

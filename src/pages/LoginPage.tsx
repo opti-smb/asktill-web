@@ -14,7 +14,7 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 import { useAuth } from '../context/AuthContext';
 
-import { checkEmail, extractNotRegistered, getApiError } from '../lib/api';
+import { checkEmail, extractNotRegistered, getApiError, warmupServices } from '../lib/api';
 
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 
@@ -75,6 +75,10 @@ export default function LoginPage() {
   } as const;
 
   useEffect(() => {
+    warmupServices();
+  }, []);
+
+  useEffect(() => {
     if (ready && isAuth) {
       navigate('/onboarding', { replace: true });
     }
@@ -133,25 +137,24 @@ export default function LoginPage() {
 
     try {
 
-      const { data: emailCheck } = await checkEmail(email);
+      try {
+        const { data: emailCheck } = await checkEmail(email);
 
-      if (!emailCheck.registered) {
-
-        setServerError(
-
-          emailCheck.message ?? 'No account for this email. Please register first.',
-
-        );
-
-        setEmailHighlight(true);
-
-        focusEmailInput('login-email');
-
-        return;
-
+        if (!emailCheck.registered) {
+          setServerError(
+            emailCheck.message ?? 'No account for this email. Please register first.',
+          );
+          setEmailHighlight(true);
+          focusEmailInput('login-email');
+          return;
+        }
+      } catch (checkErr) {
+        const status = (checkErr as { response?: { status?: number } })?.response?.status;
+        if (!status || status < 500) {
+          throw checkErr;
+        }
+        // Auth DB may be cold on Render — still attempt password login.
       }
-
-
 
       await login(email, data.password);
 
@@ -220,18 +223,6 @@ export default function LoginPage() {
             <p className={styles.sub}>Sign in to your AskTill account.</p>
 
           </div>
-
-
-
-          {clerkOn ? (
-            <>
-              <GoogleSignInButton
-                disabled={isSubmitting}
-                onError={setServerError}
-              />
-              <div className={styles.divider}>or sign in with email</div>
-            </>
-          ) : null}
 
 
 
@@ -423,6 +414,18 @@ export default function LoginPage() {
             </button>
 
           </form>
+
+
+
+          {clerkOn ? (
+            <>
+              <div className={styles.divider}>or continue with Google</div>
+              <GoogleSignInButton
+                disabled={isSubmitting}
+                onError={setServerError}
+              />
+            </>
+          ) : null}
 
 
 

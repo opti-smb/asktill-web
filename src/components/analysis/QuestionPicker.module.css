@@ -98,7 +98,7 @@
 }
 
 .pickerQ {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 14px;
   color: var(--ink);
   font-style: italic;

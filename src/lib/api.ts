@@ -42,16 +42,23 @@ export interface AuthUser {
 
 export const SESSION_EXPIRED_EVENT = 'asktill:session-expired';
 export const USER_LOGOUT_EVENT = 'asktill:user-logout';
+export const USER_STATE_RESET_EVENT = 'asktill:user-state-reset';
 export const CHAT_STORAGE_KEY = 'asktill_chat_messages';
 
-/** Remove JWT, chat, and notify contexts to reset in-memory state. */
-export function clearAppSession() {
-  clearToken();
+/** Clear in-memory user data (analysis, chat, upload) without removing JWT. */
+export function resetUserScopedState() {
   try {
     sessionStorage.removeItem(CHAT_STORAGE_KEY);
   } catch {
     /* ignore */
   }
+  window.dispatchEvent(new CustomEvent(USER_STATE_RESET_EVENT));
+}
+
+/** Remove JWT, chat, and notify contexts to reset in-memory state. */
+export function clearAppSession() {
+  clearToken();
+  resetUserScopedState();
   window.dispatchEvent(new CustomEvent(USER_LOGOUT_EVENT));
 }
 
@@ -79,11 +86,11 @@ const mainApi = axios.create({
 });
 const authApi = axios.create({
   baseURL: devBase() ?? import.meta.env.VITE_AUTH_API_URL,
-  timeout: 30_000,
+  timeout: 90_000,
 });
 const registerApi = axios.create({
   baseURL: devBase() ?? import.meta.env.VITE_REGISTER_API_URL,
-  timeout: 30_000,
+  timeout: 90_000,
 });
 
 export function getApiError(err: unknown, fallback = 'Request failed.'): string {
@@ -125,9 +132,21 @@ function formatApiError(
   const axiosErr = err as AxiosError;
   if (!axiosErr?.response) {
     if (axiosErr?.message === 'Network Error') {
-      return 'Cannot reach the API. Ensure Auth (8002) and Backend (8000) are running, then refresh.';
+      return import.meta.env.DEV
+        ? 'Cannot reach the API. Ensure Auth (8002) and Backend (8000) are running, then refresh.'
+        : 'Cannot reach the server. It may be waking up — wait 30 seconds and try again.';
+    }
+    if (axiosErr?.code === 'ECONNABORTED' || String(axiosErr?.message ?? '').includes('timeout')) {
+      return import.meta.env.DEV
+        ? 'Request timed out. Ensure backend services are running, then try again.'
+        : 'Request timed out while the server was waking up. Wait 30 seconds and try again.';
     }
     return axiosErr?.message ?? fallback;
+  }
+  if (axiosErr.response.status >= 500) {
+    return import.meta.env.DEV
+      ? `Server error (${axiosErr.response.status}). Check Authentication Service logs on port 8002.`
+      : 'Sign-in server error — wait 30 seconds and try again. If it persists, use Forgot password or register again.';
   }
   if (axiosErr.response.status === 404 && (!d?.detail || d.detail === 'Not Found')) {
     const url = String(axiosErr.config?.url ?? '');
@@ -281,6 +300,7 @@ export function warningsBySlot(result: UploadValidationResult | null) {
     ...result.period_mismatches,
     ...(result.missing_period_warnings ?? []),
   ]) {
+    if (!m.message?.trim() || isAlreadyStoredMessage(m.message)) continue;
     if (m.slot in out) {
       out[m.slot as keyof typeof out] = out[m.slot as keyof typeof out]
         ? `${out[m.slot as keyof typeof out]} ${m.message}`
@@ -327,9 +347,28 @@ export const validateUploads = (files: UploadFiles) => {
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
   return mainApi.post<UploadValidationResult>('/api/validate-uploads', form, {
-    timeout: 60_000,
+    timeout: 120_000,
   });
 };
+
+/** Wake Render services before login or upload (no-op when already warm). */
+export function warmupBackend() {
+  void mainApi.get('/api/health', { timeout: 90_000 }).catch(() => {});
+}
+
+export function warmupAuthService() {
+  void authApi.get('/health', { timeout: 90_000 }).catch(() => {});
+}
+
+export function warmupRegistrationService() {
+  void registerApi.get('/health', { timeout: 90_000 }).catch(() => {});
+}
+
+export function warmupServices() {
+  warmupBackend();
+  warmupAuthService();
+  warmupRegistrationService();
+}
 
 const attachBearer = (cfg: InternalAxiosRequestConfig) => {
   const token = getToken();

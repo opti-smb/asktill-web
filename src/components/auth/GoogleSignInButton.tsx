@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { useClerk, useSignIn } from '@clerk/clerk-react';
+import { useClerk, useSignIn, useSignUp } from '@clerk/clerk-react';
 import {
   clearClerkSession,
   clerkErrorMessage,
   isClerkAlreadySignedInError,
-  markGoogleSignInAttempt,
+  markGoogleOAuthAttempt,
   startGoogleOAuth,
+  startGoogleOAuthSignUp,
 } from '../../lib/clerk';
+import { warmupServices } from '../../lib/api';
 import styles from '../../pages/LoginPage.module.css';
 
 function GoogleIcon() {
@@ -35,13 +37,19 @@ function GoogleIcon() {
 type Props = {
   disabled?: boolean;
   onError: (message: string) => void;
+  /** Use sign-up OAuth on /register; sign-in OAuth on /login. */
+  mode?: 'signin' | 'signup';
 };
 
-export default function GoogleSignInButton({ disabled, onError }: Props) {
+export default function GoogleSignInButton({ disabled, onError, mode = 'signin' }: Props) {
   const clerk = useClerk();
-  const { isLoaded, signIn } = useSignIn();
+  const { isLoaded: signInLoaded, signIn } = useSignIn();
+  const { isLoaded: signUpLoaded, signUp } = useSignUp();
   const [loading, setLoading] = useState(false);
   const redirectTimer = useRef<number | null>(null);
+
+  const isSignup = mode === 'signup';
+  const ready = isSignup ? signUpLoaded && Boolean(signUp) : signInLoaded && Boolean(signIn);
 
   const clearRedirectTimer = () => {
     if (redirectTimer.current != null) {
@@ -55,13 +63,14 @@ export default function GoogleSignInButton({ disabled, onError }: Props) {
   }, []);
 
   const handleClick = async () => {
-    if (!isLoaded || !signIn) {
-      onError('Sign-in is still loading. Wait a moment and try again.');
+    if (!ready) {
+      onError('Google sign-in is still loading. Wait a moment and try again.');
       return;
     }
 
     onError('');
     setLoading(true);
+    warmupServices();
 
     redirectTimer.current = window.setTimeout(() => {
       redirectTimer.current = null;
@@ -72,11 +81,15 @@ export default function GoogleSignInButton({ disabled, onError }: Props) {
     }, 12_000);
 
     try {
-      markGoogleSignInAttempt();
-      await startGoogleOAuth(signIn, clerk);
+      markGoogleOAuthAttempt(isSignup ? 'signup' : 'signin');
+      if (isSignup && signUp) {
+        await startGoogleOAuthSignUp(signUp, clerk);
+      } else if (signIn) {
+        await startGoogleOAuth(signIn, clerk);
+      }
       clearRedirectTimer();
     } catch (err) {
-      if (isClerkAlreadySignedInError(err)) {
+      if (!isSignup && signIn && isClerkAlreadySignedInError(err)) {
         try {
           await clearClerkSession(clerk);
           await startGoogleOAuth(signIn, clerk);
@@ -88,9 +101,10 @@ export default function GoogleSignInButton({ disabled, onError }: Props) {
       }
       clearRedirectTimer();
       setLoading(false);
-      onError(
-        clerkErrorMessage(err, 'Google sign-in failed. Try again or use email and password.'),
-      );
+      const fallback = isSignup
+        ? 'Google sign-up failed. Try again or use email verification.'
+        : 'Google sign-in failed. Try again or use email and password.';
+      onError(clerkErrorMessage(err, fallback));
     }
   };
 
@@ -98,7 +112,7 @@ export default function GoogleSignInButton({ disabled, onError }: Props) {
     <button
       type="button"
       className={styles.googleBtn}
-      disabled={disabled || loading || !isLoaded}
+      disabled={disabled || loading || !ready}
       onClick={() => void handleClick()}
     >
       <GoogleIcon />

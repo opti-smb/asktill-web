@@ -1,12 +1,18 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import HeroSection from '../components/landing/HeroSection';
 import SourcesStrip from '../components/landing/SourcesStrip';
 import ProblemSection from '../components/landing/ProblemSection';
 import HowItWorks from '../components/landing/HowItWorks';
+import { warmupServices } from '../lib/api';
 import styles from './LandingPage.module.css';
 
 export default function LandingPage() {
+  useEffect(() => {
+    warmupServices();
+  }, []);
+
   return (
     <div className={styles.page}>
       <nav className={styles.nav}>

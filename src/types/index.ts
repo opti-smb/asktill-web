@@ -91,4 +91,5 @@ export interface FileUploadState {
   fileName?: string;
   detail?: string;
   warning?: string;
+  checking?: boolean;
 }

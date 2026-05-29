@@ -53,7 +53,7 @@
 }
 
 .problemStatNum {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 36px;
   color: var(--brand);
   font-weight: 500;
