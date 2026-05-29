@@ -1,29 +1,29 @@
 .main {
-  padding: 24px 0 64px;
+  padding: 12px 0 28px;
   background: var(--bg-soft);
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 88px);
 }
 
 .kpiBand {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 28px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .sectionHead {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 14px;
-  margin-top: 36px;
+  margin-bottom: 8px;
+  margin-top: 16px;
 }
 
 .sectionH {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink);
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-variation-settings: "opsz" 60, "SOFT" 50;
 }
 
@@ -33,14 +33,14 @@
 }
 
 .sectionSub {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
 }
 
 .processorGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 8px;
 }
 
 @media (max-width: 1000px) {

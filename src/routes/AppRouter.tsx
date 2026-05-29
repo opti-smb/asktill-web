@@ -15,6 +15,12 @@ import ReportsPage from '../pages/ReportsPage';
 import ProfilePage from '../pages/ProfilePage';
 import DashboardNav from '../components/layout/DashboardNav';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
+import { useAuth } from '../context/AuthContext';
+
+function UploadPageRoute() {
+  const { user } = useAuth();
+  return <UploadPage key={user?.userId ?? 'anon'} />;
+}
 
 function AppRoutes() {
   return (
@@ -30,7 +36,7 @@ function AppRoutes() {
           path="/onboarding"
           element={
             <ProtectedRoute>
-              <UploadPage />
+              <UploadPageRoute />
             </ProtectedRoute>
           }
         />

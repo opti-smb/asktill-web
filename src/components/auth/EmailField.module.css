@@ -15,7 +15,7 @@
   padding: 11px 14px;
   border: 1.5px solid var(--rule);
   border-radius: 10px;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--ink);
   background: var(--bg);

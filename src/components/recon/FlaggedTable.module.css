@@ -1,13 +1,13 @@
 .txSection {
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 14px;
+  border-radius: 10px;
   overflow: hidden;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .txHeader {
-  padding: 20px 24px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--rule);
   display: flex;
   align-items: center;
@@ -15,8 +15,8 @@
 }
 
 .txTitle {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 18px;
+  font-family: var(--font-serif);
+  font-size: 14px;
   color: var(--ink);
   font-weight: 500;
   font-variation-settings: "opsz" 60;
@@ -33,11 +33,11 @@
 }
 
 .txFilter {
-  padding: 5px 12px;
+  padding: 3px 9px;
   border-radius: 999px;
   border: 1px solid var(--rule);
   background: var(--bg);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
   cursor: pointer;
   font-family: inherit;
@@ -57,8 +57,8 @@
 
 .txTable th {
   text-align: left;
-  padding: 10px 24px;
-  font-size: 10px;
+  padding: 6px 12px;
+  font-size: 9px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -68,9 +68,9 @@
 }
 
 .txTable td {
-  padding: 12px 24px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--rule);
-  font-size: 13px;
+  font-size: 11px;
   color: var(--body);
 }
 
@@ -110,8 +110,9 @@
 }
 
 .txAmount {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-weight: 600;
+  font-size: 12px;
   font-variation-settings: "opsz" 144;
 }
 

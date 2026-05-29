@@ -130,7 +130,7 @@
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 2px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .intelList p {
@@ -251,7 +251,7 @@
 }
 
 .qText {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 16px;
   color: var(--ink);
   line-height: 1.4;
@@ -303,7 +303,7 @@
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 4px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .forCard p {
@@ -387,7 +387,7 @@
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 3px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .growFeat p {
@@ -415,7 +415,7 @@
 }
 
 .founderQuote {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 24px;
   color: var(--ink);
   line-height: 1.5;
@@ -428,7 +428,7 @@
 .founderMark {
   color: var(--brand);
   font-size: 52px;
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   line-height: 0;
   margin-right: 4px;
   vertical-align: -14px;
@@ -501,7 +501,7 @@
 }
 
 .capacityCount {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 17px;
   color: var(--bg);
   font-weight: 500;

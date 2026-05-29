@@ -1,12 +1,12 @@
 .reconHero {
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 16px;
-  padding: 28px;
-  margin-bottom: 24px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
   display: grid;
   grid-template-columns: 1fr 1px 1fr 1px 1fr;
-  gap: 28px;
+  gap: 14px;
   align-items: center;
 }
 
@@ -16,7 +16,7 @@
 
 .reconDivider {
   background: var(--rule);
-  height: 80px;
+  height: 56px;
   align-self: center;
 }
 
@@ -30,12 +30,12 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .reconStatNum {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 36px;
+  font-family: var(--font-serif);
+  font-size: 26px;
   font-weight: 500;
   line-height: 1;
   margin-bottom: 6px;
@@ -64,19 +64,52 @@
   border-top: 1px dashed var(--rule);
 }
 
+.reconStatTrend {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reconStatTrendRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reconStatTrendLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.reconStatTrendValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+  text-align: right;
+}
+
 .bigQ {
   background: linear-gradient(135deg, var(--brand-tint), var(--bg));
   border: 1px solid var(--brand-soft);
-  border-radius: 16px;
-  padding: 28px;
-  margin-bottom: 24px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
 }
 
 .bigQHeader {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .bigQTag {
@@ -92,8 +125,8 @@
 }
 
 .bigQTitle {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 22px;
+  font-family: var(--font-serif);
+  font-size: 17px;
   color: var(--ink);
   font-style: italic;
   font-variation-settings: "opsz" 144, "SOFT" 70;
@@ -101,10 +134,10 @@
 }
 
 .bigQAnswer {
-  font-size: 16px;
+  font-size: 13px;
   color: var(--body);
-  line-height: 1.55;
-  margin-top: 20px;
+  line-height: 1.45;
+  margin-top: 10px;
 }
 
 .bigQAnswerLead {
@@ -116,7 +149,7 @@
 .bigQSections {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .bigQSection {
@@ -134,16 +167,16 @@
 
 .bigQBullets {
   margin: 0;
-  padding-left: 1.25rem;
+  padding-left: 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .bigQLegacyBody {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--body);
 }
 
@@ -180,17 +213,17 @@
 
 .decomp {
   display: grid;
-  grid-template-columns: 200px 1fr 200px;
-  gap: 16px;
+  grid-template-columns: 160px 1fr 160px;
+  gap: 10px;
   align-items: center;
-  margin-top: 18px;
+  margin-top: 10px;
 }
 
 .decompSide {
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 12px;
-  padding: 18px 20px;
+  border-radius: 8px;
+  padding: 10px 12px;
   text-align: center;
 }
 
@@ -207,8 +240,8 @@
 }
 
 .decompSideNum {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 26px;
+  font-family: var(--font-serif);
+  font-size: 20px;
   color: var(--ink);
   font-weight: 500;
   line-height: 1;
@@ -222,7 +255,7 @@
 }
 
 .decompMiddle {
-  padding: 14px 16px;
+  padding: 8px 10px;
 }
 
 .decompFlow {
@@ -239,12 +272,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 14px;
+  padding: 5px 10px;
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 8px;
-  margin-bottom: 6px;
-  font-size: 13px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
 }
 
 .decompRowLabel {
@@ -263,15 +296,15 @@
 
 .decompRowNum {
   font-weight: 600;
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-variation-settings: "opsz" 144;
 }
 
 .buckets {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .bucketsFour {
@@ -281,15 +314,15 @@
 .bucket {
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 12px 14px;
 }
 
 .bucketHeader {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .bucketDot {
@@ -305,26 +338,26 @@
 .bucketDot.flagged { background: var(--neg); }
 
 .bucketTitle {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 16px;
+  font-family: var(--font-serif);
+  font-size: 13px;
   color: var(--ink);
   font-weight: 500;
 }
 
 .bucketNum {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 32px;
+  font-family: var(--font-serif);
+  font-size: 22px;
   color: var(--ink);
   font-weight: 500;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   font-variation-settings: "opsz" 144;
 }
 
 .bucketMeta {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--muted);
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .bucketBar {
@@ -357,17 +390,17 @@
 .health {
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 14px;
-  padding: 22px;
-  margin-bottom: 24px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
 }
 
 .healthTitle {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 16px;
+  font-family: var(--font-serif);
+  font-size: 13px;
   color: var(--ink);
   font-weight: 500;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .healthTitle em {
@@ -375,12 +408,112 @@
   color: var(--brand);
 }
 
+.healthNote {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.healthChartWrap {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.healthSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+}
+
+.healthFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding-top: 4px;
+  border-top: 1px solid var(--rule);
+}
+
+.healthLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+}
+
+.healthLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.healthLegendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.healthLegendSwatchMatched {
+  background: #047857;
+}
+
+.healthLegendSwatchPending {
+  background: #B45309;
+}
+
+.healthLegendSwatchFlagged {
+  background: #B91C1C;
+}
+
+.healthLegendText {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.healthAvg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.healthAvgLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #B45309;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.healthAvgValue {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: #B45309;
+  line-height: 1;
+  font-variation-settings: "opsz" 144;
+}
+
 @media (max-width: 1000px) {
   .reconHero {
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 10px;
   }
   .reconDivider { display: none; }
   .decomp { grid-template-columns: 1fr; }
   .buckets { grid-template-columns: 1fr; }
+  .healthFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .healthAvg {
+    align-items: flex-start;
+  }
 }

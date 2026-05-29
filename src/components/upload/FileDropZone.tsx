@@ -5,7 +5,7 @@ import styles from './FileDropZone.module.css';
 interface FileDropZoneProps {
   name: string;
   label: string;
-  subLabel: string;
+  subLabel?: string;
   uploadState: FileUploadState;
   icon: React.ReactNode;
   register: UseFormRegister<Record<string, FileList>>;
@@ -20,17 +20,20 @@ export default function FileDropZone({
   register,
 }: FileDropZoneProps) {
   const hasWarning = Boolean(uploadState.warning);
+  const isChecking = Boolean(uploadState.checking);
   const cardClass = hasWarning
     ? styles.warn
-    : uploadState.uploaded
-      ? styles.done
-      : '';
+    : isChecking
+      ? styles.checking
+      : uploadState.uploaded
+        ? styles.done
+        : '';
 
   return (
     <div className={`${styles.uploadCard} ${cardClass}`}>
       <div className={styles.uploadIcon}>{icon}</div>
       <h3>{label}</h3>
-      <div className={styles.sub}>{subLabel}</div>
+      {subLabel ? <p className={styles.sub}>{subLabel}</p> : null}
       <label className={styles.dropZone}>
         <input
           type="file"
@@ -41,7 +44,7 @@ export default function FileDropZone({
         {uploadState.uploaded ? (
           <>
             <div className={hasWarning ? styles.dropTextWarn : styles.dropText}>
-              {hasWarning ? 'Wrong file' : '✓ Uploaded'}
+              {hasWarning ? 'Wrong file' : isChecking ? 'Checking file type and month…' : '✓ Uploaded'}
             </div>
             {uploadState.fileName && (
               <div className={styles.fileName}>{uploadState.fileName}</div>

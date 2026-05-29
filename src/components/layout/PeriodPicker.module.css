@@ -4,11 +4,11 @@
 }
 
 .periodBtn {
-  padding: 6px 14px;
+  padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--rule);
   background: var(--bg);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--body);
   cursor: pointer;
   font-family: inherit;
