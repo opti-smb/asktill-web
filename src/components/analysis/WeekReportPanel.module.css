@@ -10,8 +10,8 @@
   background: var(--bg-soft);
   color: var(--ink);
   border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 12px;
+  padding: 5px 10px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -23,7 +23,7 @@
 }
 
 .weekTitle {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -54,7 +54,7 @@
 }
 
 .empty {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.5;
   margin: 0;

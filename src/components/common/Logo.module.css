@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 22px;
   font-weight: 600;
   color: var(--ink);

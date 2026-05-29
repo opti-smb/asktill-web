@@ -1,7 +1,7 @@
 .main {
-  padding: 24px 0 80px;
+  padding: 12px 0 28px;
   background: var(--bg-soft);
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 88px);
 }
 
 .emptyHint {

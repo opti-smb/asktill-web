@@ -5,8 +5,9 @@ import AuthNav from '../components/auth/AuthNav';
 import AuthPageFooter from '../components/auth/AuthPageFooter';
 import OtpInput, { type OtpInputStatus } from '../components/auth/OtpInput';
 import ClerkCaptcha, { prepareClerkCaptcha } from '../components/auth/ClerkCaptcha';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
-import { checkEmail, clerkCleanupUnregistered, getApiError, register as registerUser } from '../lib/api';
+import { checkEmail, clerkCleanupUnregistered, extractAccessToken, getApiError, register as registerUser, warmupServices } from '../lib/api';
 import {
   clearClerkSession,
   clerkErrorMessage,
@@ -19,20 +20,16 @@ import {
   wasGoogleSignInAttempt,
 } from '../lib/clerk';
 import { normalizeEmail, validateRegisterEmail } from '../lib/emailValidation';
-import {
-  REGISTRATION_ROLE_GROUPS,
-  type RegistrationRole,
-} from '../lib/registrationRoles';
 import authFieldStyles from '../components/auth/EmailField.module.css';
 import styles from './RegisterPage.module.css';
 
 type RegisterStep = 0 | 1 | 2;
 type OtpFeedback = 'none' | 'pending' | 'success' | 'error';
+type CreateAccountStep = 'idle' | 'registering' | 'signing-in';
 
 type DetailsFieldErrors = {
   fullName?: string;
   companyName?: string;
-  role?: string;
   password?: string;
 };
 
@@ -66,13 +63,11 @@ function OtpCrossIcon() {
 function validateDetailsForm(
   fullName: string,
   companyName: string,
-  role: RegistrationRole | '',
   password: string,
 ): DetailsFieldErrors {
   const errors: DetailsFieldErrors = {};
-  if (!fullName.trim()) errors.fullName = 'Enter your full name.';
-  if (!companyName.trim()) errors.companyName = 'Enter your company name.';
-  if (!role) errors.role = 'Select your role.';
+  if (!fullName.trim()) errors.fullName = 'Enter your name.';
+  if (!companyName.trim()) errors.companyName = 'Enter your company.';
   if (!password) errors.password = 'Enter a password.';
   else if (password.length < 8) errors.password = 'Password must be at least 8 characters.';
   return errors;
@@ -102,7 +97,7 @@ async function satisfyClerkPassword(
 function RegisterClerkFlow() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, establishSessionFromResponse } = useAuth();
   const clerk = useClerk();
   const { isLoaded, signUp } = useSignUp();
   const { user: clerkUser, isLoaded: clerkUserLoaded } = useUser();
@@ -113,11 +108,11 @@ function RegisterClerkFlow() {
   const [code, setCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [role, setRole] = useState<RegistrationRole | ''>('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<DetailsFieldErrors>({});
   const [loading, setLoading] = useState(false);
+  const [createStep, setCreateStep] = useState<CreateAccountStep>('idle');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [emailVerified, setEmailVerified] = useState(false);
@@ -125,6 +120,10 @@ function RegisterClerkFlow() {
   const lastOtpAttemptRef = useRef('');
   const otpSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleCleanupDoneRef = useRef(false);
+
+  useEffect(() => {
+    warmupServices();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -293,7 +292,7 @@ function RegisterClerkFlow() {
         setStep(2);
         setInfo('');
       } else {
-        setInfo('We sent a 6-digit code to your email. Check your inbox and spam folder.');
+        setInfo('');
       }
     } catch (err) {
       setError(clerkErrorMessage(err, 'Could not send verification email.'));
@@ -312,7 +311,7 @@ function RegisterClerkFlow() {
     setLoading(true);
     try {
       await deliverSignUpCode(email, true);
-      setInfo('A new code was sent. Check spam if you do not see it.');
+      setInfo('');
     } catch (err) {
       setError(clerkErrorMessage(err, 'Could not resend code.'));
     } finally {
@@ -397,7 +396,7 @@ function RegisterClerkFlow() {
       return;
     }
 
-    const errors = validateDetailsForm(fullName, companyName, role, password);
+    const errors = validateDetailsForm(fullName, companyName, password);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setError('Complete every field before creating your account.');
@@ -406,18 +405,23 @@ function RegisterClerkFlow() {
 
     const addr = email.trim().toLowerCase();
     setLoading(true);
+    setCreateStep('registering');
     try {
-      await assertNewAccount(addr);
-      await registerUser({
+      const { data } = await registerUser({
         email: addr,
         password,
         businessName: companyName.trim(),
-        industry: role,
         country: 'US',
       });
-      await login(addr, password);
-      await clearClerkSession(clerk);
+      const token = extractAccessToken(data);
+      if (token) {
+        establishSessionFromResponse(data, addr);
+      } else {
+        setCreateStep('signing-in');
+        await login(addr, password);
+      }
       navigate('/onboarding');
+      void clearClerkSession(clerk);
     } catch (err) {
       const axiosErr = err as { response?: { status?: number } };
       const message = getApiError(err, 'Could not create your account.');
@@ -432,13 +436,20 @@ function RegisterClerkFlow() {
       }
     } finally {
       setLoading(false);
+      setCreateStep('idle');
     }
   }
+
+  const createAccountLabel =
+    createStep === 'registering'
+      ? 'Creating account…'
+      : createStep === 'signing-in'
+        ? 'Signing you in…'
+        : 'Create account →';
 
   const detailsFormComplete =
     fullName.trim().length > 0 &&
     companyName.trim().length > 0 &&
-    role !== '' &&
     password.length >= 8;
 
   return (
@@ -465,47 +476,51 @@ function RegisterClerkFlow() {
       </div>
 
       {step === 0 ? (
-        <form className={styles.form} onSubmit={handleVerifyEmail} noValidate>
-          <h2 className={styles.stepTitle}>Your email</h2>
-          <p className={styles.stepSub}>
-            Use your work or personal email — we send a 6-digit verification code to confirm it
-          </p>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="register-email">
-              Email address
-            </label>
-            <input
-              id="register-email"
-              type="email"
-              className={styles.input}
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setEmailFieldError('');
-                if (error) setError('');
-              }}
-              autoComplete="email"
-              inputMode="email"
-            />
-            {emailFieldError ? <span className={styles.error}>{emailFieldError}</span> : null}
-          </div>
-          {error && !emailFieldError ? <div className={styles.error}>{error}</div> : null}
-          <button
-            type="submit"
-            className={styles.submit}
-            disabled={loading || !isLoaded || Boolean(emailFieldError)}
-          >
-            {loading ? 'Sending…' : 'Verify email →'}
-          </button>
-        </form>
+        <>
+          <form className={styles.form} onSubmit={handleVerifyEmail} noValidate>
+            <h2 className={styles.stepTitle}>Your email</h2>
+            <p className={styles.stepSub}>
+              Use your work or personal email — we send a 6-digit verification code to confirm it
+            </p>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="register-email">
+                Email address
+              </label>
+              <input
+                id="register-email"
+                type="email"
+                className={styles.input}
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailFieldError('');
+                  if (error) setError('');
+                }}
+                autoComplete="email"
+                inputMode="email"
+              />
+              {emailFieldError ? <span className={styles.error}>{emailFieldError}</span> : null}
+            </div>
+            {error && !emailFieldError ? <div className={styles.error}>{error}</div> : null}
+            <button
+              type="submit"
+              className={styles.submit}
+              disabled={loading || !isLoaded || Boolean(emailFieldError)}
+            >
+              {loading ? 'Sending…' : 'Verify email →'}
+            </button>
+          </form>
+          <div className={styles.divider}>or continue with Google</div>
+          <GoogleSignInButton mode="signup" disabled={loading} onError={setError} />
+        </>
       ) : null}
 
       {step === 1 ? (
         <div className={styles.form}>
           <h2 className={styles.stepTitle}>Enter verification code</h2>
           <p className={styles.stepSub}>
-            6-digit code sent to <strong>{email}</strong> — we verify automatically when you finish typing
+            6-digit code sent to <strong>{email}</strong>
           </p>
 
           {info && otpFeedback === 'none' ? <p className={styles.info}>{info}</p> : null}
@@ -574,7 +589,7 @@ function RegisterClerkFlow() {
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="fullName">
-              Full name <span className={styles.requiredMark} aria-hidden>*</span>
+              Name <span className={styles.requiredMark} aria-hidden>*</span>
             </label>
             <input
               id="fullName"
@@ -597,7 +612,7 @@ function RegisterClerkFlow() {
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="companyName">
-              Company name <span className={styles.requiredMark} aria-hidden>*</span>
+              Company <span className={styles.requiredMark} aria-hidden>*</span>
             </label>
             <input
               id="companyName"
@@ -615,38 +630,6 @@ function RegisterClerkFlow() {
             {fieldErrors.companyName ? (
               <span className={styles.error}>{fieldErrors.companyName}</span>
             ) : null}
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="role">
-              Your role <span className={styles.requiredMark} aria-hidden>*</span>
-            </label>
-            <select
-              id="role"
-              className={styles.select}
-              value={role}
-              onChange={(e) => {
-                setRole(e.target.value as RegistrationRole | '');
-                if (fieldErrors.role) {
-                  setFieldErrors((prev) => ({ ...prev, role: undefined }));
-                }
-              }}
-              required
-            >
-              <option value="" disabled>
-                Choose the role that best describes you
-              </option>
-              {REGISTRATION_ROLE_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.roles.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            {fieldErrors.role ? <span className={styles.error}>{fieldErrors.role}</span> : null}
           </div>
 
           <div className={styles.field}>
@@ -687,12 +670,19 @@ function RegisterClerkFlow() {
           </div>
 
           {error ? <div className={styles.error}>{error}</div> : null}
+          {loading && createStep !== 'idle' ? (
+            <p className={styles.info} role="status">
+              {createStep === 'registering'
+                ? 'Setting up your account…'
+                : 'Almost done — signing you in…'}
+            </p>
+          ) : null}
           <button
             type="submit"
             className={styles.submit}
             disabled={loading || !detailsFormComplete}
           >
-            {loading ? 'Creating account…' : 'Create account →'}
+            {loading ? createAccountLabel : 'Create account →'}
           </button>
         </form>
       ) : null}

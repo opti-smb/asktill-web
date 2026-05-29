@@ -1,18 +1,19 @@
 .page {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-soft);
   display: flex;
   flex-direction: column;
 }
 
 .nav {
-  padding: 16px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--rule);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: saturate(180%) blur(10px);
   position: sticky;
   top: 0;
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .main {
@@ -21,7 +22,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px 64px;
+  padding: 20px 16px 28px;
 }
 
 .card {
@@ -29,23 +30,23 @@
   max-width: 440px;
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 20px;
-  padding: 40px 36px;
+  border-radius: 16px;
+  padding: 24px 22px;
   box-shadow: 0 4px 32px rgba(30, 64, 175, 0.07);
 }
 
 .cardHeader {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .heading {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 32px;
+  font-family: var(--font-serif);
+  font-size: 26px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
   line-height: 1.1;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   font-variation-settings: "opsz" 144, "SOFT" 40;
 }
 
@@ -56,15 +57,15 @@
 }
 
 .sub {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.45;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .field {
@@ -81,10 +82,10 @@
 
 .input {
   width: 100%;
-  padding: 11px 14px;
+  padding: 9px 12px;
   border: 1.5px solid var(--rule);
   border-radius: 10px;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--ink);
   background: var(--bg);
@@ -101,7 +102,7 @@
   padding: 11px 14px;
   border: 1.5px solid var(--rule);
   border-radius: 10px;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--ink);
   background: var(--bg);
@@ -150,12 +151,12 @@
 
 .submit {
   width: 100%;
-  padding: 13px 20px;
+  padding: 11px 18px;
   background: var(--ink);
   color: var(--bg);
   border: none;
   border-radius: 999px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   margin-top: 4px;
@@ -246,23 +247,23 @@
 }
 
 .stepTitle {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   margin: 0;
   color: var(--ink);
 }
 
 .stepSub {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
-  margin: -8px 0 0;
+  margin: -4px 0 0;
 }
 
 .steps {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .stepItem {
@@ -307,4 +308,35 @@
   justify-content: center;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 16px 12px 24px;
+  }
+
+  .card {
+    padding: 20px 18px;
+  }
+
+  .heading {
+    font-size: 24px;
+  }
 }

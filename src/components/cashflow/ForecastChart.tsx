@@ -101,7 +101,7 @@ export default function ForecastChart({ cashFlow }: ForecastChartProps) {
           {forecast.note && (
             <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--muted)' }}>{forecast.note}</p>
           )}
-          <svg viewBox="0 0 800 220" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: 220 }}>
+          <svg viewBox="0 0 800 220" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: 150 }}>
             <defs>
               <linearGradient id="pastGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#0B1220" stopOpacity="0.15" />

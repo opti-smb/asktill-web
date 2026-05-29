@@ -1,24 +1,24 @@
 .panel {
-  margin-top: 24px;
-  padding: 20px;
+  margin-top: 12px;
+  padding: 12px 14px;
   background: var(--bg);
   border: 1px solid var(--rule);
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .head {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .title {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
-  margin: 0 0 4px;
+  margin: 0 0 2px;
 }
 
 .sub {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--muted);
   margin: 0;
 }
@@ -31,19 +31,19 @@
 }
 
 .reportTitle {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
-  margin: 0 0 16px;
+  margin: 0 0 10px;
 }
 
 .block {
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .blockTitle {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: var(--ink);
 }
 
@@ -54,12 +54,12 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .table th,
 .table td {
-  padding: 8px 10px;
+  padding: 5px 8px;
   border-bottom: 1px solid var(--rule);
   text-align: left;
 }
@@ -67,7 +67,7 @@
 .table th {
   font-weight: 600;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .table code {
@@ -88,20 +88,20 @@
 
 .notesList {
   margin: 0;
-  padding-left: 18px;
-  font-size: 13px;
+  padding-left: 16px;
+  font-size: 12px;
   color: var(--body);
 }
 
 .notesList li + li {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .dl {
   display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 8px 16px;
-  font-size: 13px;
+  grid-template-columns: 140px 1fr;
+  gap: 4px 12px;
+  font-size: 12px;
   margin: 0;
 }
 
@@ -116,22 +116,22 @@
 }
 
 .empty {
-  padding: 24px;
+  padding: 14px;
   text-align: center;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .processorList {
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .processorList li + li {
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid var(--rule);
 }
 
@@ -139,13 +139,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
 .toolbarHint {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--muted);
   margin: 0;
 }
@@ -153,13 +153,13 @@
 .downloadBtn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 6px;
+  padding: 7px 12px;
   background: var(--brand);
   color: var(--bg);
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;

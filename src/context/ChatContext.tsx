@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { CHAT_STORAGE_KEY, USER_LOGOUT_EVENT } from '../lib/api';
+import { CHAT_STORAGE_KEY, USER_LOGOUT_EVENT, USER_STATE_RESET_EVENT } from '../lib/api';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -65,9 +65,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const onLogout = () => clearMessages();
-    window.addEventListener(USER_LOGOUT_EVENT, onLogout);
-    return () => window.removeEventListener(USER_LOGOUT_EVENT, onLogout);
+    const onReset = () => clearMessages();
+    window.addEventListener(USER_LOGOUT_EVENT, onReset);
+    window.addEventListener(USER_STATE_RESET_EVENT, onReset);
+    return () => {
+      window.removeEventListener(USER_LOGOUT_EVENT, onReset);
+      window.removeEventListener(USER_STATE_RESET_EVENT, onReset);
+    };
   }, [clearMessages]);
 
   const value = useMemo(
