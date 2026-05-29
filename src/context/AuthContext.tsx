@@ -20,6 +20,7 @@ import {
   SESSION_EXPIRED_EVENT,
   setToken,
   type AuthUser,
+  warmupServices,
 } from '../lib/api';
 
 interface AuthContextValue {
@@ -112,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           businessName: null,
         } satisfies AuthUser),
     );
+    warmupServices();
   }, []);
 
   const establishSessionFromResponse = useCallback(

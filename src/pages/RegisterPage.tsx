@@ -7,7 +7,7 @@ import OtpInput, { type OtpInputStatus } from '../components/auth/OtpInput';
 import ClerkCaptcha, { prepareClerkCaptcha } from '../components/auth/ClerkCaptcha';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
-import { checkEmail, clerkCleanupUnregistered, extractAccessToken, getApiError, register as registerUser } from '../lib/api';
+import { checkEmail, clerkCleanupUnregistered, extractAccessToken, getApiError, register as registerUser, warmupServices } from '../lib/api';
 import {
   clearClerkSession,
   clerkErrorMessage,
@@ -120,6 +120,10 @@ function RegisterClerkFlow() {
   const lastOtpAttemptRef = useRef('');
   const otpSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleCleanupDoneRef = useRef(false);
+
+  useEffect(() => {
+    warmupServices();
+  }, []);
 
   useEffect(() => {
     return () => {
