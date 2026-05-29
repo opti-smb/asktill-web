@@ -353,16 +353,21 @@ export const validateUploads = (files: UploadFiles) => {
 
 /** Wake Render services before login or upload (no-op when already warm). */
 export function warmupBackend() {
-  void mainApi.get('/api/health', { timeout: 20_000 }).catch(() => {});
+  void mainApi.get('/api/health', { timeout: 90_000 }).catch(() => {});
 }
 
 export function warmupAuthService() {
-  void authApi.get('/api/auth/me', { timeout: 20_000 }).catch(() => {});
+  void authApi.get('/health', { timeout: 90_000 }).catch(() => {});
+}
+
+export function warmupRegistrationService() {
+  void registerApi.get('/health', { timeout: 90_000 }).catch(() => {});
 }
 
 export function warmupServices() {
   warmupBackend();
   warmupAuthService();
+  warmupRegistrationService();
 }
 
 const attachBearer = (cfg: InternalAxiosRequestConfig) => {

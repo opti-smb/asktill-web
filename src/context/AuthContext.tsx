@@ -41,6 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
+  useEffect(() => {
+    warmupServices();
+  }, []);
+
   const clearSession = useCallback(async () => {
     const hadToken = Boolean(getToken());
     clearAppSession();
