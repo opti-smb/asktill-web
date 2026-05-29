@@ -17,11 +17,11 @@ export default function ClerkCaptcha({ variant = 'default' }: ClerkCaptchaProps)
         data-cl-size="flexible"
         data-cl-language="en-US"
       />
-      <p className={styles.hint}>
-        {variant === 'compact'
-          ? 'If a security check appears, complete it before resending your code.'
-          : 'Clerk may ask you to confirm you’re human before we email your code — not every sign-up.'}
-      </p>
+      {variant === 'compact' ? (
+        <p className={styles.hint}>
+          If a security check appears, complete it before resending your code.
+        </p>
+      ) : null}
     </div>
   );
 }

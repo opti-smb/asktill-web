@@ -1,4 +1,8 @@
 :root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
   --ink: #0B1220;
   --body: #1E293B;
   --muted: #64748B;
@@ -32,5 +36,5 @@
 .wrap {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 16px;
 }

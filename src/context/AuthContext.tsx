@@ -16,6 +16,7 @@ import {
   clerkLogin,
   logoutApi,
   normalizeUser,
+  resetUserScopedState,
   SESSION_EXPIRED_EVENT,
   setToken,
   type AuthUser,
@@ -27,6 +28,7 @@ interface AuthContextValue {
   isAuth: boolean;
   ready: boolean;
   login: (email: string, password: string) => Promise<void>;
+  establishSessionFromResponse: (data: unknown, fallbackEmail?: string) => void;
   loginWithClerkSession: (sessionId: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -112,8 +114,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const establishSessionFromResponse = useCallback(
+    (data: unknown, fallbackEmail?: string) => {
+      applyAuthResponse(data, fallbackEmail);
+    },
+    [applyAuthResponse],
+  );
+
   const login = useCallback(
     async (email: string, password: string) => {
+      resetUserScopedState();
       const { data } = await apiLogin(email, password);
       applyAuthResponse(data, email);
     },
@@ -122,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithClerkSession = useCallback(
     async (sessionId: string) => {
+      resetUserScopedState();
       const { data } = await clerkLogin(sessionId);
       applyAuthResponse(data);
     },
@@ -136,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, isAuth, ready, login, loginWithClerkSession, logout }}
+      value={{ token, user, isAuth, ready, login, establishSessionFromResponse, loginWithClerkSession, logout }}
     >
       {children}
     </AuthContext.Provider>

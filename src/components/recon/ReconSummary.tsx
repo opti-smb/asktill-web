@@ -7,6 +7,39 @@ interface Props {
   reconciliation?: ReconciliationUiApi | null;
 }
 
+function StatTrend({
+  avgLabel,
+  avgValue,
+  vsLabel,
+  priorValue,
+  fallback,
+}: {
+  avgLabel?: string | null;
+  avgValue?: string | null;
+  vsLabel?: string | null;
+  priorValue?: string | null;
+  fallback?: string | null;
+}) {
+  if (avgLabel && avgValue) {
+    return (
+      <div className={styles.reconStatTrend}>
+        <div className={styles.reconStatTrendRow}>
+          <span className={styles.reconStatTrendLabel}>{avgLabel}</span>
+          <span className={styles.reconStatTrendValue}>{avgValue}</span>
+        </div>
+        {vsLabel && priorValue ? (
+          <div className={styles.reconStatTrendRow}>
+            <span className={styles.reconStatTrendLabel}>{vsLabel}</span>
+            <span className={styles.reconStatTrendValue}>{priorValue}</span>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+  if (!fallback) return null;
+  return <div className={styles.reconStat3mo}>{fallback}</div>;
+}
+
 export default function ReconSummary({ reconciliation }: Props) {
   const hero = reconciliation?.hero ?? {
     matched: reconSummary.matched,
@@ -20,6 +53,7 @@ export default function ReconSummary({ reconciliation }: Props) {
   const answerSections = getReconAnswerSections(bq);
   const buckets = reconciliation?.buckets;
   const health = reconciliation?.health_chart;
+  const showTrends = Boolean(buckets?.show_trends);
   const showCash = Boolean(reconciliation?.hero?.cash_count && reconciliation.hero.cash_count > 0);
   const flaggedAmount = Number(bq?.flagged_usd?.replace(/[$,]/g, '') ?? 0);
   const pendingAtBank = Number(bq?.in_flight_usd?.replace(/[$,]/g, '') ?? 0);
@@ -39,9 +73,13 @@ export default function ReconSummary({ reconciliation }: Props) {
               </>
             )}
           </div>
-          {reconciliation?.hero?.matched_footnote ? (
-            <div className={styles.reconStat3mo}>{reconciliation.hero.matched_footnote}</div>
-          ) : null}
+          <StatTrend
+            avgLabel={showTrends ? buckets?.matched_avg_label : null}
+            avgValue={showTrends ? buckets?.matched_avg_value : null}
+            vsLabel={showTrends ? buckets?.matched_vs_label : null}
+            priorValue={showTrends ? buckets?.matched_prior_value : null}
+            fallback={reconciliation?.hero?.matched_footnote}
+          />
         </div>
         <div className={styles.reconDivider} />
         <div className={styles.reconStatBlock}>
@@ -54,9 +92,13 @@ export default function ReconSummary({ reconciliation }: Props) {
               </>
             )}
           </div>
-          {reconciliation?.hero?.in_flight_footnote ? (
-            <div className={styles.reconStat3mo}>{reconciliation.hero.in_flight_footnote}</div>
-          ) : null}
+          <StatTrend
+            avgLabel={showTrends ? buckets?.pending_avg_label : null}
+            avgValue={showTrends ? buckets?.pending_avg_value : null}
+            vsLabel={showTrends ? buckets?.pending_vs_label : null}
+            priorValue={showTrends ? buckets?.pending_prior_value : null}
+            fallback={reconciliation?.hero?.in_flight_footnote}
+          />
         </div>
         {showCash ? (
           <>
@@ -87,9 +129,13 @@ export default function ReconSummary({ reconciliation }: Props) {
               </>
             )}
           </div>
-          {reconciliation?.hero?.flagged_footnote ? (
-            <div className={styles.reconStat3mo}>{reconciliation.hero.flagged_footnote}</div>
-          ) : null}
+          <StatTrend
+            avgLabel={showTrends ? buckets?.flagged_avg_label : null}
+            avgValue={showTrends ? buckets?.flagged_avg_value : null}
+            vsLabel={showTrends ? buckets?.flagged_vs_label : null}
+            priorValue={showTrends ? buckets?.flagged_prior_value : null}
+            fallback={reconciliation?.hero?.flagged_footnote}
+          />
         </div>
       </div>
 
@@ -206,49 +252,85 @@ export default function ReconSummary({ reconciliation }: Props) {
 
       <div className={styles.health}>
         <div className={styles.healthTitle}>Reconciliation health <em>· {health?.section_label ?? 'last 3 months'}</em></div>
-        {health?.note && (
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--muted)' }}>{health.note}</p>
-        )}
-        <svg style={{ width: '100%', height: 140 }} viewBox="0 0 800 140" preserveAspectRatio="none">
-          <line x1="30" y1="10" x2="800" y2="10" stroke="#F1F5F9" strokeWidth="1" />
-          <line x1="30" y1="50" x2="800" y2="50" stroke="#F1F5F9" strokeWidth="1" />
-          <line x1="30" y1="90" x2="800" y2="90" stroke="#F1F5F9" strokeWidth="1" />
-          <line x1="30" y1="130" x2="800" y2="130" stroke="#F1F5F9" strokeWidth="1" />
-          <text x="0" y="14" fontFamily="Inter" fontSize="10" fill="#94A3B8">100%</text>
-          <text x="0" y="54" fontFamily="Inter" fontSize="10" fill="#94A3B8">99%</text>
-          <text x="0" y="94" fontFamily="Inter" fontSize="10" fill="#94A3B8">98%</text>
-          <text x="0" y="134" fontFamily="Inter" fontSize="10" fill="#94A3B8">97%</text>
-          {(health?.bars?.length ? health.bars : []).map((bar) => (
-            <g key={`${bar.label}-${bar.matched_pct_label}`}>
-              <rect x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx="3" fill={bar.matched_fill} />
-              {bar.pending_height > 0 && (
-                <rect x={bar.x} y={bar.pending_y} width={bar.width} height={bar.pending_height} fill={bar.pending_fill} />
-              )}
-              {bar.flagged_height > 0 && (
-                <rect x={bar.x} y={bar.flagged_y} width={bar.width} height={bar.flagged_height} fill={bar.flagged_fill} />
-              )}
-              <text x={bar.x + bar.width / 2} y={bar.pct_text_y} textAnchor="middle" fontFamily="Inter" fontSize="11" fill="#047857" fontWeight="700">
-                {bar.matched_pct_label}
-              </text>
-              <text x={bar.x + bar.width / 2} y="148" textAnchor="middle" fontFamily="Inter" fontSize="11" fill="#1E40AF" fontWeight="700">
-                {bar.label}
-              </text>
-            </g>
-          ))}
-          {health?.show_avg_line && health.avg_pct_label && health.avg_line_y != null && (
-            <>
-              <line x1="50" y1={health.avg_line_y} x2="640" y2={health.avg_line_y} stroke="#B45309" strokeWidth="1.5" strokeDasharray="4 3" />
-              <text x="690" y={health.avg_line_y + 4} fontFamily="Inter" fontSize="11" fill="#B45309" fontWeight="700">3-mo avg</text>
-              <text x="690" y={health.avg_line_y + 20} fontFamily="Inter" fontSize="13" fill="#B45309" fontWeight="700">{health.avg_pct_label}</text>
-            </>
-          )}
-          <rect x="690" y="80" width="10" height="10" fill="#047857" />
-          <text x="705" y="89" fontFamily="Inter" fontSize="10" fill="#0B1220">Matched</text>
-          <rect x="690" y="95" width="10" height="10" fill="#B45309" />
-          <text x="705" y="104" fontFamily="Inter" fontSize="10" fill="#0B1220">Pending</text>
-          <rect x="690" y="110" width="10" height="10" fill="#B91C1C" />
-          <text x="705" y="119" fontFamily="Inter" fontSize="10" fill="#0B1220">Flagged</text>
-        </svg>
+        {health?.note && <p className={styles.healthNote}>{health.note}</p>}
+        <div className={styles.healthChartWrap}>
+          <svg className={styles.healthSvg} viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet">
+            <line x1="30" y1="10" x2="640" y2="10" stroke="#F1F5F9" strokeWidth="1" />
+            <line x1="30" y1="50" x2="640" y2="50" stroke="#F1F5F9" strokeWidth="1" />
+            <line x1="30" y1="90" x2="640" y2="90" stroke="#F1F5F9" strokeWidth="1" />
+            <line x1="30" y1="130" x2="640" y2="130" stroke="#F1F5F9" strokeWidth="1" />
+            <text x="0" y="14" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">100%</text>
+            <text x="0" y="54" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">99%</text>
+            <text x="0" y="94" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">98%</text>
+            <text x="0" y="134" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">97%</text>
+            {(health?.bars?.length ? health.bars : []).map((bar) => (
+              <g key={`${bar.label}-${bar.matched_pct_label}`}>
+                <rect x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx="3" fill={bar.matched_fill} />
+                {bar.pending_height > 0 && (
+                  <rect x={bar.x} y={bar.pending_y} width={bar.width} height={bar.pending_height} fill={bar.pending_fill} />
+                )}
+                {bar.flagged_height > 0 && (
+                  <rect x={bar.x} y={bar.flagged_y} width={bar.width} height={bar.flagged_height} fill={bar.flagged_fill} />
+                )}
+                <text
+                  x={bar.x + bar.width / 2}
+                  y={bar.pct_text_y}
+                  textAnchor="middle"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="11"
+                  fill="#047857"
+                  fontWeight="700"
+                >
+                  {bar.matched_pct_label}
+                </text>
+                <text
+                  x={bar.x + bar.width / 2}
+                  y="148"
+                  textAnchor="middle"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="11"
+                  fill="#1E40AF"
+                  fontWeight="700"
+                >
+                  {bar.label}
+                </text>
+              </g>
+            ))}
+            {health?.show_avg_line && health.avg_line_y != null && (
+              <line
+                x1="50"
+                y1={health.avg_line_y}
+                x2="640"
+                y2={health.avg_line_y}
+                stroke="#B45309"
+                strokeWidth="1.5"
+                strokeDasharray="4 3"
+              />
+            )}
+          </svg>
+        </div>
+        <div className={styles.healthFooter}>
+          <div className={styles.healthLegend}>
+            <div className={styles.healthLegendItem}>
+              <span className={`${styles.healthLegendSwatch} ${styles.healthLegendSwatchMatched}`} />
+              <span className={styles.healthLegendText}>Matched</span>
+            </div>
+            <div className={styles.healthLegendItem}>
+              <span className={`${styles.healthLegendSwatch} ${styles.healthLegendSwatchPending}`} />
+              <span className={styles.healthLegendText}>Pending</span>
+            </div>
+            <div className={styles.healthLegendItem}>
+              <span className={`${styles.healthLegendSwatch} ${styles.healthLegendSwatchFlagged}`} />
+              <span className={styles.healthLegendText}>Flagged</span>
+            </div>
+          </div>
+          {health?.show_avg_line && health.avg_pct_label ? (
+            <div className={styles.healthAvg}>
+              <span className={styles.healthAvgLabel}>3-mo avg</span>
+              <span className={styles.healthAvgValue}>{health.avg_pct_label}</span>
+            </div>
+          ) : null}
+        </div>
       </div>
     </>
   );

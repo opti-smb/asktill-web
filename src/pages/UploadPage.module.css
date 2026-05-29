@@ -1,12 +1,18 @@
 .pageBg {
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-soft);
 }
 
 .nav {
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--rule);
   background: var(--bg);
+  flex-shrink: 0;
 }
 
 .navInner {
@@ -39,7 +45,8 @@
 .stepper {
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
-  padding: 10px 0;
+  padding: 6px 0;
+  flex-shrink: 0;
 }
 
 .stepperInner {
@@ -97,12 +104,24 @@
 }
 
 .page {
-  padding: 28px 0 36px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px 0 12px;
+}
+
+.pageInner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
 }
 
 .pageHeader {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .pageHeader .duplicateBanner {
@@ -117,17 +136,17 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: 8px;
-  padding: 4px 10px;
+  margin-bottom: 4px;
+  padding: 3px 8px;
   background: var(--brand-tint);
   border-radius: 999px;
   border: 1px solid var(--brand-soft);
 }
 
 .page h1 {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 400;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   font-variation-settings: "opsz" 144, "SOFT" 40;
 }
 
@@ -139,26 +158,27 @@
 
 .pageSub {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   max-width: 520px;
   margin: 0 auto;
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .uploadGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 0;
   max-width: 920px;
   margin-left: auto;
   margin-right: auto;
+  flex-shrink: 0;
 }
 
 .privacy {
   max-width: 680px;
-  margin: 0 auto 20px;
-  padding: 12px 16px;
+  margin: 0 auto;
+  padding: 8px 12px;
   background: var(--bg);
   border: 1px solid var(--rule);
   border-radius: 10px;
@@ -168,8 +188,8 @@
 }
 
 .privacyIcon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   background: var(--brand-tint);
   border-radius: 8px;
   display: flex;
@@ -180,9 +200,9 @@
 }
 
 .privacyText {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--body);
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .privacyText strong {
@@ -191,14 +211,15 @@
 
 .ctaWrap {
   text-align: center;
+  flex-shrink: 0;
 }
 
 .btnPrimary {
   background: var(--ink);
   color: var(--bg);
-  padding: 11px 26px;
+  padding: 9px 22px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   border: 1px solid var(--ink);
   cursor: pointer;
@@ -216,9 +237,9 @@
 }
 
 .micro {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .uploadPrompt {
@@ -257,8 +278,19 @@
 }
 
 @media (max-width: 800px) {
+  .pageBg {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: auto;
+  }
+
+  .page {
+    overflow: visible;
+  }
+
   .uploadGrid { grid-template-columns: 1fr; max-width: 420px; }
-  .page h1 { font-size: 24px; }
+  .page h1 { font-size: 20px; }
   .stepperInner { gap: 6px; }
   .stepLabel { display: none; }
   .stepDivider { width: 10px; }

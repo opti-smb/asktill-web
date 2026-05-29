@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/common/Logo';
@@ -11,7 +11,9 @@ import {
   isAlreadyStoredMessage,
   hasStoredPeriodConflict,
   storedPeriodMessage,
+  USER_STATE_RESET_EVENT,
   validateUploads,
+  warmupBackend,
   warningsBySlot,
   type UploadValidationResult,
 } from '../lib/api';
@@ -37,18 +39,26 @@ function uploadStateFromFile(
   slot: UploadSlot,
   validation: UploadValidationResult | null,
   slotWarnings: ReturnType<typeof warningsBySlot>,
+  checking: boolean,
+  validationFailed: boolean,
 ): FileUploadState {
   if (!file) return { uploaded: false };
   const period = validation?.detected_periods?.[slot];
   const size = `${Math.round(file.size / 1024)} KB`;
+  const slotWarning = slotWarnings[slot] && !isAlreadyStoredMessage(slotWarnings[slot])
+    ? slotWarnings[slot]
+    : undefined;
   return {
     uploaded: true,
+    checking,
     fileName: file.name,
-    detail: period ? `${size} · ${period}` : size,
+    detail: !checking && !slotWarning && period ? `${size} · ${period}` : checking ? undefined : size,
     warning:
-      slotWarnings[slot] && !isAlreadyStoredMessage(slotWarnings[slot])
-        ? slotWarnings[slot]
-        : undefined,
+      !checking && validationFailed && !slotWarning
+        ? 'Could not verify this file.'
+        : !checking
+          ? slotWarning
+          : undefined,
   };
 }
 
@@ -79,7 +89,7 @@ function fileKey(file: File | undefined): string {
 }
 
 export default function UploadPage() {
-  const { register, watch } = useForm<FormData>();
+  const { register, watch, reset: resetForm } = useForm<FormData>();
   const navigate = useNavigate();
   const {
     runAnalyze,
@@ -94,10 +104,35 @@ export default function UploadPage() {
     clearStatementDuplicate,
   } = useAnalysis();
   const [validation, setValidation] = useState<UploadValidationResult | null>(null);
-  const [validating, setValidating] = useState(false);
-  const [validationFailed, setValidationFailed] = useState(false);
+  const [slotChecking, setSlotChecking] = useState<Record<UploadSlot, boolean>>({
+    bank: false,
+    pos: false,
+    ecommerce: false,
+  });
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [uploadPrompt, setUploadPrompt] = useState<string | null>(null);
   const validatedFileKeysRef = useRef('');
+  const validationRequestRef = useRef(0);
+
+  const resetUploadPage = useCallback(() => {
+    resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
+    setValidation(null);
+    setSlotChecking({ bank: false, pos: false, ecommerce: false });
+    setValidationError(null);
+    setUploadPrompt(null);
+    validatedFileKeysRef.current = '';
+    validationRequestRef.current += 1;
+  }, [resetForm]);
+
+  useEffect(() => {
+    warmupBackend();
+  }, []);
+
+  useEffect(() => {
+    const onReset = () => resetUploadPage();
+    window.addEventListener(USER_STATE_RESET_EVENT, onReset);
+    return () => window.removeEventListener(USER_STATE_RESET_EVENT, onReset);
+  }, [resetUploadPage]);
 
   const bankFile = fileFromList(watch('bank'));
   const posFile = fileFromList(watch('pos'));
@@ -111,75 +146,130 @@ export default function UploadPage() {
   useEffect(() => {
     clearUploadMismatch();
     clearStatementDuplicate();
-    setValidation(null);
-    validatedFileKeysRef.current = '';
     if (uploadedCount > 0) setUploadPrompt(null);
-    if (uploadedCount === 0) setValidationFailed(false);
   }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate]);
+
+  const anySlotChecking = slotChecking.bank || slotChecking.pos || slotChecking.ecommerce;
 
   useEffect(() => {
     if (uploadedCount < 1) {
       setValidation(null);
-      setValidationFailed(false);
+      setValidationError(null);
+      validatedFileKeysRef.current = '';
+      setSlotChecking({ bank: false, pos: false, ecommerce: false });
       return undefined;
     }
 
+    const fileKeysAtStart = currentFileKeys;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      setValidating(true);
-      setValidationFailed(false);
-      try {
-        const { data } = await validateUploads({
-          bank: bankFile,
-          pos: posFile,
-          ecommerce: ecommerceFile,
-        });
-        if (!cancelled) {
+    const requestId = ++validationRequestRef.current;
+
+    setSlotChecking({
+      bank: Boolean(bankKey),
+      pos: Boolean(posKey),
+      ecommerce: Boolean(ecommerceKey),
+    });
+    setValidationError(null);
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const { data } = await validateUploads({
+            bank: bankFile,
+            pos: posFile,
+            ecommerce: ecommerceFile,
+          });
+          if (cancelled || validationRequestRef.current !== requestId) return;
+          if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
+
           setValidation(data);
-          setValidationFailed(false);
-          validatedFileKeysRef.current = currentFileKeys;
-        }
-      } catch {
-        if (!cancelled) {
+          validatedFileKeysRef.current = fileKeysAtStart;
+          if (hasStoredPeriodConflict(data)) {
+            const dup = duplicateInfoFromValidation(data);
+            if (dup) applyStatementDuplicate(dup);
+          } else {
+            clearStatementDuplicate();
+          }
+        } catch {
+          if (cancelled || validationRequestRef.current !== requestId) return;
+          if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
           setValidation(null);
-          setValidationFailed(true);
+          validatedFileKeysRef.current = '';
+          setValidationError('Could not verify uploads. Check your connection and try again.');
+        } finally {
+          if (!cancelled && validationRequestRef.current === requestId) {
+            setSlotChecking({ bank: false, pos: false, ecommerce: false });
+          }
         }
-      } finally {
-        if (!cancelled) setValidating(false);
-      }
-    }, 900);
+      })();
+    }, 150);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [bankFile, posFile, ecommerceFile, uploadedCount, currentFileKeys]);
+  }, [
+    bankFile,
+    posFile,
+    ecommerceFile,
+    bankKey,
+    posKey,
+    ecommerceKey,
+    uploadedCount,
+    currentFileKeys,
+    applyStatementDuplicate,
+    clearStatementDuplicate,
+  ]);
 
   const validationMatchesFiles = validatedFileKeysRef.current === currentFileKeys;
   const mergedValidation = useMemo(
     () => mergeValidation(validation, uploadMismatch),
     [validation, uploadMismatch],
   );
-  const activeValidation =
-    validationMatchesFiles && !validating ? mergedValidation : validation;
+  const activeValidation = mergedValidation;
   const slotWarnings = useMemo(() => warningsBySlot(activeValidation), [activeValidation]);
   const hasBoxWarnings = Boolean(slotWarnings.bank || slotWarnings.pos || slotWarnings.ecommerce);
 
+  const validationFailed = Boolean(validationError);
   const bankState = useMemo(
-    () => uploadStateFromFile(bankFile, 'bank', activeValidation, slotWarnings),
-    [bankFile, activeValidation, slotWarnings],
+    () =>
+      uploadStateFromFile(
+        bankFile,
+        'bank',
+        activeValidation,
+        slotWarnings,
+        slotChecking.bank,
+        validationFailed,
+      ),
+    [bankFile, activeValidation, slotWarnings, slotChecking.bank, validationFailed],
   );
   const posState = useMemo(
-    () => uploadStateFromFile(posFile, 'pos', activeValidation, slotWarnings),
-    [posFile, activeValidation, slotWarnings],
+    () =>
+      uploadStateFromFile(
+        posFile,
+        'pos',
+        activeValidation,
+        slotWarnings,
+        slotChecking.pos,
+        validationFailed,
+      ),
+    [posFile, activeValidation, slotWarnings, slotChecking.pos, validationFailed],
   );
   const ecommerceState = useMemo(
-    () => uploadStateFromFile(ecommerceFile, 'ecommerce', activeValidation, slotWarnings),
-    [ecommerceFile, activeValidation, slotWarnings],
+    () =>
+      uploadStateFromFile(
+        ecommerceFile,
+        'ecommerce',
+        activeValidation,
+        slotWarnings,
+        slotChecking.ecommerce,
+        validationFailed,
+      ),
+    [ecommerceFile, activeValidation, slotWarnings, slotChecking.ecommerce, validationFailed],
   );
 
   const headerNotice = useMemo(() => {
-    if (!validationMatchesFiles || validating) return null;
+    if (!validationMatchesFiles || anySlotChecking) return null;
     if (statementDuplicate?.message) {
       return statementDuplicate.message;
     }
@@ -187,40 +277,25 @@ export default function UploadPage() {
     if (fromValidation) return fromValidation;
     if (error && isAlreadyStoredMessage(error)) return error;
     return null;
-  }, [statementDuplicate, mergedValidation, error, validationMatchesFiles, validating]);
-
-  useEffect(() => {
-    if (validating || !validationMatchesFiles || !mergedValidation) return;
-    if (hasStoredPeriodConflict(mergedValidation)) {
-      const fromValidation = duplicateInfoFromValidation(mergedValidation);
-      if (fromValidation) applyStatementDuplicate(fromValidation);
-    } else {
-      clearStatementDuplicate();
-    }
-  }, [
-    mergedValidation,
-    validating,
-    validationMatchesFiles,
-    applyStatementDuplicate,
-    clearStatementDuplicate,
-  ]);
+  }, [statementDuplicate, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
 
   const hasStoredConflict =
     validationMatchesFiles &&
-    !validating &&
+    !anySlotChecking &&
     (Boolean(statementDuplicate) || hasStoredPeriodConflict(mergedValidation));
   const validationReady =
     validation != null &&
     validation.ok &&
-    !validationFailed &&
+    !validationError &&
     validatedFileKeysRef.current === currentFileKeys;
   const canSubmitAnalyze =
     uploadedCount >= 1 &&
     !loading &&
-    !validating &&
+    !anySlotChecking &&
+    !validationError &&
     !hasStoredConflict &&
     !hasBoxWarnings &&
-    (validationReady || validation === null || validationFailed);
+    validationReady;
 
   useEffect(() => {
     if (headerNotice && error && isAlreadyStoredMessage(error)) {
@@ -229,55 +304,33 @@ export default function UploadPage() {
   }, [headerNotice, error, clearError]);
 
   const onContinue = async () => {
-    if (loading || validating || hasStoredConflict || uploadedCount < 1) return;
+    if (loading || anySlotChecking || hasStoredConflict || uploadedCount < 1 || !validationReady) {
+      if (!validationReady && !anySlotChecking && uploadedCount >= 1 && hasBoxWarnings) {
+        setUploadPrompt(
+          'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
+        );
+      }
+      return;
+    }
 
     clearError();
     clearUploadMismatch();
     setUploadPrompt(null);
-
-    const useCachedValidation =
-      validation?.ok &&
-      !validationFailed &&
-      validatedFileKeysRef.current === currentFileKeys &&
-      !hasStoredPeriodConflict(validation);
-
-    if (!useCachedValidation) {
-      setValidating(true);
-      try {
-        const { data: freshValidation } = await validateUploads({
-          bank: bankFile,
-          pos: posFile,
-          ecommerce: ecommerceFile,
-        });
-        setValidation(freshValidation);
-        setValidationFailed(false);
-        validatedFileKeysRef.current = currentFileKeys;
-        if (hasStoredPeriodConflict(freshValidation)) {
-          const dup = duplicateInfoFromValidation(freshValidation);
-          if (dup) applyStatementDuplicate(dup);
-          return;
-        }
-        if (!freshValidation.ok) {
-          setUploadPrompt(
-            'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
-          );
-          return;
-        }
-      } catch {
-        setValidationFailed(true);
-        setUploadPrompt('Could not verify uploads. Check your connection and try again.');
-        return;
-      } finally {
-        setValidating(false);
-      }
-    }
 
     const result = await runAnalyze({
       bank: bankFile,
       pos: posFile,
       ecommerce: ecommerceFile,
     });
-    if (result) navigate('/dashboard/overview');
+    if (result) {
+      navigate('/dashboard/overview');
+      return;
+    }
+    if (uploadMismatch) {
+      setUploadPrompt(
+        'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
+      );
+    }
   };
 
   return (
@@ -311,12 +364,12 @@ export default function UploadPage() {
       </div>
 
       <div className={styles.page}>
-        <div className="wrap">
+        <div className={`wrap ${styles.pageInner}`}>
           <div className={styles.pageHeader}>
             <span className={styles.pageEyebrow}>Step 2 of 4</span>
-            <h1>Connect <em>your three sources.</em></h1>
+            <h1>All your statements in <em>1 page</em></h1>
             <p className={styles.pageSub}>
-              Drop in your bank statement, POS export, and ecommerce file. PDFs and CSVs both work. We'll do the rest.
+              Upload your Bank, Pos, and Ecom statements. Same period will give best results
             </p>
             {headerNotice ? (
               <div className={styles.duplicateBanner} role="alert">
@@ -329,11 +382,15 @@ export default function UploadPage() {
             <FileDropZone
               name="bank"
               label="Bank statement"
-              subLabel="Most major US banks supported"
               uploadState={bankState}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
+                  <line x1="3" y1="22" x2="21" y2="22" />
+                  <line x1="6" y1="18" x2="6" y2="11" />
+                  <line x1="10" y1="18" x2="10" y2="11" />
+                  <line x1="14" y1="18" x2="14" y2="11" />
+                  <line x1="18" y1="18" x2="18" y2="11" />
+                  <polygon points="12 2 22 7 2 7" />
                 </svg>
               }
               register={register}
@@ -341,11 +398,14 @@ export default function UploadPage() {
             <FileDropZone
               name="pos"
               label="POS export"
-              subLabel="Square, Toast, Clover, more"
               uploadState={posState}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
+                  <rect x="7" y="2" width="10" height="6" rx="1" />
+                  <line x1="9" y1="5" x2="15" y2="5" />
+                  <rect x="4" y="9" width="16" height="12" rx="2" />
+                  <line x1="8" y1="13" x2="16" y2="13" />
+                  <line x1="8" y1="17" x2="13" y2="17" />
                 </svg>
               }
               register={register}
@@ -353,7 +413,6 @@ export default function UploadPage() {
             <FileDropZone
               name="ecommerce"
               label="Ecommerce"
-              subLabel="Shopify, Stripe, WooCommerce"
               uploadState={ecommerceState}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -373,13 +432,13 @@ export default function UploadPage() {
               </svg>
             </div>
             <div className={styles.privacyText}>
-              <strong>Your data stays your data.</strong> Encrypted at rest and in transit. Personal details (account numbers, customer names) are tokenized before analysis — our team never sees them in the clear.
+              <strong>Your data stays encrypted.</strong> Encrypted at rest and in transit. Personal details (account numbers, customer names) are tokenized before analysis — our team never sees them in the clear.
             </div>
           </div>
 
-          {validating && !loading && uploadedCount >= 1 && (
-            <div className={styles.micro} style={{ marginBottom: 12, color: 'var(--muted)' }}>
-              Checking file type and month…
+          {validationError && (
+            <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 12 }}>
+              {validationError}
             </div>
           )}
 
@@ -412,7 +471,7 @@ export default function UploadPage() {
                 ? ' · analyzing your statements'
                 : uploadedCount < 1
                   ? ' · add at least one file to continue'
-                  : validating
+                  : anySlotChecking
                     ? ' · checking uploads'
                     : uploadedCount < 3
                       ? ' · add all 3 sources for full reconciliation'
@@ -420,9 +479,9 @@ export default function UploadPage() {
                         ? ' · this month is already on file'
                         : hasBoxWarnings
                           ? ' · fix the highlighted upload boxes'
-                          : validationReady || validationFailed
+                          : validationReady
                             ? ' · ready to analyze'
-                            : ' · checking uploads'}
+                            : ' · waiting for upload checks'}
             </div>
           </div>
 

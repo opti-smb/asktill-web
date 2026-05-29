@@ -38,7 +38,7 @@
 }
 
 .tagline {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 20px;
   color: var(--brand-deep);
   margin-bottom: 24px;

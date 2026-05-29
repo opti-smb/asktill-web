@@ -1,7 +1,7 @@
 .headerStrip {
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
-  padding: 20px 0;
+  padding: 10px 0;
 }
 
 .headerRow {
@@ -26,7 +26,7 @@
 }
 
 .h1 {
-  font-size: 26px;
+  font-size: 19px;
   font-weight: 400;
   font-variation-settings: "opsz" 144, "SOFT" 40;
 }
