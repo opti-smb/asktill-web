@@ -292,45 +292,14 @@ export function hasStoredPeriodConflict(result: UploadValidationResult | null): 
   return Boolean((result?.stored_period_warnings?.length ?? 0) > 0);
 }
 
-/** Slot / month placement issues only (never duplicate-month warnings). */
-export function uploadPlacementIssues(result: UploadValidationResult | null) {
-  if (!result) return [];
-  return [
-    ...result.slot_mismatches,
-    ...result.period_mismatches,
-    ...(result.missing_period_warnings ?? []),
-  ];
-}
-
-export function uploadPlacementMessages(result: UploadValidationResult | null): string[] {
-  const seen = new Set<string>();
-  const messages: string[] = [];
-  for (const issue of uploadPlacementIssues(result)) {
-    const message = issue.message?.trim();
-    if (!message || isAlreadyStoredMessage(message) || seen.has(message)) continue;
-    seen.add(message);
-    messages.push(message);
-  }
-  return messages;
-}
-
-export function uploadHeaderAlerts(
-  result: UploadValidationResult | null,
-  duplicate: StatementDuplicateInfo | null,
-): { storedMessage: string | null; placementMessages: string[] } {
-  const storedMessage =
-    duplicate?.message?.trim() ||
-    storedPeriodMessage(result);
-  return {
-    storedMessage: storedMessage || null,
-    placementMessages: uploadPlacementMessages(result),
-  };
-}
-
 export function warningsBySlot(result: UploadValidationResult | null) {
   const out = { bank: '', pos: '', ecommerce: '' };
   if (!result) return out;
-  for (const m of uploadPlacementIssues(result)) {
+  for (const m of [
+    ...result.slot_mismatches,
+    ...result.period_mismatches,
+    ...(result.missing_period_warnings ?? []),
+  ]) {
     if (!m.message?.trim() || isAlreadyStoredMessage(m.message)) continue;
     if (m.slot in out) {
       out[m.slot as keyof typeof out] = out[m.slot as keyof typeof out]
@@ -382,9 +351,18 @@ export const validateUploads = (files: UploadFiles) => {
   });
 };
 
-/** Wake Render backend before first upload validation (no-op if already warm). */
+/** Wake Render services before login or upload (no-op when already warm). */
 export function warmupBackend() {
   void mainApi.get('/api/health', { timeout: 20_000 }).catch(() => {});
+}
+
+export function warmupAuthService() {
+  void authApi.get('/api/auth/me', { timeout: 20_000 }).catch(() => {});
+}
+
+export function warmupServices() {
+  warmupBackend();
+  warmupAuthService();
 }
 
 const attachBearer = (cfg: InternalAxiosRequestConfig) => {

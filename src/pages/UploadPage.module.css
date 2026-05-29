@@ -277,30 +277,6 @@
   line-height: 1.5;
 }
 
-.uploadIssuesBanner {
-  max-width: 640px;
-  margin: 0 auto 20px;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid #fca5a5;
-  background: #fef2f2;
-  color: #991b1b;
-  text-align: left;
-}
-
-.uploadIssuesTitle {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.uploadIssuesList {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
 @media (max-width: 800px) {
   .pageBg {
     height: auto;

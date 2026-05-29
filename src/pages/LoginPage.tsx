@@ -14,7 +14,7 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 import { useAuth } from '../context/AuthContext';
 
-import { checkEmail, extractNotRegistered, getApiError } from '../lib/api';
+import { checkEmail, extractNotRegistered, getApiError, warmupServices } from '../lib/api';
 
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 
@@ -73,6 +73,10 @@ export default function LoginPage() {
       message: 'Password must be at least 8 characters',
     },
   } as const;
+
+  useEffect(() => {
+    warmupServices();
+  }, []);
 
   useEffect(() => {
     if (ready && isAuth) {
