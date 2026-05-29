@@ -7,6 +7,7 @@ import {
   GOOGLE_SIGNIN_CANCELLED_MSG,
   isOAuthRedirectCancelled,
 } from '../lib/clerk';
+import { warmupServices } from '../lib/api';
 import AuthNav from '../components/auth/AuthNav';
 import AuthOAuthProgress from '../components/auth/AuthOAuthProgress';
 import styles from './LoginPage.module.css';
@@ -16,6 +17,10 @@ export default function LoginOAuthCallback() {
   const navigate = useNavigate();
   const clerk = useClerk();
   const userCancelled = isOAuthRedirectCancelled();
+
+  useEffect(() => {
+    warmupServices();
+  }, []);
 
   useEffect(() => {
     if (!clerk.loaded || !userCancelled) return;

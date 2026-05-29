@@ -4,7 +4,7 @@ import { useClerk, useUser } from '@clerk/clerk-react';
 import AuthNav from '../components/auth/AuthNav';
 import AuthOAuthProgress from '../components/auth/AuthOAuthProgress';
 import { useAuth } from '../context/AuthContext';
-import { checkEmail, extractNotRegistered, getApiError, getToken } from '../lib/api';
+import { checkEmail, extractNotRegistered, getApiError, getToken, warmupServices } from '../lib/api';
 import {
   clearClerkSession,
   clearGoogleSignInAttempt,
@@ -48,6 +48,7 @@ export default function LoginOAuthComplete() {
   const [slowHint, setSlowHint] = useState(false);
 
   useEffect(() => {
+    warmupServices();
     let cancelled = false;
     const flowStarted = Date.now();
     const slowTimer = window.setTimeout(() => {

@@ -171,6 +171,7 @@ export default function UploadPage() {
 
     const timer = window.setTimeout(() => {
       void (async () => {
+        warmupServices();
         try {
           const { data } = await validateUploads({
             bank: bankFile,
