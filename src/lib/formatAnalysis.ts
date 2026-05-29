@@ -19,7 +19,7 @@ function mapSparkBars(kpi: KpiCardApi, fallbackFill: string): KPI['sparkBars'] {
       labelFill: bar.label_fill ?? undefined,
     }));
   }
-  if (kpi.comparison_note) {
+  if (kpi.comparison_note || kpi.id === 'reconciliation_gap') {
     return [];
   }
   return defaultSpark(fallbackFill);
