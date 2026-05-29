@@ -292,14 +292,46 @@ export function hasStoredPeriodConflict(result: UploadValidationResult | null): 
   return Boolean((result?.stored_period_warnings?.length ?? 0) > 0);
 }
 
-export function warningsBySlot(result: UploadValidationResult | null) {
-  const out = { bank: '', pos: '', ecommerce: '' };
-  if (!result) return out;
-  for (const m of [
+/** Slot / month placement issues only (never duplicate-month warnings). */
+export function uploadPlacementIssues(result: UploadValidationResult | null) {
+  if (!result) return [];
+  return [
     ...result.slot_mismatches,
     ...result.period_mismatches,
     ...(result.missing_period_warnings ?? []),
-  ]) {
+  ];
+}
+
+export function uploadPlacementMessages(result: UploadValidationResult | null): string[] {
+  const seen = new Set<string>();
+  const messages: string[] = [];
+  for (const issue of uploadPlacementIssues(result)) {
+    const message = issue.message?.trim();
+    if (!message || isAlreadyStoredMessage(message) || seen.has(message)) continue;
+    seen.add(message);
+    messages.push(message);
+  }
+  return messages;
+}
+
+export function uploadHeaderAlerts(
+  result: UploadValidationResult | null,
+  duplicate: StatementDuplicateInfo | null,
+): { storedMessage: string | null; placementMessages: string[] } {
+  const storedMessage =
+    duplicate?.message?.trim() ||
+    storedPeriodMessage(result);
+  return {
+    storedMessage: storedMessage || null,
+    placementMessages: uploadPlacementMessages(result),
+  };
+}
+
+export function warningsBySlot(result: UploadValidationResult | null) {
+  const out = { bank: '', pos: '', ecommerce: '' };
+  if (!result) return out;
+  for (const m of uploadPlacementIssues(result)) {
+    if (!m.message?.trim() || isAlreadyStoredMessage(m.message)) continue;
     if (m.slot in out) {
       out[m.slot as keyof typeof out] = out[m.slot as keyof typeof out]
         ? `${out[m.slot as keyof typeof out]} ${m.message}`

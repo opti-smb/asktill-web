@@ -10,7 +10,7 @@ import {
   duplicateInfoFromValidation,
   isAlreadyStoredMessage,
   hasStoredPeriodConflict,
-  storedPeriodMessage,
+  uploadHeaderAlerts,
   USER_STATE_RESET_EVENT,
   validateUploads,
   warmupBackend,
@@ -45,9 +45,7 @@ function uploadStateFromFile(
   if (!file) return { uploaded: false };
   const period = validation?.detected_periods?.[slot];
   const size = `${Math.round(file.size / 1024)} KB`;
-  const slotWarning = slotWarnings[slot] && !isAlreadyStoredMessage(slotWarnings[slot])
-    ? slotWarnings[slot]
-    : undefined;
+  const slotWarning = slotWarnings[slot]?.trim() || undefined;
   return {
     uploaded: true,
     checking,
@@ -268,15 +266,15 @@ export default function UploadPage() {
     [ecommerceFile, activeValidation, slotWarnings, slotChecking.ecommerce, validationFailed],
   );
 
-  const headerNotice = useMemo(() => {
-    if (!validationMatchesFiles || anySlotChecking) return null;
-    if (statementDuplicate?.message) {
-      return statementDuplicate.message;
+  const headerAlerts = useMemo(() => {
+    if (!validationMatchesFiles || anySlotChecking) {
+      return { storedMessage: null, placementMessages: [] as string[] };
     }
-    const fromValidation = storedPeriodMessage(mergedValidation);
-    if (fromValidation) return fromValidation;
-    if (error && isAlreadyStoredMessage(error)) return error;
-    return null;
+    const alerts = uploadHeaderAlerts(mergedValidation, statementDuplicate);
+    if (!alerts.storedMessage && error && isAlreadyStoredMessage(error)) {
+      return { ...alerts, storedMessage: error };
+    }
+    return alerts;
   }, [statementDuplicate, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
 
   const hasStoredConflict =
@@ -298,10 +296,10 @@ export default function UploadPage() {
     validationReady;
 
   useEffect(() => {
-    if (headerNotice && error && isAlreadyStoredMessage(error)) {
+    if (headerAlerts.storedMessage && error && isAlreadyStoredMessage(error)) {
       clearError();
     }
-  }, [headerNotice, error, clearError]);
+  }, [headerAlerts.storedMessage, error, clearError]);
 
   const onContinue = async () => {
     if (loading || anySlotChecking || hasStoredConflict || uploadedCount < 1 || !validationReady) {
@@ -371,9 +369,19 @@ export default function UploadPage() {
             <p className={styles.pageSub}>
               Upload your Bank, Pos, and Ecom statements. Same period will give best results
             </p>
-            {headerNotice ? (
+            {headerAlerts.storedMessage ? (
               <div className={styles.duplicateBanner} role="alert">
-                <p className={styles.duplicateMessage}>{headerNotice}</p>
+                <p className={styles.duplicateMessage}>{headerAlerts.storedMessage}</p>
+              </div>
+            ) : null}
+            {headerAlerts.placementMessages.length > 0 ? (
+              <div className={styles.uploadIssuesBanner} role="alert">
+                <p className={styles.uploadIssuesTitle}>Wrong file or month</p>
+                <ul className={styles.uploadIssuesList}>
+                  {headerAlerts.placementMessages.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
               </div>
             ) : null}
           </div>
@@ -449,7 +457,11 @@ export default function UploadPage() {
             </div>
           )}
 
-          {error && !headerNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) && (
+          {error &&
+            !headerAlerts.storedMessage &&
+            headerAlerts.placementMessages.length === 0 &&
+            !hasBoxWarnings &&
+            !isAlreadyStoredMessage(error) && (
             <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 16 }}>
               {error}
             </div>
@@ -475,11 +487,13 @@ export default function UploadPage() {
                     ? ' · checking uploads'
                     : uploadedCount < 3
                       ? ' · add all 3 sources for full reconciliation'
-                      : hasStoredConflict
-                        ? ' · this month is already on file'
-                        : hasBoxWarnings
-                          ? ' · fix the highlighted upload boxes'
-                          : validationReady
+                      : hasStoredConflict && hasBoxWarnings
+                        ? ' · wrong files uploaded and this month is already on file'
+                        : hasStoredConflict
+                          ? ' · this month is already on file'
+                          : hasBoxWarnings
+                            ? ' · fix the highlighted upload boxes'
+                            : validationReady
                             ? ' · ready to analyze'
                             : ' · waiting for upload checks'}
             </div>
