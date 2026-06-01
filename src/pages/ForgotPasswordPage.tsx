@@ -15,6 +15,7 @@ import {
   isClerkEnabled,
 } from '../lib/clerk';
 import { emailFieldRules, normalizeEmail } from '../lib/emailValidation';
+import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
 import authFieldStyles from '../components/auth/EmailField.module.css';
 import registerStyles from './RegisterPage.module.css';
 import loginStyles from './LoginPage.module.css';
@@ -198,8 +199,9 @@ function ForgotPasswordClerkFlow() {
   const handleResetPassword = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    const policyError = validatePassword(password, { email: savedEmail });
+    if (policyError) {
+      setError(policyError);
       return;
     }
     if (password !== confirmPassword) {
@@ -361,6 +363,7 @@ function ForgotPasswordClerkFlow() {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            <p className={registerStyles.info}>{PASSWORD_HINT}</p>
           </div>
           <div className={registerStyles.field}>
             <label className={registerStyles.label} htmlFor="confirm-password">

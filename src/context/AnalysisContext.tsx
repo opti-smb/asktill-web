@@ -42,6 +42,7 @@ interface AnalysisContextValue {
   clearUploadMismatch: () => void;
   clearStatementDuplicate: () => void;
   mergeWeekReports: (weekReports: WeekReportsViewApi) => void;
+  loadSavedReport: (saved: AnalyzeResult) => void;
 }
 
 const AnalysisContext = createContext<AnalysisContextValue | null>(null);
@@ -159,6 +160,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const loadSavedReport = useCallback((saved: AnalyzeResult) => {
+    setResult(saved);
+    setError(null);
+    setStatementDuplicate(null);
+    setUploadMismatch(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       files,
@@ -175,6 +183,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       clearUploadMismatch,
       clearStatementDuplicate,
       mergeWeekReports,
+      loadSavedReport,
     }),
     [
       files,
@@ -191,6 +200,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       clearUploadMismatch,
       clearStatementDuplicate,
       mergeWeekReports,
+      loadSavedReport,
     ]
   );
 

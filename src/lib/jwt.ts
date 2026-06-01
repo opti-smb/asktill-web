@@ -3,16 +3,27 @@ function decodeBase64Url(value: string): string {
   return atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
 }
 
-/** Unix expiry from JWT `exp` claim, or null when missing or unreadable. */
-export function getTokenExpiryMs(token: string): number | null {
+function readPayload(token: string): Record<string, unknown> | null {
   try {
     const payloadPart = token.split('.')[1];
     if (!payloadPart) return null;
-    const payload = JSON.parse(decodeBase64Url(payloadPart)) as { exp?: unknown };
-    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+    return JSON.parse(decodeBase64Url(payloadPart)) as Record<string, unknown>;
   } catch {
     return null;
   }
+}
+
+/** Unix expiry from JWT `exp` claim, or null when missing or unreadable. */
+export function getTokenExpiryMs(token: string): number | null {
+  const payload = readPayload(token);
+  const exp = payload?.exp;
+  return typeof exp === 'number' ? exp * 1000 : null;
+}
+
+/** `sub` claim (user id), or null when missing or unreadable. */
+export function getTokenSubject(token: string): string | null {
+  const sub = readPayload(token)?.sub;
+  return typeof sub === 'string' && sub.trim() ? sub.trim() : null;
 }
 
 export function isTokenExpired(token: string, skewMs = 0): boolean {

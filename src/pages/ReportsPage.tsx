@@ -3,6 +3,7 @@ import SectionHeader from '../components/layout/SectionHeader';
 import PeriodPicker from '../components/layout/PeriodPicker';
 import ChannelReconciliationView from '../components/analysis/ChannelReconciliationView';
 import DownloadReportButton from '../components/analysis/DownloadReportButton';
+import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import WeekReportPanel from '../components/analysis/WeekReportPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import { fetchWeekReports, getApiError } from '../lib/api';
@@ -17,7 +18,7 @@ function hasUploadFiles(files: { bank?: File; pos?: File; ecommerce?: File }) {
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('Month');
-  const { result, files, mergeWeekReports } = useAnalysis();
+  const { result, files, mergeWeekReports, loadSavedReport } = useAnalysis();
   const analysis = getAnalyzeAnalysis(result);
   const documents = result?.documents ?? [];
   const fallbackBusinessName = useMemo(() => {
@@ -79,6 +80,18 @@ export default function ReportsPage() {
   }, [period, result, analysis?.week_reports, files, mergeWeekReports]);
 
   const activeWeekReports = weekReports ?? analysis?.week_reports ?? null;
+  const currentPeriodKey = useMemo(() => {
+    const label = analysis?.period_label;
+    if (!label) return null;
+    const m = label.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
+    if (!m) return null;
+    const months: Record<string, string> = {
+      january: '01', february: '02', march: '03', april: '04', may: '05', june: '06',
+      july: '07', august: '08', september: '09', october: '10', november: '11', december: '12',
+    };
+    const key = months[m[1].toLowerCase()];
+    return key ? `${m[2]}-${key}` : null;
+  }, [analysis?.period_label]);
 
   return (
     <>
@@ -156,6 +169,11 @@ export default function ReportsPage() {
               )}
             </>
           )}
+
+          <PreviousReportsPanel
+            excludePeriodKey={currentPeriodKey}
+            onLoadReport={loadSavedReport}
+          />
         </div>
       </div>
     </>

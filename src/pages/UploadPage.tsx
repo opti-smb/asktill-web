@@ -5,9 +5,14 @@ import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
+import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import {
   duplicateInfoFromValidation,
+  downloadSavedReportPdf,
+  fetchReportHistory,
+  fetchSavedReport,
+  getApiErrorAsync,
   isAlreadyStoredMessage,
   hasStoredPeriodConflict,
   storedPeriodMessage,
@@ -17,6 +22,7 @@ import {
   warningsBySlot,
   type UploadValidationResult,
 } from '../lib/api';
+import { filenameFromDisposition, saveBlobDownload } from '../lib/downloadReport';
 import type { FileUploadState } from '../types';
 import styles from './UploadPage.module.css';
 
@@ -100,7 +106,11 @@ export default function UploadPage() {
     clearError,
     clearUploadMismatch,
     clearStatementDuplicate,
+    loadSavedReport,
   } = useAnalysis();
+  const [showPreviousReports, setShowPreviousReports] = useState(false);
+  const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
+  const [duplicateBusy, setDuplicateBusy] = useState(false);
   const [validation, setValidation] = useState<UploadValidationResult | null>(null);
   const [slotChecking, setSlotChecking] = useState<Record<UploadSlot, boolean>>({
     bank: false,
@@ -111,6 +121,51 @@ export default function UploadPage() {
   const [uploadPrompt, setUploadPrompt] = useState<string | null>(null);
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchReportHistory()
+      .then(({ data }) => {
+        if (!cancelled) setSavedReportCount((data.reports ?? []).length);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedReportCount(null);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const openSavedReport = useCallback(
+    async (statementId: string) => {
+      setDuplicateBusy(true);
+      try {
+        const { data } = await fetchSavedReport(statementId);
+        loadSavedReport(data);
+        navigate('/dashboard/overview');
+      } catch (err) {
+        setUploadPrompt(await getApiErrorAsync(err, 'Could not open saved report.'));
+      } finally {
+        setDuplicateBusy(false);
+      }
+    },
+    [loadSavedReport, navigate],
+  );
+
+  const downloadSavedPdf = useCallback(async (statementId: string, periodLabel?: string | null) => {
+    setDuplicateBusy(true);
+    try {
+      const { data, headers } = await downloadSavedReportPdf(statementId);
+      const label = periodLabel?.replace(/\s+/g, '_') ?? 'Report';
+      const filename = filenameFromDisposition(
+        headers['content-disposition'] as string | undefined,
+        `${label}_Reconciliation.pdf`,
+      );
+      saveBlobDownload(data, filename);
+    } catch (err) {
+      setUploadPrompt(await getApiErrorAsync(err, 'Could not download PDF.'));
+    } finally {
+      setDuplicateBusy(false);
+    }
+  }, []);
 
   const resetUploadPage = useCallback(() => {
     resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
@@ -278,6 +333,19 @@ export default function UploadPage() {
     return null;
   }, [statementDuplicate, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
 
+  const savedStatementId = useMemo(() => {
+    if (statementDuplicate?.statementId) return statementDuplicate.statementId;
+    return mergedValidation?.stored_period_warnings?.find((w) => w.statement_id)?.statement_id ?? null;
+  }, [statementDuplicate, mergedValidation]);
+
+  const savedPeriodLabel = useMemo(
+    () =>
+      statementDuplicate?.periodLabel
+      ?? mergedValidation?.stored_period_warnings?.find((w) => w.period_label)?.period_label
+      ?? null,
+    [statementDuplicate, mergedValidation],
+  );
+
   const hasStoredConflict =
     validationMatchesFiles &&
     !anySlotChecking &&
@@ -338,7 +406,7 @@ export default function UploadPage() {
       <nav className={styles.nav}>
         <div className="wrap">
           <div className={styles.navInner}>
-            <Logo />
+            <Logo to="/dashboard/overview" />
             <UserAccountMenu showName showProfile={false} />
           </div>
         </div>
@@ -363,7 +431,30 @@ export default function UploadPage() {
       </div>
 
       <div className={styles.page}>
-        <div className={`wrap ${styles.pageInner}`}>
+        <div className={`wrap ${styles.pageInner} ${showPreviousReports ? styles.pageInnerScroll : ''}`}>
+          <div className={styles.previousReportsTop}>
+            <button
+              type="button"
+              className={styles.btnPreviousReports}
+              onClick={() => setShowPreviousReports((open) => !open)}
+              aria-expanded={showPreviousReports}
+            >
+              {showPreviousReports ? 'Hide' : 'View'} your previous reconciliation reports
+              {savedReportCount != null && savedReportCount > 0 ? ` (${savedReportCount})` : ''}
+            </button>
+          </div>
+
+          {showPreviousReports && (
+            <div className={styles.previousReportsDrawer}>
+              <PreviousReportsPanel
+                active
+                variant="upload"
+                onLoadReport={loadSavedReport}
+                onReportsLoaded={setSavedReportCount}
+              />
+            </div>
+          )}
+
           <div className={styles.pageHeader}>
             <span className={styles.pageEyebrow}>Step 2 of 4</span>
             <h1>All your statements in <em>1 page</em></h1>
@@ -373,6 +464,34 @@ export default function UploadPage() {
             {headerNotice ? (
               <div className={styles.duplicateBanner} role="alert">
                 <p className={styles.duplicateMessage}>{headerNotice}</p>
+                {savedStatementId ? (
+                  <div className={styles.duplicateActions}>
+                    <button
+                      type="button"
+                      className={styles.btnDuplicateAction}
+                      disabled={duplicateBusy}
+                      onClick={() => void openSavedReport(savedStatementId)}
+                    >
+                      Open saved dashboard
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnDuplicateAction}
+                      disabled={duplicateBusy}
+                      onClick={() => void downloadSavedPdf(savedStatementId, savedPeriodLabel)}
+                    >
+                      Download PDF
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.btnDuplicateLink}
+                    onClick={() => setShowPreviousReports(true)}
+                  >
+                    View previous reports
+                  </button>
+                )}
               </div>
             ) : null}
           </div>

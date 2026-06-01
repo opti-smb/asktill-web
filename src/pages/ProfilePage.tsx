@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import SectionHeader from '../components/layout/SectionHeader';
 import { useAuth } from '../context/AuthContext';
 import { changePassword, getApiError } from '../lib/api';
+import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
 import styles from './ProfilePage.module.css';
 
 interface PasswordFormData {
@@ -38,6 +39,15 @@ export default function ProfilePage() {
     setPasswordMessage('');
     if (data.newPassword !== data.confirmPassword) {
       setPasswordError('New passwords do not match.');
+      return;
+    }
+    const policyError = validatePassword(data.newPassword, {
+      email: user?.email,
+      businessName: user?.businessName ?? undefined,
+      fullName: user?.name ?? undefined,
+    });
+    if (policyError) {
+      setPasswordError(policyError);
       return;
     }
     try {
@@ -95,7 +105,7 @@ export default function ProfilePage() {
 
         <section className={styles.card}>
           <h2 className={styles.cardTitle}>Change password</h2>
-          <p className={styles.cardSub}>Use at least 8 characters for your new password.</p>
+          <p className={styles.cardSub}>{PASSWORD_HINT}</p>
           <form className={styles.form} onSubmit={handleSubmit(onPasswordSubmit)} noValidate>
             <label className={styles.label}>
               Current password
@@ -117,7 +127,12 @@ export default function ProfilePage() {
                 className={styles.input}
                 {...register('newPassword', {
                   required: 'New password is required.',
-                  minLength: { value: 8, message: 'Use at least 8 characters.' },
+                  validate: (value) =>
+                    validatePassword(value, {
+                      email: user?.email,
+                      businessName: user?.businessName ?? undefined,
+                      fullName: user?.name ?? undefined,
+                    }) ?? true,
                 })}
               />
               {errors.newPassword ? (
