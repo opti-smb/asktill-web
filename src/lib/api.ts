@@ -1,5 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
+import { isTokenExpired } from './jwt';
+
 import {
   buildFallbackPipelineEvents,
   PIPELINE_TICK_MS,
@@ -69,7 +71,9 @@ function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
       if (err.response?.status === 401) {
         const url = String(err.config?.url ?? '');
         const isLogin = url.includes('/api/auth/login');
-        if (!isLogin && getToken()) {
+        const token = getToken();
+        const isMe = url.includes('/api/auth/me');
+        if (!isLogin && token && (isMe || isTokenExpired(token))) {
           clearToken();
           window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
         }
@@ -189,6 +193,7 @@ export interface UploadValidationResult {
     filename: string;
     message: string;
     period_label?: string;
+    statement_id?: string | null;
   }>;
   detected_periods: Partial<Record<'bank' | 'pos' | 'ecommerce', string>>;
 }
@@ -199,6 +204,26 @@ export interface StatementDuplicateInfo {
   fileName?: string | null;
   uploadedAt?: string | null;
   statementId?: string | null;
+}
+
+export interface SavedReportSummaryApi {
+  statement_id: string;
+  period_label?: string | null;
+  period_key?: string | null;
+  business_name?: string | null;
+  uploaded_at: string;
+  file_name: string;
+  parse_status: string;
+  operation?: string | null;
+  completeness?: string | null;
+  total_gross?: number | null;
+  net_to_bank?: number | null;
+  difference?: number | null;
+  has_pdf?: boolean;
+}
+
+export interface SavedReportListApi {
+  reports: SavedReportSummaryApi[];
 }
 
 function unwrapErrorDetail(data: unknown): Record<string, unknown> | null {
@@ -239,10 +264,12 @@ export function duplicateInfoFromValidation(
   const direct = warnings.find((w) => w.message?.trim())?.message?.trim();
   const periodLabel = warnings.find((w) => w.period_label)?.period_label ?? null;
   const fileName = warnings[0]?.filename ?? null;
+  const statementId = warnings.find((w) => w.statement_id)?.statement_id ?? null;
   return {
     message: direct || formatStatementAlreadyStoredMessage(periodLabel),
     periodLabel,
     fileName,
+    statementId,
   };
 }
 
@@ -649,6 +676,15 @@ export const ask = (question: string, files: UploadFiles = {}) => {
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
   return mainApi.post('/api/ask', form);
 };
+
+export const fetchReportHistory = () =>
+  mainApi.get<SavedReportListApi>('/api/reports/history');
+
+export const fetchSavedReport = (statementId: string) =>
+  mainApi.get<AnalyzeResult>(`/api/reports/${statementId}`);
+
+export const downloadSavedReportPdf = (statementId: string) =>
+  mainApi.get(`/api/reports/${statementId}/pdf`, { responseType: 'blob' });
 
 /** Same uploads as analyze; reconciliation PDF (POST /api/analyze/export). */
 export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {

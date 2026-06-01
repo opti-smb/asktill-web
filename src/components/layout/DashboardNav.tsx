@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
 import Logo from '../common/Logo';
+import { useAuth } from '../../context/AuthContext';
 
 import FloatingAskButton from './FloatingAskButton';
 import UserAccountMenu from './UserAccountMenu';
@@ -10,6 +11,7 @@ import styles from './DashboardNav.module.css';
 
 
 export default function DashboardNav() {
+  const { isAuth, ready } = useAuth();
 
   return (
 
@@ -21,7 +23,7 @@ export default function DashboardNav() {
 
           <div className={styles.navInner}>
 
-            <Logo />
+            <Logo to={ready && isAuth ? '/dashboard/overview' : '/'} />
 
             <div className={styles.navTabs}>
 

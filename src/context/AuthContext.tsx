@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { AxiosError } from 'axios';
 import {
   clearAppSession,
   clearToken,
@@ -23,7 +24,7 @@ import {
   type AuthUser,
   warmupServices,
 } from '../lib/api';
-import { getTokenExpiryMs, isTokenExpired } from '../lib/jwt';
+import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 
 interface AuthContextValue {
   token: string | null;
@@ -119,11 +120,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(profile);
           scheduleSessionExpiry(stored);
         }
-      } catch {
-        clearToken();
-        if (!cancelled) {
-          setTok(null);
-          setUser(null);
+      } catch (err) {
+        const status = (err as AxiosError)?.response?.status;
+        if (status === 401) {
+          clearToken();
+          if (!cancelled) {
+            setTok(null);
+            setUser(null);
+          }
+        } else if (!cancelled) {
+          const userId = getTokenSubject(stored);
+          setTok(stored);
+          if (userId) {
+            setUser({ userId, email: null, name: null, businessName: null });
+            scheduleSessionExpiry(stored);
+          } else {
+            setUser(null);
+          }
         }
       } finally {
         if (!cancelled) setReady(true);

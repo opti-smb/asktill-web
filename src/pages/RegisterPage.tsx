@@ -8,6 +8,7 @@ import ClerkCaptcha, { prepareClerkCaptcha } from '../components/auth/ClerkCaptc
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 import { checkEmail, clerkCleanupUnregistered, extractAccessToken, getApiError, register as registerUser, warmupServices } from '../lib/api';
+import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
 import {
   clearClerkSession,
   clerkErrorMessage,
@@ -63,13 +64,18 @@ function OtpCrossIcon() {
 function validateDetailsForm(
   fullName: string,
   companyName: string,
+  email: string,
   password: string,
 ): DetailsFieldErrors {
   const errors: DetailsFieldErrors = {};
   if (!fullName.trim()) errors.fullName = 'Enter your name.';
   if (!companyName.trim()) errors.companyName = 'Enter your company.';
-  if (!password) errors.password = 'Enter a password.';
-  else if (password.length < 8) errors.password = 'Password must be at least 8 characters.';
+  const passwordError = validatePassword(password, {
+    email: email.trim().toLowerCase(),
+    businessName: companyName.trim(),
+    fullName: fullName.trim(),
+  });
+  if (passwordError) errors.password = passwordError;
   return errors;
 }
 
@@ -396,7 +402,7 @@ function RegisterClerkFlow() {
       return;
     }
 
-    const errors = validateDetailsForm(fullName, companyName, password);
+    const errors = validateDetailsForm(fullName, companyName, email, password);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setError('Complete every field before creating your account.');
@@ -411,6 +417,7 @@ function RegisterClerkFlow() {
         email: addr,
         password,
         businessName: companyName.trim(),
+        fullName: fullName.trim(),
         country: 'US',
       });
       const token = extractAccessToken(data);
@@ -450,7 +457,11 @@ function RegisterClerkFlow() {
   const detailsFormComplete =
     fullName.trim().length > 0 &&
     companyName.trim().length > 0 &&
-    password.length >= 8;
+    validatePassword(password, {
+      email: email.trim().toLowerCase(),
+      businessName: companyName.trim(),
+      fullName: fullName.trim(),
+    }) === null;
 
   return (
     <>
@@ -642,7 +653,7 @@ function RegisterClerkFlow() {
                 name="register-password"
                 type={showPassword ? 'text' : 'password'}
                 className={styles.input}
-                placeholder="Min. 8 characters"
+                placeholder="Strong password required"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -666,7 +677,9 @@ function RegisterClerkFlow() {
             </div>
             {fieldErrors.password ? (
               <span className={styles.error}>{fieldErrors.password}</span>
-            ) : null}
+            ) : (
+              <span className={styles.info}>{PASSWORD_HINT}</span>
+            )}
           </div>
 
           {error ? <div className={styles.error}>{error}</div> : null}
