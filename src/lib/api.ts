@@ -319,22 +319,99 @@ export function hasStoredPeriodConflict(result: UploadValidationResult | null): 
   return Boolean((result?.stored_period_warnings?.length ?? 0) > 0);
 }
 
+export type UploadSlotId = 'bank' | 'pos' | 'ecommerce';
+
+/** One message per box: wrong statement type first, then month mismatch. */
+export function primaryWarningForSlot(
+  result: UploadValidationResult | null,
+  slot: UploadSlotId,
+): string {
+  if (!result) return '';
+  const pick = (list: Array<{ slot: string; message?: string }>) => {
+    const row = list.find(
+      (m) => m.slot === slot && m.message?.trim() && !isAlreadyStoredMessage(m.message),
+    );
+    return row?.message?.trim() ?? '';
+  };
+  return (
+    pick(result.slot_mismatches)
+    || pick(result.period_mismatches)
+    || pick(result.missing_period_warnings ?? [])
+  );
+}
+
 export function warningsBySlot(result: UploadValidationResult | null) {
-  const out = { bank: '', pos: '', ecommerce: '' };
-  if (!result) return out;
-  for (const m of [
-    ...result.slot_mismatches,
-    ...result.period_mismatches,
-    ...(result.missing_period_warnings ?? []),
-  ]) {
-    if (!m.message?.trim() || isAlreadyStoredMessage(m.message)) continue;
-    if (m.slot in out) {
-      out[m.slot as keyof typeof out] = out[m.slot as keyof typeof out]
-        ? `${out[m.slot as keyof typeof out]} ${m.message}`
-        : m.message;
-    }
+  return {
+    bank: primaryWarningForSlot(result, 'bank'),
+    pos: primaryWarningForSlot(result, 'pos'),
+    ecommerce: primaryWarningForSlot(result, 'ecommerce'),
+  };
+}
+
+function dedupeMismatchRows<T extends { slot: string; message?: string }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows) {
+    const key = `${row.slot}|${(row.message ?? '').trim()}`;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
   }
   return out;
+}
+
+/** Merge live + analyze validation without repeating the same slot warning twice. */
+export function mergeUploadValidationResults(
+  live: UploadValidationResult | null,
+  fromAnalyze: UploadValidationResult | null,
+): UploadValidationResult | null {
+  if (!live && !fromAnalyze) return null;
+  if (!live) return fromAnalyze;
+  if (!fromAnalyze) return live;
+  return {
+    ok: live.ok && fromAnalyze.ok,
+    slot_mismatches: dedupeMismatchRows([
+      ...live.slot_mismatches,
+      ...fromAnalyze.slot_mismatches,
+    ]),
+    period_mismatches: dedupeMismatchRows([
+      ...live.period_mismatches,
+      ...fromAnalyze.period_mismatches,
+    ]),
+    missing_period_warnings: dedupeMismatchRows([
+      ...(live.missing_period_warnings ?? []),
+      ...(fromAnalyze.missing_period_warnings ?? []),
+    ]),
+    stored_period_warnings: (live.stored_period_warnings?.length ?? 0) > 0
+      ? live.stored_period_warnings
+      : (fromAnalyze.stored_period_warnings ?? []),
+    detected_periods: { ...fromAnalyze.detected_periods, ...live.detected_periods },
+  };
+}
+
+/** True when this upload box has a slot, period, or missing-month issue in the API payload. */
+export function slotIssuesInResult(
+  result: UploadValidationResult | null,
+  slot: UploadSlotId,
+): boolean {
+  if (!result) return false;
+  const lists = [
+    result.slot_mismatches,
+    result.period_mismatches,
+    result.missing_period_warnings ?? [],
+  ];
+  return lists.some((arr) =>
+    arr.some(
+      (m) => m.slot === slot && m.message?.trim() && !isAlreadyStoredMessage(m.message),
+    ),
+  );
+}
+
+/** Safe gate for Continue — ok flag plus any per-box warning text. */
+export function batchValidationPasses(result: UploadValidationResult | null): boolean {
+  if (!result?.ok) return false;
+  const w = warningsBySlot(result);
+  return !(w.bank || w.pos || w.ecommerce);
 }
 
 export function extractUploadMismatches(err: unknown): UploadValidationResult | null {

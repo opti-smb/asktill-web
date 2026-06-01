@@ -17,6 +17,9 @@ import {
   hasStoredPeriodConflict,
   storedPeriodMessage,
   USER_STATE_RESET_EVENT,
+  batchValidationPasses,
+  mergeUploadValidationResults,
+  primaryWarningForSlot,
   validateUploads,
   warmupServices,
   warningsBySlot,
@@ -29,6 +32,8 @@ import styles from './UploadPage.module.css';
 type FormData = Record<string, FileList>;
 type UploadSlot = 'bank' | 'pos' | 'ecommerce';
 
+type PinnedSlotWarning = { fileKey: string; message: string };
+
 const steps = [
   { label: 'Account', status: 'done' },
   { label: 'Upload data', status: 'active' },
@@ -38,6 +43,28 @@ const steps = [
 
 function fileFromList(list: FileList | undefined): File | undefined {
   return list?.[0];
+}
+
+function resolveSlotWarnings(
+  validation: UploadValidationResult | null,
+  pinned: Partial<Record<UploadSlot, PinnedSlotWarning | null>>,
+  fileKeys: Record<UploadSlot, string>,
+): ReturnType<typeof warningsBySlot> {
+  const server = warningsBySlot(validation);
+  const out = { bank: '', pos: '', ecommerce: '' };
+  for (const slot of ['bank', 'pos', 'ecommerce'] as const) {
+    if (!fileKeys[slot]) continue;
+    const fromServer = server[slot]?.trim();
+    if (fromServer) {
+      out[slot] = fromServer;
+      continue;
+    }
+    const pin = pinned[slot];
+    if (pin?.fileKey === fileKeys[slot] && pin.message?.trim()) {
+      out[slot] = pin.message.trim();
+    }
+  }
+  return out;
 }
 
 function uploadStateFromFile(
@@ -54,38 +81,42 @@ function uploadStateFromFile(
   const slotWarning = slotWarnings[slot]?.trim() || undefined;
   return {
     uploaded: true,
-    checking,
+    checking: checking && !slotWarning,
     fileName: file.name,
     detail: !checking && !slotWarning && period ? `${size} · ${period}` : checking ? undefined : size,
     warning:
-      !checking && validationFailed && !slotWarning
+      validationFailed && !slotWarning
         ? 'Could not verify this file.'
-        : !checking
-          ? slotWarning
-          : undefined,
+        : slotWarning,
   };
 }
 
-function mergeValidation(
-  live: UploadValidationResult | null,
-  fromAnalyze: UploadValidationResult | null,
-): UploadValidationResult | null {
-  if (!live && !fromAnalyze) return null;
-  if (!live) return fromAnalyze;
-  if (!fromAnalyze) return live;
-  return {
-    ok: live.ok && fromAnalyze.ok,
-    slot_mismatches: [...live.slot_mismatches, ...fromAnalyze.slot_mismatches],
-    period_mismatches: [...live.period_mismatches, ...fromAnalyze.period_mismatches],
-    missing_period_warnings: [
-      ...(live.missing_period_warnings ?? []),
-      ...(fromAnalyze.missing_period_warnings ?? []),
-    ],
-    stored_period_warnings: (live.stored_period_warnings?.length ?? 0) > 0
-      ? live.stored_period_warnings
-      : (fromAnalyze.stored_period_warnings ?? []),
-    detected_periods: { ...fromAnalyze.detected_periods, ...live.detected_periods },
-  };
+function syncPinnedSlotWarnings(
+  prev: Partial<Record<UploadSlot, PinnedSlotWarning | null>>,
+  validation: UploadValidationResult,
+  fileKeys: Record<UploadSlot, string>,
+): Partial<Record<UploadSlot, PinnedSlotWarning | null>> {
+  const next: Partial<Record<UploadSlot, PinnedSlotWarning | null>> = { ...prev };
+  for (const slot of ['bank', 'pos', 'ecommerce'] as const) {
+    const key = fileKeys[slot];
+    if (!key) {
+      next[slot] = null;
+      continue;
+    }
+    const message = primaryWarningForSlot(validation, slot)?.trim();
+    const prior = prev[slot]?.fileKey === key ? prev[slot] : null;
+
+    if (message) {
+      next[slot] = { fileKey: key, message };
+    } else if (batchValidationPasses(validation)) {
+      next[slot] = null;
+    } else if (prior?.message) {
+      next[slot] = prior;
+    } else {
+      next[slot] = null;
+    }
+  }
+  return next;
 }
 
 function fileKey(file: File | undefined): string {
@@ -112,6 +143,9 @@ export default function UploadPage() {
   const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
   const [duplicateBusy, setDuplicateBusy] = useState(false);
   const [validation, setValidation] = useState<UploadValidationResult | null>(null);
+  const [pinnedSlotWarnings, setPinnedSlotWarnings] = useState<
+    Partial<Record<UploadSlot, PinnedSlotWarning | null>>
+  >({});
   const [slotChecking, setSlotChecking] = useState<Record<UploadSlot, boolean>>({
     bank: false,
     pos: false,
@@ -121,6 +155,7 @@ export default function UploadPage() {
   const [uploadPrompt, setUploadPrompt] = useState<string | null>(null);
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
+  const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -170,6 +205,7 @@ export default function UploadPage() {
   const resetUploadPage = useCallback(() => {
     resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
     setValidation(null);
+    setPinnedSlotWarnings({});
     setSlotChecking({ bank: false, pos: false, ecommerce: false });
     setValidationError(null);
     setUploadPrompt(null);
@@ -193,6 +229,11 @@ export default function UploadPage() {
   const bankKey = fileKey(bankFile);
   const posKey = fileKey(posFile);
   const ecommerceKey = fileKey(ecommerceFile);
+  uploadFilesRef.current = {
+    bank: bankFile,
+    pos: posFile,
+    ecommerce: ecommerceFile,
+  };
   const uploadedCount = [bankFile, posFile, ecommerceFile].filter(Boolean).length;
   const currentFileKeys = `${bankKey}|${posKey}|${ecommerceKey}`;
 
@@ -200,6 +241,11 @@ export default function UploadPage() {
     clearUploadMismatch();
     clearStatementDuplicate();
     if (uploadedCount > 0) setUploadPrompt(null);
+    setPinnedSlotWarnings((prev) => ({
+      bank: prev.bank?.fileKey === bankKey ? prev.bank : null,
+      pos: prev.pos?.fileKey === posKey ? prev.pos : null,
+      ecommerce: prev.ecommerce?.fileKey === ecommerceKey ? prev.ecommerce : null,
+    }));
   }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate]);
 
   const anySlotChecking = slotChecking.bank || slotChecking.pos || slotChecking.ecommerce;
@@ -207,6 +253,7 @@ export default function UploadPage() {
   useEffect(() => {
     if (uploadedCount < 1) {
       setValidation(null);
+      setPinnedSlotWarnings({});
       setValidationError(null);
       validatedFileKeysRef.current = '';
       setSlotChecking({ bank: false, pos: false, ecommerce: false });
@@ -228,16 +275,24 @@ export default function UploadPage() {
       void (async () => {
         warmupServices();
         try {
+          const files = uploadFilesRef.current;
           const { data } = await validateUploads({
-            bank: bankFile,
-            pos: posFile,
-            ecommerce: ecommerceFile,
+            bank: files.bank,
+            pos: files.pos,
+            ecommerce: files.ecommerce,
           });
           if (cancelled || validationRequestRef.current !== requestId) return;
           if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
 
           setValidation(data);
           validatedFileKeysRef.current = fileKeysAtStart;
+          setPinnedSlotWarnings((prev) =>
+            syncPinnedSlotWarnings(prev, data, {
+              bank: bankKey,
+              pos: posKey,
+              ecommerce: ecommerceKey,
+            }),
+          );
           if (hasStoredPeriodConflict(data)) {
             const dup = duplicateInfoFromValidation(data);
             if (dup) applyStatementDuplicate(dup);
@@ -247,8 +302,6 @@ export default function UploadPage() {
         } catch {
           if (cancelled || validationRequestRef.current !== requestId) return;
           if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
-          setValidation(null);
-          validatedFileKeysRef.current = '';
           setValidationError('Could not verify uploads. Check your connection and try again.');
         } finally {
           if (!cancelled && validationRequestRef.current === requestId) {
@@ -263,9 +316,6 @@ export default function UploadPage() {
       window.clearTimeout(timer);
     };
   }, [
-    bankFile,
-    posFile,
-    ecommerceFile,
     bankKey,
     posKey,
     ecommerceKey,
@@ -277,11 +327,30 @@ export default function UploadPage() {
 
   const validationMatchesFiles = validatedFileKeysRef.current === currentFileKeys;
   const mergedValidation = useMemo(
-    () => mergeValidation(validation, uploadMismatch),
+    () => mergeUploadValidationResults(validation, uploadMismatch),
     [validation, uploadMismatch],
   );
   const activeValidation = mergedValidation;
-  const slotWarnings = useMemo(() => warningsBySlot(activeValidation), [activeValidation]);
+
+  useEffect(() => {
+    if (!uploadMismatch) return;
+    setPinnedSlotWarnings((prev) =>
+      syncPinnedSlotWarnings(prev, uploadMismatch, {
+        bank: bankKey,
+        pos: posKey,
+        ecommerce: ecommerceKey,
+      }),
+    );
+  }, [uploadMismatch, bankKey, posKey, ecommerceKey]);
+
+  const slotFileKeys = useMemo(
+    () => ({ bank: bankKey, pos: posKey, ecommerce: ecommerceKey }),
+    [bankKey, posKey, ecommerceKey],
+  );
+  const slotWarnings = useMemo(
+    () => resolveSlotWarnings(activeValidation, pinnedSlotWarnings, slotFileKeys),
+    [activeValidation, pinnedSlotWarnings, slotFileKeys],
+  );
   const hasBoxWarnings = Boolean(slotWarnings.bank || slotWarnings.pos || slotWarnings.ecommerce);
 
   const validationFailed = Boolean(validationError);
@@ -352,7 +421,7 @@ export default function UploadPage() {
     (Boolean(statementDuplicate) || hasStoredPeriodConflict(mergedValidation));
   const validationReady =
     validation != null &&
-    validation.ok &&
+    batchValidationPasses(validation) &&
     !validationError &&
     validatedFileKeysRef.current === currentFileKeys;
   const canSubmitAnalyze =
