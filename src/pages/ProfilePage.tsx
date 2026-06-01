@@ -42,7 +42,7 @@ export default function ProfilePage() {
       return;
     }
     const policyError = validatePassword(data.newPassword, {
-      email: user?.email,
+      email: user?.email ?? undefined,
       businessName: user?.businessName ?? undefined,
       fullName: user?.name ?? undefined,
     });
@@ -129,7 +129,7 @@ export default function ProfilePage() {
                   required: 'New password is required.',
                   validate: (value) =>
                     validatePassword(value, {
-                      email: user?.email,
+                      email: user?.email ?? undefined,
                       businessName: user?.businessName ?? undefined,
                       fullName: user?.name ?? undefined,
                     }) ?? true,
