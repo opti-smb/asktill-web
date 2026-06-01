@@ -46,7 +46,7 @@ export default function FileDropZone({
             <div className={hasWarning ? styles.dropTextWarn : styles.dropText}>
               {hasWarning ? 'Wrong file' : isChecking ? 'Checking file type and month…' : '✓ Uploaded'}
             </div>
-            {uploadState.fileName && (
+            {!hasWarning && uploadState.fileName && (
               <div className={styles.fileName}>{uploadState.fileName}</div>
             )}
             {uploadState.detail && !hasWarning && (
@@ -54,7 +54,7 @@ export default function FileDropZone({
                 {uploadState.detail}
               </div>
             )}
-            {hasWarning && (
+            {hasWarning && uploadState.warning && (
               <div className={styles.warning}>{uploadState.warning}</div>
             )}
           </>
