@@ -10,7 +10,13 @@ export default function KPICard({ kpi }: KPICardProps) {
 
   return (
     <div className={styles.kpi}>
-      <div className={styles.kpiLabel}>{kpi.label}</div>
+      <div
+        className={styles.kpiLabel}
+        title={kpi.helperText}
+        style={kpi.helperText ? { cursor: 'help' } : undefined}
+      >
+        {kpi.label}
+      </div>
       <div className={styles.kpiValue}>{kpi.value}</div>
       {(kpi.delta || kpi.prev) && (
         <div className={styles.kpiComparison}>
