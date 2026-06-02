@@ -54,6 +54,7 @@ export interface KpiCardApi {
   formatted_value: string;
   format?: string;
   footnote?: string | null;
+  helper_text?: string | null;
   delta?: string | null;
   delta_type?: string | null;
   prev_label?: string | null;

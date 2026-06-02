@@ -37,6 +37,7 @@ export function mapApiKpisToUi(kpis: KpiCardApi[] | undefined): KPI[] {
     avgLabel: kpi.avg_label ?? '',
     avgNote: kpi.comparison_note ?? kpi.avg_note ?? kpi.footnote ?? '',
     avgNoteType: (kpi.avg_note_type as KPI['avgNoteType']) ?? 'muted',
+    helperText: kpi.helper_text ?? undefined,
     sparkBars: mapSparkBars(kpi, fills[index % fills.length]),
   }));
 }

@@ -7,6 +7,7 @@ export interface KPI {
   avgLabel: string;
   avgNote: string;
   avgNoteType: 'pos' | 'neg' | 'muted';
+  helperText?: string;
   sparkBars: SparkBar[];
 }
 

@@ -47,14 +47,16 @@ export const kpis: KPI[] = [
     ],
   },
   {
-    label: 'Days of runway',
-    value: '52',
+    label: 'Days of Runway',
+    value: '52 days',
     delta: '— same',
     deltaType: 'flat',
     prev: 'Feb: 51',
     avgLabel: '3-mo avg: 50 days',
-    avgNote: 'stable',
+    avgNote: 'Based on bank statement expenses',
     avgNoteType: 'muted',
+    helperText:
+      'Estimated number of days your current bank balance could cover normal operating expenses based on expenses detected from your bank statement.',
     sparkBars: [
       { x: 6, y: 12, height: 16, fill: '#CBD5E1', label: '3mo avg', labelFill: '#64748B' },
       { x: 64, y: 12, height: 16, fill: '#94A3B8', label: 'Feb', labelFill: '#64748B' },
