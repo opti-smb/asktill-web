@@ -464,6 +464,16 @@ export function warmupAuthService() {
   void authApi.get('/health', { timeout: 90_000 }).catch(() => {});
 }
 
+/** Resolve when auth service responds (wakes Render cold starts). */
+export async function warmupAuthServiceReady(timeoutMs = 90_000): Promise<boolean> {
+  try {
+    await authApi.get('/health', { timeout: timeoutMs });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function warmupRegistrationService() {
   void registerApi.get('/health', { timeout: 90_000 }).catch(() => {});
 }
