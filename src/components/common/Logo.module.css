@@ -1,20 +1,32 @@
 .logoMark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-family: var(--font-serif);
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.02em;
+  gap: 12px;
   text-decoration: none;
-  font-variation-settings: "opsz" 120;
 }
 
 .logoMark:hover {
   text-decoration: none;
 }
 
-.logoMark span {
-  color: var(--brand);
+.logoIcon {
+  background: #2563eb;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.logoText {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+}
+
+.logoText span {
+  color: #2563eb;
 }

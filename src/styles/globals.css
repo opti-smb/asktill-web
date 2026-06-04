@@ -1,6 +1,6 @@
 :root {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-serif: 'Fraunces', Georgia, serif;
+  --font-serif: 'Lora', Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --ink: #0B1220;
@@ -30,11 +30,19 @@
   --orange: #EA580C;
   --orange-soft: #FED7AA;
 
-  --max: 1180px;
+  --max: 1080px;
+  --radius: 12px;
+  --radius-sm: 8px;
 }
 
 .wrap {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 36px;
+}
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 0 20px;
+  }
 }
