@@ -177,15 +177,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTok(accessToken);
     scheduleSessionExpiry(accessToken);
     const profile = normalizeUser(data);
-    setUser(
-      profile ??
-        ({
-          userId: '',
-          email: fallbackEmail ?? null,
-          name: null,
-          businessName: null,
-        } satisfies AuthUser),
-    );
+    const tokenUserId = getTokenSubject(accessToken);
+    const userId = profile?.userId || tokenUserId || '';
+    if (profile) {
+      setUser({ ...profile, userId: profile.userId || userId });
+    } else {
+      setUser({
+        userId,
+        email: fallbackEmail ?? null,
+        name: null,
+        businessName: null,
+      });
+    }
     warmupServices();
   }, [scheduleSessionExpiry]);
 

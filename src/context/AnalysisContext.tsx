@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useAuth } from './AuthContext';
 import {
   analyzeWithProgress,
   extractStatementDuplicate,
@@ -18,6 +19,12 @@ import {
   type UploadFiles,
   type UploadValidationResult,
 } from '../lib/api';
+import { buildAtLetterPreview } from '../lib/atLetterPreview';
+import {
+  LETTER_UPDATED_EVENT,
+  markUserHasSavedLetter,
+  saveAtLetterCache,
+} from '../lib/atLetterCache';
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
@@ -48,6 +55,7 @@ interface AnalysisContextValue {
 const AnalysisContext = createContext<AnalysisContextValue | null>(null);
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
+  const { user, isAuth } = useAuth();
   const [files, setFilesState] = useState<UploadFiles>({});
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -125,6 +133,20 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       setResult(data);
       setStatementDuplicate(null);
       setAnalyzeProgress(null);
+
+      if (isAuth && user?.userId) {
+        const preview = buildAtLetterPreview(data, user, {
+          statementId: data.statement_id ?? undefined,
+          hasPdf: Boolean(data.statement_id || (data.report?.channels?.length ?? 0) > 0),
+        });
+        if (preview?.mode === 'live') {
+          saveAtLetterCache(user.userId, preview);
+        } else if (data.statement_id) {
+          markUserHasSavedLetter(user.userId);
+        }
+        window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+      }
+
       return data;
     } catch (err) {
       setAnalyzeProgress(null);
@@ -148,7 +170,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [files]);
+  }, [files, isAuth, user]);
 
   const mergeWeekReports = useCallback((weekReports: WeekReportsViewApi) => {
     setResult((prev) => {

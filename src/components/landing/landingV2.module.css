@@ -320,6 +320,17 @@
   font-weight: 500;
 }
 
+.letterSampleTag {
+  color: var(--brand-soft);
+  font-weight: 600;
+}
+
+.letterLiveTag {
+  color: #fff;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
 .letterBody {
   padding: 26px 24px;
 }

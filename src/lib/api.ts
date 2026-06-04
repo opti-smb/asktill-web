@@ -491,15 +491,16 @@ export function normalizeUser(data: unknown): AuthUser | null {
   const root = data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
   const u = (root?.user ?? data) as Record<string, unknown> | null;
   if (!u || typeof u !== 'object') return null;
-  const userId = (u.userId ?? u.user_id) as string | undefined;
-  if (!userId) return null;
+  const userId = (u.userId ?? u.user_id ?? u.id ?? u.sub) as string | undefined;
+  if (!userId?.trim()) return null;
   const email = (u.email as string | undefined) ?? null;
   const businessName = (u.businessName ?? u.business_name) as string | undefined;
+  const fullName = (u.fullName ?? u.full_name ?? u.name) as string | undefined;
   return {
     userId,
     email,
-    name: businessName || (u.name as string | undefined) || null,
-    businessName: businessName ?? null,
+    name: fullName?.trim() || businessName?.trim() || null,
+    businessName: businessName?.trim() || null,
     tier: u.tier as string | undefined,
     roles: u.roles as string[] | undefined,
     industry: (u.industry as string | undefined) ?? null,

@@ -1,11 +1,17 @@
-import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useAtLetterPreview } from '../../hooks/useAtLetterPreview';
 import {
   downloadSavedReportPdf,
   getApiErrorAsync,
 } from '../../lib/api';
+import { atLetterMailtoUrl } from '../../lib/atLetterPreview';
 import { filenameFromDisposition, saveBlobDownload } from '../../lib/downloadReport';
+import {
+  consumePendingPdfDownload,
+  setPendingPdfDownload,
+} from '../../lib/pendingPdfDownload';
 import styles from './landingV2.module.css';
 
 const CHECKS = [
@@ -28,34 +34,25 @@ const CHECKS = [
 ];
 
 export default function AtLetterSection() {
-  const { letter, loading } = useAtLetterPreview();
+  const navigate = useNavigate();
+  const { isAuth, ready } = useAuth();
+  const { letter, loading, error, isSample } = useAtLetterPreview();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
-  const leftCta =
-    letter.mode === 'live' ? (
-      <Link to="/dashboard/overview" className={styles.btnP}>
-        View full analysis →
-      </Link>
-    ) : letter.mode === 'empty' ? (
-      <Link to="/onboarding" className={styles.btnP}>
-        Upload to get your letter →
-      </Link>
-    ) : (
-      <a href="#at-letter" className={styles.btnP}>
-        See a sample letter →
-      </a>
-    );
+  const canUseLetterActions = letter.mode === 'live' && !isSample;
+  const canDownloadPdf = canUseLetterActions && Boolean(letter.statementId) && isAuth;
+  const needsSignInForPdf = canUseLetterActions && Boolean(letter.statementId) && !isAuth;
+  const canForward = canUseLetterActions;
 
-  const downloadPdf = useCallback(async () => {
-    if (!letter.statementId) return;
+  const runPdfDownload = useCallback(async (statementId: string) => {
     setPdfBusy(true);
     setPdfError(null);
     try {
-      const res = await downloadSavedReportPdf(letter.statementId);
+      const res = await downloadSavedReportPdf(statementId);
       const name = filenameFromDisposition(
         res.headers['content-disposition'],
-        'asktill-letter.pdf',
+        'asktill-reconciliation.pdf',
       );
       saveBlobDownload(res.data, name);
     } catch (err) {
@@ -63,7 +60,56 @@ export default function AtLetterSection() {
     } finally {
       setPdfBusy(false);
     }
-  }, [letter.statementId]);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !isAuth) return;
+    const pendingId = consumePendingPdfDownload();
+    if (pendingId) {
+      void runPdfDownload(pendingId);
+    }
+  }, [ready, isAuth, runPdfDownload]);
+
+  const downloadPdf = useCallback(async () => {
+    if (!letter.statementId) return;
+    if (!isAuth) {
+      setPendingPdfDownload(letter.statementId);
+      navigate('/login', { state: { from: '/' } });
+      return;
+    }
+    await runPdfDownload(letter.statementId);
+  }, [letter.statementId, isAuth, navigate, runPdfDownload]);
+
+  const leftCta =
+    letter.mode === 'live' ? (
+      isAuth ? (
+        <Link to="/dashboard/overview" className={styles.btnP}>
+          View full analysis →
+        </Link>
+      ) : (
+        <Link to="/login" className={styles.btnP}>
+          Sign in to open your letter →
+        </Link>
+      )
+    ) : letter.mode === 'empty' ? (
+      isAuth ? (
+        <Link to="/onboarding" className={styles.btnP}>
+          Upload to get your letter →
+        </Link>
+      ) : (
+        <Link to="/login" className={styles.btnP}>
+          Sign in to view your letter →
+        </Link>
+      )
+    ) : (
+      <a href="#at-letter" className={styles.btnP}>
+        See a sample letter →
+      </a>
+    );
+
+  const forwardLetter = useCallback(() => {
+    window.location.href = atLetterMailtoUrl(letter);
+  }, [letter]);
 
   return (
     <section className={styles.letterSection} id="at-letter">
@@ -104,9 +150,38 @@ export default function AtLetterSection() {
               </div>
               <span className={styles.letterDate}>
                 {loading ? 'Loading…' : letter.letterDateLabel}
+                {isSample ? (
+                  <span className={styles.letterSampleTag}> · Sample</span>
+                ) : letter.mode === 'live' ? (
+                  <span className={styles.letterLiveTag}>
+                    {' · '}
+                    {isAuth ? 'Yours' : 'Yours (sign in)'}
+                  </span>
+                ) : null}
               </span>
             </div>
             <div className={styles.letterBody}>
+              {isSample ? (
+                <p className={styles.letterSign} style={{ marginBottom: 12, color: '#5a6478' }}>
+                  This is a demo letter for new visitors.{' '}
+                  <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>
+                    Sign in
+                  </Link>{' '}
+                  to see your own after you upload statements.
+                </p>
+              ) : !isAuth && letter.mode === 'empty' ? (
+                <p className={styles.letterSign} style={{ marginBottom: 12, color: '#5a6478' }}>
+                  <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>
+                    Sign in
+                  </Link>{' '}
+                  to view your saved letter — the Sarah demo is hidden once you have uploaded.
+                </p>
+              ) : null}
+              {error && isAuth ? (
+                <p className={styles.letterSign} style={{ color: '#a32d2d', marginBottom: 12 }}>
+                  {error} Sign in and ensure the backend API URL is configured in production.
+                </p>
+              ) : null}
               <p className={styles.letterGreeting}>Hi {letter.firstName},</p>
               <p className={styles.letterPara}>{letter.periodIntro}</p>
               <div className={styles.statGrid}>
@@ -149,18 +224,33 @@ export default function AtLetterSection() {
               <div className={styles.letterFooter}>
                 <span>{letter.footerMeta}</span>
                 <div className={styles.letterFooterBtns}>
-                  {letter.mode === 'live' && letter.statementId && letter.hasPdf ? (
+                  {canDownloadPdf ? (
                     <button type="button" onClick={downloadPdf} disabled={pdfBusy}>
                       {pdfBusy ? 'Downloading…' : 'Download PDF'}
                     </button>
+                  ) : needsSignInForPdf ? (
+                    <button
+                      type="button"
+                      onClick={downloadPdf}
+                      disabled={pdfBusy}
+                      title="Sign in — your PDF will download automatically after"
+                    >
+                      {pdfBusy ? 'Downloading…' : 'Sign in to download PDF'}
+                    </button>
                   ) : (
-                    <button type="button" disabled>
+                    <button type="button" disabled title="Upload and analyze to generate a PDF">
                       Download PDF
                     </button>
                   )}
-                  <button type="button" disabled title="Coming soon">
-                    Forward
-                  </button>
+                  {canForward ? (
+                    <button type="button" onClick={forwardLetter} title="Open your email app with this letter">
+                      Forward
+                    </button>
+                  ) : (
+                    <button type="button" disabled title="Available after your first upload">
+                      Forward
+                    </button>
+                  )}
                 </div>
               </div>
               {pdfError ? (
