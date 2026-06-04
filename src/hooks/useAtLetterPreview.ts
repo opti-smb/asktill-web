@@ -110,7 +110,7 @@ export function useAtLetterPreview(): {
         setLatestSummary(latest);
         setStatementId(latest.statement_id);
         setHasPdf(Boolean(latest.has_pdf));
-        if (user?.userId) {
+        if (user?.userId && analysis) {
           const preview = buildAtLetterPreview({ analysis }, user, {
             statementId: latest.statement_id,
             hasPdf: Boolean(latest.has_pdf),
