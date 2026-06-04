@@ -1,4 +1,4 @@
-import type { AuthUser } from './api';
+import type { AuthUser, SavedReportSummaryApi } from './api';
 import type { AnalyzeResult, StandardInsight, UiAnalysisView } from './analyzeResponse';
 
 export type AtLetterMode = 'sample' | 'live' | 'empty';
@@ -100,6 +100,37 @@ function hasLetterData(analysis: UiAnalysisView | null | undefined): boolean {
   return false;
 }
 
+export function buildAtLetterFromSummary(
+  summary: SavedReportSummaryApi,
+  user: AuthUser | null | undefined,
+): AtLetterPreview {
+  const firstName = firstNameFromUser(user);
+  const periodName = periodMonthName(summary.period_label);
+  const business = summary.business_name?.trim() || user?.businessName?.trim();
+  const now = new Date();
+  return {
+    mode: 'live',
+    firstName,
+    letterDateLabel: `${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · AT Letter`,
+    periodIntro: `Here's your ${periodName} in plain English.`,
+    broughtIn: fmtUsd(summary.total_gross),
+    spent: '—',
+    kept: fmtUsd(summary.net_to_bank),
+    summary: `Your latest saved report for ${periodName}. Open the dashboard for full cash flow and reconciliation detail.`,
+    watchTitle: 'One thing to watch',
+    watchText:
+      summary.difference != null && Math.abs(summary.difference) > 0.01
+        ? `Reconciliation gap of ${fmtUsd(summary.difference)} — review matched payouts in your dashboard.`
+        : 'No major reconciliation gaps flagged on your latest report.',
+    actionTitle: 'Your next step',
+    actionText: 'View the full analysis for channel breakdown, fees, and flagged transactions.',
+    closingLine: 'Your numbers are saved — pick up where you left off.',
+    footerMeta: [summary.period_label ?? periodName, business].filter(Boolean).join(' · ') || 'Your business',
+    statementId: summary.statement_id,
+    hasPdf: Boolean(summary.has_pdf),
+  };
+}
+
 export function buildAtLetterPreview(
   result: AnalyzeResult | null | undefined,
   user: AuthUser | null | undefined,
@@ -161,8 +192,36 @@ export function buildAtLetterPreview(
       'Review your dashboard for channel breakdown and reconciliation details.',
     closingLine: cf?.hero_delta?.includes('↑') ? "You're on track. Keep going." : 'Review the numbers when you have a minute.',
     footerMeta,
-    statementId: meta?.statementId,
-    hasPdf: meta?.hasPdf,
+    statementId: meta?.statementId ?? result?.statement_id ?? undefined,
+    hasPdf:
+      meta?.hasPdf ??
+      Boolean(
+        meta?.statementId ??
+          result?.statement_id ??
+          (result?.report?.channels?.length ?? 0) > 0,
+      ),
+  };
+}
+
+/** Shown when logged out but this browser already saved a real letter after upload. */
+export function buildLoggedOutSavedLetterPreview(): AtLetterPreview {
+  return {
+    mode: 'empty',
+    firstName: 'there',
+    letterDateLabel: `${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · AT Letter`,
+    periodIntro: 'Your letter is saved to your account.',
+    broughtIn: '—',
+    spent: '—',
+    kept: '—',
+    summary:
+      'You uploaded statements while signed in. Sign in again to see your personalized numbers — not the Sarah demo.',
+    watchTitle: 'Why you see this',
+    watchText:
+      'We only show the demo letter to visitors who have never uploaded. Your reports are stored securely under your account.',
+    actionTitle: 'View your letter',
+    actionText: 'Sign in with the same account you used to upload. Your latest saved report loads automatically.',
+    closingLine: 'Your data is waiting.',
+    footerMeta: 'Sign in to continue',
   };
 }
 
@@ -179,8 +238,39 @@ export function buildEmptyAtLetterPreview(user: AuthUser | null | undefined): At
     watchTitle: 'What you will get',
     watchText: 'Cash flow, risk signals, and trends in about 30 seconds — with one thing to act on.',
     actionTitle: 'Get started',
-    actionText: 'Your file is analyzed in memory and never stored on our servers unless you save the report.',
+    actionText: 'Upload and analyze your statements — we save each report to your account history.',
     closingLine: 'We will write this letter for you.',
     footerMeta: user?.businessName?.trim() || 'Your business',
   };
+}
+
+/** Plain-text body for mailto forward of the AT Letter. */
+export function atLetterMailtoBody(letter: AtLetterPreview): string {
+  const lines = [
+    'Hi,',
+    '',
+    letter.periodIntro,
+    '',
+    `Brought in: ${letter.broughtIn}`,
+    `Spent: ${letter.spent}`,
+    `Kept: ${letter.kept}`,
+    '',
+    letter.summaryEmphasis ? `${letter.summaryEmphasis} ${letter.summary}` : letter.summary,
+    '',
+    `${letter.watchTitle}: ${letter.watchText}`,
+    '',
+    `${letter.actionTitle}: ${letter.actionText}`,
+    '',
+    letter.closingLine,
+    '',
+    '— AskTill',
+    letter.footerMeta,
+  ];
+  return lines.join('\n');
+}
+
+export function atLetterMailtoUrl(letter: AtLetterPreview): string {
+  const subject = encodeURIComponent(`AskTill AT Letter — ${letter.footerMeta}`);
+  const body = encodeURIComponent(atLetterMailtoBody(letter));
+  return `mailto:?subject=${subject}&body=${body}`;
 }

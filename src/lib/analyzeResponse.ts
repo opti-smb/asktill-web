@@ -453,6 +453,7 @@ export interface AnalyzeResult {
   analysis?: UiAnalysisView;
   report?: AnalyzeReport;
   documents?: ParsedDocumentApi[];
+  statement_id?: string | null;
 }
 
 export const REPORT_TOTAL_FIELDS = [

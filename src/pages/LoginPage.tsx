@@ -80,9 +80,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (ready && isAuth) {
-      navigate('/onboarding', { replace: true });
+      const state = location.state as { from?: string } | null;
+      const redirectTo = state?.from ?? '/onboarding';
+      navigate(redirectTo, { replace: true });
     }
-  }, [ready, isAuth, navigate]);
+  }, [ready, isAuth, navigate, location.state]);
 
   const [successMessage, setSuccessMessage] = useState('');
 
