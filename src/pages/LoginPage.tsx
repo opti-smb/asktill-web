@@ -14,7 +14,7 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 import { useAuth } from '../context/AuthContext';
 
-import { checkEmail, extractNotRegistered, getApiError, warmupServices } from '../lib/api';
+import { extractNotRegistered, getApiError, warmupAuthServiceReady } from '../lib/api';
 
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 
@@ -65,6 +65,7 @@ export default function LoginPage() {
   const emailValue = watch('email') ?? '';
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const [authWarming, setAuthWarming] = useState(false);
 
   const passwordRules = {
     required: 'Password is required',
@@ -75,7 +76,18 @@ export default function LoginPage() {
   } as const;
 
   useEffect(() => {
-    warmupServices();
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (!cancelled) setAuthWarming(true);
+    }, 2000);
+    void warmupAuthServiceReady().finally(() => {
+      window.clearTimeout(timer);
+      if (!cancelled) setAuthWarming(false);
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -138,26 +150,6 @@ export default function LoginPage() {
 
 
     try {
-
-      try {
-        const { data: emailCheck } = await checkEmail(email);
-
-        if (!emailCheck.registered) {
-          setServerError(
-            emailCheck.message ?? 'No account for this email. Please register first.',
-          );
-          setEmailHighlight(true);
-          focusEmailInput('login-email');
-          return;
-        }
-      } catch (checkErr) {
-        const status = (checkErr as { response?: { status?: number } })?.response?.status;
-        if (!status || status < 500) {
-          throw checkErr;
-        }
-        // Auth DB may be cold on Render — still attempt password login.
-      }
-
       await login(email, data.password);
 
       const redirectTo = (location.state as { from?: string } | null)?.from ?? '/onboarding';
@@ -374,6 +366,12 @@ export default function LoginPage() {
 
 
 
+            {authWarming ? (
+              <div className={styles.serverSuccess}>
+                Waking sign-in service… first visit after idle can take up to a minute on Render.
+              </div>
+            ) : null}
+
             {successMessage ? (
               <div className={styles.serverSuccess}>{successMessage}</div>
             ) : null}
@@ -411,7 +409,9 @@ export default function LoginPage() {
 
             >
 
-              {isSubmitting ? 'Signing in…' : 'Sign in →'}
+              {isSubmitting
+                ? 'Signing in… (may take up to a minute if servers were idle)'
+                : 'Sign in →'}
 
             </button>
 
