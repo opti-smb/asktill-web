@@ -1,52 +1,154 @@
 import { useEffect } from 'react';
+
 import { Link } from 'react-router-dom';
+
 import Logo from '../components/common/Logo';
+
 import { useAuth } from '../context/AuthContext';
+
+import TopBanner from '../components/landing/TopBanner';
+
 import HeroSection from '../components/landing/HeroSection';
-import SourcesStrip from '../components/landing/SourcesStrip';
-import ProblemSection from '../components/landing/ProblemSection';
+
 import HowItWorks from '../components/landing/HowItWorks';
+
+import AtLetterSection from '../components/landing/AtLetterSection';
+
+import RewardsSection from '../components/landing/RewardsSection';
+
+import PartnersSection from '../components/landing/PartnersSection';
+
+import PricingSection from '../components/landing/PricingSection';
+
+import LandingCta from '../components/landing/LandingCta';
+
+import LandingFooter from '../components/landing/LandingFooter';
+
 import { warmupServices } from '../lib/api';
+
+import v2 from '../components/landing/landingV2.module.css';
+
 import styles from './LandingPage.module.css';
 
+
+
 export default function LandingPage() {
+
   const { isAuth, ready } = useAuth();
 
+
+
   useEffect(() => {
+
     warmupServices();
+
   }, []);
 
-  return (
-    <div className={styles.page}>
-      <nav className={styles.nav}>
-        <div className="wrap">
-          <div className={styles.navInner}>
-            <Logo to={ready && isAuth ? '/dashboard/overview' : '/'} size={32} />
-            <div className={styles.navRight}>
-              {ready && isAuth ? (
-                <>
-                  <Link to="/onboarding" className={styles.navLogin}>
-                    Upload
-                  </Link>
-                  <Link to="/dashboard/overview" className={styles.navCta}>
-                    Dashboard
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className={styles.navLogin}>Sign in</Link>
-                  <Link to="/register" className={styles.navCta}>Sign up</Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
 
-      <HeroSection />
-      <SourcesStrip />
-      <ProblemSection />
-      <HowItWorks />
+
+  return (
+
+    <div className={styles.page}>
+
+      <TopBanner />
+
+
+
+      <header>
+
+        <div className="wrap">
+
+          <nav className={styles.nav}>
+
+            <Logo to={ready && isAuth ? '/dashboard/overview' : '/'} />
+
+            <div className={styles.navBtns}>
+
+              {ready && isAuth ? (
+
+                <>
+
+                  <Link to="/onboarding" className={v2.btnO}>
+
+                    Upload
+
+                  </Link>
+
+                  <Link to="/dashboard/overview" className={v2.btnP}>
+
+                    Dashboard
+
+                  </Link>
+
+                </>
+
+              ) : (
+
+                <>
+
+                  <button type="button" className={`${v2.btnO} ${styles.navHideMobile}`}>
+
+                    For business owners
+
+                  </button>
+
+                  <button type="button" className={`${v2.btnO} ${styles.navHideMobile}`}>
+
+                    For partners
+
+                  </button>
+
+                  <Link to="/register" className={v2.btnP}>
+
+                    Get started
+
+                  </Link>
+
+                </>
+
+              )}
+
+            </div>
+
+          </nav>
+
+        </div>
+
+      </header>
+
+
+
+      <main>
+
+        <HeroSection />
+
+        <div className="wrap">
+
+          <hr className={v2.div} />
+
+        </div>
+
+        <HowItWorks />
+
+        <AtLetterSection />
+
+        <RewardsSection />
+        <PartnersSection />
+        <div className="wrap">
+          <hr className={v2.div} />
+        </div>
+        <PricingSection />
+        <LandingCta />
+
+      </main>
+
+
+
+      <LandingFooter />
+
     </div>
+
   );
+
 }
+
