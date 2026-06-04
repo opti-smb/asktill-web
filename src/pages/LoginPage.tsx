@@ -65,7 +65,6 @@ export default function LoginPage() {
   const emailValue = watch('email') ?? '';
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
-  const [authWarming, setAuthWarming] = useState(false);
 
   const passwordRules = {
     required: 'Password is required',
@@ -76,18 +75,7 @@ export default function LoginPage() {
   } as const;
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      if (!cancelled) setAuthWarming(true);
-    }, 2000);
-    void warmupAuthServiceReady().finally(() => {
-      window.clearTimeout(timer);
-      if (!cancelled) setAuthWarming(false);
-    });
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+    void warmupAuthServiceReady();
   }, []);
 
   useEffect(() => {
@@ -366,12 +354,6 @@ export default function LoginPage() {
 
 
 
-            {authWarming ? (
-              <div className={styles.serverSuccess}>
-                Waking sign-in service… first visit after idle can take up to a minute on Render.
-              </div>
-            ) : null}
-
             {successMessage ? (
               <div className={styles.serverSuccess}>{successMessage}</div>
             ) : null}
@@ -409,9 +391,7 @@ export default function LoginPage() {
 
             >
 
-              {isSubmitting
-                ? 'Signing in… (may take up to a minute if servers were idle)'
-                : 'Sign in →'}
+              {isSubmitting ? 'Signing in…' : 'Sign in →'}
 
             </button>
 
