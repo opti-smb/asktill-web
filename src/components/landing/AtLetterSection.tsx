@@ -1,3 +1,11 @@
+import { useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAtLetterPreview } from '../../hooks/useAtLetterPreview';
+import {
+  downloadSavedReportPdf,
+  getApiErrorAsync,
+} from '../../lib/api';
+import { filenameFromDisposition, saveBlobDownload } from '../../lib/downloadReport';
 import styles from './landingV2.module.css';
 
 const CHECKS = [
@@ -20,6 +28,43 @@ const CHECKS = [
 ];
 
 export default function AtLetterSection() {
+  const { letter, loading } = useAtLetterPreview();
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const leftCta =
+    letter.mode === 'live' ? (
+      <Link to="/dashboard/overview" className={styles.btnP}>
+        View full analysis →
+      </Link>
+    ) : letter.mode === 'empty' ? (
+      <Link to="/onboarding" className={styles.btnP}>
+        Upload to get your letter →
+      </Link>
+    ) : (
+      <a href="#at-letter" className={styles.btnP}>
+        See a sample letter →
+      </a>
+    );
+
+  const downloadPdf = useCallback(async () => {
+    if (!letter.statementId) return;
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      const res = await downloadSavedReportPdf(letter.statementId);
+      const name = filenameFromDisposition(
+        res.headers['content-disposition'],
+        'asktill-letter.pdf',
+      );
+      saveBlobDownload(res.data, name);
+    } catch (err) {
+      setPdfError(await getApiErrorAsync(err, 'Could not download PDF.'));
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [letter.statementId]);
+
   return (
     <section className={styles.letterSection} id="at-letter">
       <div className="wrap">
@@ -44,9 +89,7 @@ export default function AtLetterSection() {
                 </div>
               ))}
             </div>
-            <a href="#at-letter" className={styles.btnP}>
-              See a sample letter →
-            </a>
+            {leftCta}
           </div>
 
           <div className={styles.letterCard}>
@@ -59,54 +102,72 @@ export default function AtLetterSection() {
                   ask<span>till</span>
                 </div>
               </div>
-              <span className={styles.letterDate}>May 2026 · AT Letter</span>
+              <span className={styles.letterDate}>
+                {loading ? 'Loading…' : letter.letterDateLabel}
+              </span>
             </div>
             <div className={styles.letterBody}>
-              <p className={styles.letterGreeting}>Hi Sarah,</p>
-              <p className={styles.letterPara}>Here&apos;s your April in plain English.</p>
+              <p className={styles.letterGreeting}>Hi {letter.firstName},</p>
+              <p className={styles.letterPara}>{letter.periodIntro}</p>
               <div className={styles.statGrid}>
                 <div className={styles.statBox}>
                   <div className={styles.statLbl}>Brought in</div>
-                  <div className={styles.statVal}>$28,400</div>
+                  <div className={styles.statVal}>{letter.broughtIn}</div>
                 </div>
                 <div className={styles.statBox}>
                   <div className={styles.statLbl}>Spent</div>
-                  <div className={styles.statVal}>$24,100</div>
+                  <div className={styles.statVal}>{letter.spent}</div>
                 </div>
                 <div className={styles.statBox}>
                   <div className={styles.statLbl}>Kept</div>
-                  <div className={styles.statVal}>$4,300</div>
+                  <div className={styles.statVal}>{letter.kept}</div>
                 </div>
               </div>
               <p className={styles.letterPara}>
-                That&apos;s your <strong style={{ fontWeight: 600 }}>best month in 6 months.</strong>{' '}
-                Revenue up 11% and operating costs stayed flat — that&apos;s exactly what healthy
-                growth looks like.
+                {letter.summaryEmphasis ? (
+                  <>
+                    That&apos;s your{' '}
+                    <strong style={{ fontWeight: 600 }}>{letter.summaryEmphasis}</strong>{' '}
+                    {letter.summary}
+                  </>
+                ) : (
+                  letter.summary
+                )}
               </p>
               <div className={styles.calloutRed}>
-                <div className={styles.calloutRedTitle}>One thing to watch</div>
-                <p>
-                  Card processing fees up $340 this month. Call your processor — you may be on an
-                  old rate plan.
-                </p>
+                <div className={styles.calloutRedTitle}>{letter.watchTitle}</div>
+                <p>{letter.watchText}</p>
               </div>
               <div className={styles.calloutBlue}>
-                <div className={styles.calloutBlueTitle}>This month&apos;s one action</div>
-                <p>
-                  3 unused subscriptions = $290/mo. Cancel them → $3,480/yr back in your pocket.
-                </p>
+                <div className={styles.calloutBlueTitle}>{letter.actionTitle}</div>
+                <p>{letter.actionText}</p>
               </div>
               <p className={styles.letterPara} style={{ marginBottom: 3 }}>
-                You&apos;re on track. Keep going.
+                {letter.closingLine}
               </p>
               <p className={styles.letterSign}>— Asktill</p>
               <div className={styles.letterFooter}>
-                <span>April 2026 · Bakery &amp; Café, Austin TX</span>
+                <span>{letter.footerMeta}</span>
                 <div className={styles.letterFooterBtns}>
-                  <button type="button">Download PDF</button>
-                  <button type="button">Forward</button>
+                  {letter.mode === 'live' && letter.statementId && letter.hasPdf ? (
+                    <button type="button" onClick={downloadPdf} disabled={pdfBusy}>
+                      {pdfBusy ? 'Downloading…' : 'Download PDF'}
+                    </button>
+                  ) : (
+                    <button type="button" disabled>
+                      Download PDF
+                    </button>
+                  )}
+                  <button type="button" disabled title="Coming soon">
+                    Forward
+                  </button>
                 </div>
               </div>
+              {pdfError ? (
+                <p className={styles.letterSign} style={{ color: '#a32d2d', marginTop: 8 }}>
+                  {pdfError}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
