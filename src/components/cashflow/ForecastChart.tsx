@@ -8,8 +8,9 @@ interface ForecastChartProps {
 export default function ForecastChart({ cashFlow }: ForecastChartProps) {
   const period = cashFlow?.period_label ?? 'Today';
   const hasLiveData = Boolean(cashFlow);
+  const useSample = false;
   const forecast = cashFlow?.forecast_chart;
-  const cashOnHand = hasLiveData ? (cashFlow?.cash_on_hand_usd ?? '—') : '$27,341';
+  const cashOnHand = hasLiveData ? (cashFlow?.cash_on_hand_usd ?? '—') : useSample ? '$27,341' : '—';
 
   return (
     <div className={styles.heroCard}>
@@ -32,11 +33,13 @@ export default function ForecastChart({ cashFlow }: ForecastChartProps) {
                 {cashFlow?.hero_meta_label ?? 'Closing balance on bank statement'}
               </span>
             )
-          ) : (
+          ) : useSample ? (
             <>
               <span className={`${styles.pill} ${styles.up}`}>▲ $3,205</span>
               <span className={styles.heroMetaText}>vs Feb close</span>
             </>
+          ) : (
+            <span className={styles.heroMetaText}>Run analyze after upload</span>
           )}
         </div>
         <div className={styles.hero3mo}>
@@ -77,12 +80,12 @@ export default function ForecastChart({ cashFlow }: ForecastChartProps) {
                 <span>{cashFlow.hero_trend_footnote}</span>
               )}
             </>
-          ) : (
+          ) : useSample ? (
             <>
               3-mo avg <strong>$23,950</strong> · trending{' '}
               <span className={styles.pos}>+14% above norm</span>
             </>
-          )}
+          ) : null}
         </div>
       </div>
 

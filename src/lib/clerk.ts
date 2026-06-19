@@ -70,9 +70,11 @@ function isClerkOAuthFlowPath(pathname: string) {
   return CLERK_OAUTH_FLOW_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-/** Paths where Clerk must not be cleared mid-flow (OAuth redirects, register OTP). */
+/** Paths where Clerk must not be cleared mid-flow (OAuth redirects, register OTP, sign-in). */
 export function shouldRetainClerkSession(pathname: string) {
   return (
+    pathname === '/login' ||
+    pathname.startsWith('/login/') ||
     pathname === '/register' ||
     pathname.startsWith('/register/') ||
     pathname === '/forgot-password' ||

@@ -24,7 +24,10 @@ import {
   type AuthUser,
   warmupServices,
 } from '../lib/api';
+import { clearUserAtLetterState } from '../lib/atLetterCache';
+import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
+import { SESSION_TTL_MS } from '../lib/session';
 
 interface AuthContextValue {
   token: string | null;
@@ -60,7 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const expiry = getTokenExpiryMs(accessToken);
-      if (expiry == null) return;
+      if (expiry == null) {
+        expiryTimerRef.current = window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        }, SESSION_TTL_MS);
+        return;
+      }
       const delay = expiry - Date.now();
       if (delay <= 0) {
         window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
@@ -78,14 +86,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearSession = useCallback(async () => {
-    const hadToken = Boolean(getToken());
+    const stored = getToken();
+    const hadToken = Boolean(stored);
+    const logoutUserId = user?.userId || (stored ? getTokenSubject(stored) : null);
+    if (logoutUserId) {
+      clearUserAtLetterState(logoutUserId);
+    }
     clearAppSession();
     setTok(null);
     setUser(null);
+    window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
     if (hadToken) {
       await logoutApi();
     }
-  }, []);
+  }, [user?.userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     warmupServices();
+    window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
   }, [scheduleSessionExpiry]);
 
   const establishSessionFromResponse = useCallback(

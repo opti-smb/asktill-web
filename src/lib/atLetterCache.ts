@@ -78,3 +78,22 @@ export function clearAtLetterCache(userId?: string): void {
     /* ignore */
   }
 }
+
+/** Drop the "has saved letter" flag when history is empty or user logs out. */
+export function clearSavedLetterHint(userId?: string): void {
+  try {
+    const current = localStorage.getItem(HAS_LETTER_KEY)?.trim();
+    if (!userId?.trim() || current === userId.trim()) {
+      localStorage.removeItem(HAS_LETTER_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Clear cached letter card + saved hint (e.g. after DB wipe or empty report history). */
+export function clearUserAtLetterState(userId: string): void {
+  clearAtLetterCache(userId);
+  clearSavedLetterHint(userId);
+  window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+}

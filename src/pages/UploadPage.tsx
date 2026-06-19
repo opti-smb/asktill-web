@@ -138,6 +138,7 @@ export default function UploadPage() {
     clearUploadMismatch,
     clearStatementDuplicate,
     loadSavedReport,
+    clearResult,
   } = useAnalysis();
   const [showPreviousReports, setShowPreviousReports] = useState(false);
   const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
@@ -240,13 +241,14 @@ export default function UploadPage() {
   useEffect(() => {
     clearUploadMismatch();
     clearStatementDuplicate();
+    clearResult();
     if (uploadedCount > 0) setUploadPrompt(null);
     setPinnedSlotWarnings((prev) => ({
       bank: prev.bank?.fileKey === bankKey ? prev.bank : null,
       pos: prev.pos?.fileKey === posKey ? prev.pos : null,
       ecommerce: prev.ecommerce?.fileKey === ecommerceKey ? prev.ecommerce : null,
     }));
-  }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate]);
+  }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate, clearResult]);
 
   const anySlotChecking = slotChecking.bank || slotChecking.pos || slotChecking.ecommerce;
 
@@ -309,7 +311,7 @@ export default function UploadPage() {
           }
         }
       })();
-    }, 150);
+    }, 50);
 
     return () => {
       cancelled = true;

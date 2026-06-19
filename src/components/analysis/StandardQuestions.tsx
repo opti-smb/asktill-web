@@ -4,6 +4,7 @@ import styles from './StandardQuestions.module.css';
 
 interface StandardQuestionsProps {
   insights?: StandardInsight[];
+  hasLiveAnalysis?: boolean;
 }
 
 type CardView = {
@@ -116,9 +117,9 @@ function cardsFromInsights(insights: StandardInsight[]): CardView[] {
   return ordered;
 }
 
-export default function StandardQuestions({ insights }: StandardQuestionsProps) {
-  const useMock = !insights?.length;
-  const cards = useMock ? MOCK_CARDS : cardsFromInsights(insights);
+export default function StandardQuestions({ insights, hasLiveAnalysis = false }: StandardQuestionsProps) {
+  const useMock = !hasLiveAnalysis && !insights?.length;
+  const cards = useMock ? MOCK_CARDS : cardsFromInsights(insights ?? []);
 
   return (
     <div className={styles.standardGrid}>

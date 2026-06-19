@@ -116,7 +116,16 @@ export interface ReconciliationDeepDiveApi {
   unmatched_bank_count?: number;
 }
 
+export interface ChannelDetailApi {
+  gross_sales?: number | null;
+  net_to_bank?: number | null;
+  deposited_to_bank?: number | null;
+  charges?: number | null;
+}
+
 export interface ReconciliationBreakdown {
+  pos?: ChannelDetailApi | null;
+  ecommerce?: ChannelDetailApi | null;
   total_expected_payouts?: number | null;
   total_expected_payouts_usd?: string;
   total_bank_credits?: number | null;
@@ -388,6 +397,8 @@ export interface ReconciliationUiApi {
   flagged_filter_count: number;
   pending_filter_count: number;
   cash_filter_count?: number;
+  prior_month_count?: number;
+  prior_month_total_usd?: string | null;
 }
 
 export interface WeekChannelSummaryApi {

@@ -3,10 +3,11 @@ import KPICard from '../components/common/KPICard';
 import StandardQuestions from '../components/analysis/StandardQuestions';
 import ProcessorCard from '../components/analysis/ProcessorCard';
 import QuestionPicker from '../components/analysis/QuestionPicker';
+import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useAnalysis } from '../context/AnalysisContext';
+import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
 import { mapApiKpisToUi, mapApiProcessors } from '../lib/formatAnalysis';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
-import { kpis as mockKpis } from '../data/kpis';
 import styles from './AnalysisPage.module.css';
 
 function PosIcon() {
@@ -28,64 +29,22 @@ function EcommIcon() {
   );
 }
 
-function MockProcessorGrid() {
-  return (
-    <div className={styles.processorGrid}>
-      <ProcessorCard
-        iconType="pos"
-        icon={<PosIcon />}
-        title="Square POS"
-        subtitle="$45,820 processed · 1,847 transactions"
-        stat1Label="Avg commission"
-        stat1Value="2.72%"
-        stat1Range="Min 2.4% · Max 3.5%"
-        stat1Delta="▲ 0.08% vs Feb"
-        stat1DeltaType="up-bad"
-        stat2Label="Avg days to pay"
-        stat2Value="1.2 days"
-        stat2Range="Min 1 day · Max 3 days"
-        stat2Delta="— same as Feb"
-        stat2DeltaType="flat"
-        compRows={[
-          { label: 'This mo', width: '87%', fill: 'var(--brand)', value: '2.72%' },
-          { label: 'Feb', width: '84%', fill: 'var(--rule)', value: '2.64%' },
-          { label: '3mo avg', width: '82%', fill: '#94A3B8', value: '2.59%' },
-          { label: 'Peers', width: '77%', fill: 'var(--pos-soft)', value: '2.41%', valueColor: 'var(--pos)' },
-        ]}
-      />
-      <ProcessorCard
-        iconType="ecomm"
-        icon={<EcommIcon />}
-        title="Stripe (Shopify)"
-        subtitle="$12,414 processed · 172 orders"
-        stat1Label="Avg commission"
-        stat1Value="3.18%"
-        stat1Range="Min 2.9% · Max 3.6%"
-        stat1Delta="▼ 0.04% vs Feb"
-        stat1DeltaType="down-good"
-        stat2Label="Avg days to pay"
-        stat2Value="2.3 days"
-        stat2Range="Min 2 days · Max 5 days"
-        stat2Delta="▼ 0.4 days vs Feb"
-        stat2DeltaType="down-good"
-        compRows={[
-          { label: 'This mo', width: '80%', fill: 'var(--orange)', value: '3.18%' },
-          { label: 'Feb', width: '81%', fill: 'var(--rule)', value: '3.22%' },
-          { label: '3mo avg', width: '80%', fill: '#94A3B8', value: '3.19%' },
-          { label: 'Peers', width: '75%', fill: 'var(--pos-soft)', value: '2.98%', valueColor: 'var(--pos)' },
-        ]}
-      />
-    </div>
-  );
-}
-
 export default function AnalysisPage() {
   const { result } = useAnalysis();
+  const { historyReady } = useReportSync();
+  const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   const analysis = getAnalyzeAnalysis(result);
   const apiKpis = mapApiKpisToUi(analysis?.kpis);
-  const kpisToShow = apiKpis.length > 0 ? apiKpis : mockKpis;
   const processors = mapApiProcessors(analysis?.processors);
   const insights = analysis?.standard_insights;
+
+  if (!hasLiveAnalysis) {
+    return (
+      <div className={styles.main}>
+        <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.emptyHint} />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -105,7 +64,7 @@ export default function AnalysisPage() {
       <div className={styles.main}>
         <div className="wrap">
           <div className={styles.kpiBand}>
-            {kpisToShow.map((kpi) => (
+            {apiKpis.map((kpi) => (
               <KPICard key={kpi.label} kpi={kpi} />
             ))}
           </div>
@@ -116,7 +75,7 @@ export default function AnalysisPage() {
             </div>
             <div className={styles.sectionSub}>Always shown · updated daily</div>
           </div>
-          <StandardQuestions insights={insights} />
+          <StandardQuestions insights={insights} hasLiveAnalysis={hasLiveAnalysis} />
 
           <div className={styles.sectionHead}>
             <div className={styles.sectionH}>
@@ -148,9 +107,7 @@ export default function AnalysisPage() {
                 />
               ))}
             </div>
-          ) : (
-            <MockProcessorGrid />
-          )}
+          ) : null}
 
           <div className={styles.sectionHead}>
             <div className={styles.sectionH}>

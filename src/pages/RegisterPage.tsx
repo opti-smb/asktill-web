@@ -7,8 +7,13 @@ import OtpInput, { type OtpInputStatus } from '../components/auth/OtpInput';
 import ClerkCaptcha, { prepareClerkCaptcha } from '../components/auth/ClerkCaptcha';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
-import { checkEmail, clerkCleanupUnregistered, extractAccessToken, getApiError, register as registerUser, warmupServices } from '../lib/api';
-import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
+import { checkEmail, clerkCleanupUnregistered, getApiError, register as registerUser, warmupServices } from '../lib/api';
+import { validatePassword } from '../lib/passwordPolicy';
+import {
+  clearRegisterDraft,
+  loadRegisterDraft,
+  saveRegisterDraft,
+} from '../lib/registerDraft';
 import {
   clearClerkSession,
   clerkErrorMessage,
@@ -103,7 +108,7 @@ async function satisfyClerkPassword(
 function RegisterClerkFlow() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, establishSessionFromResponse } = useAuth();
+  const { login, isAuth, ready } = useAuth();
   const clerk = useClerk();
   const { isLoaded, signUp } = useSignUp();
   const { user: clerkUser, isLoaded: clerkUserLoaded } = useUser();
@@ -126,10 +131,39 @@ function RegisterClerkFlow() {
   const lastOtpAttemptRef = useRef('');
   const otpSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleCleanupDoneRef = useRef(false);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     warmupServices();
   }, []);
+
+  useEffect(() => {
+    if (ready && isAuth) {
+      clearRegisterDraft();
+      navigate('/onboarding', { replace: true });
+    }
+  }, [ready, isAuth, navigate]);
+
+  useEffect(() => {
+    const draft = loadRegisterDraft();
+    if (!draft) return;
+    setEmail((current) => current || draft.email);
+    setStep(draft.step);
+    setEmailVerified(draft.emailVerified);
+    setFullName((current) => current || draft.fullName);
+    setCompanyName((current) => current || draft.companyName);
+  }, []);
+
+  useEffect(() => {
+    if (!email.trim()) return;
+    saveRegisterDraft({
+      email: normalizeEmail(email),
+      step,
+      emailVerified,
+      fullName,
+      companyName,
+    });
+  }, [email, step, emailVerified, fullName, companyName]);
 
   useEffect(() => {
     return () => {
@@ -385,6 +419,28 @@ function RegisterClerkFlow() {
     otpFeedback === 'success' ? 'success' : otpFeedback === 'error' ? 'error' : 'default';
 
   useEffect(() => {
+    if (step !== 2) return undefined;
+
+    const syncPasswordFromDom = () => {
+      const el = passwordInputRef.current;
+      if (!el?.value) return;
+      setPassword((prev) => (prev === el.value ? prev : el.value));
+    };
+
+    syncPasswordFromDom();
+    const timers = [0, 100, 300, 600].map((delay) =>
+      window.setTimeout(syncPasswordFromDom, delay),
+    );
+    const el = passwordInputRef.current;
+    el?.addEventListener('change', syncPasswordFromDom);
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      el?.removeEventListener('change', syncPasswordFromDom);
+    };
+  }, [step, fullName, companyName, email]);
+
+  useEffect(() => {
     if (step !== 1 || loading || !isLoaded || !signUp) return;
     const otp = code.replace(/\D/g, '');
     if (otp.length !== 6) return;
@@ -413,20 +469,16 @@ function RegisterClerkFlow() {
     setLoading(true);
     setCreateStep('registering');
     try {
-      const { data } = await registerUser({
+      await registerUser({
         email: addr,
         password,
         businessName: companyName.trim(),
         fullName: fullName.trim(),
         country: 'US',
       });
-      const token = extractAccessToken(data);
-      if (token) {
-        establishSessionFromResponse(data, addr);
-      } else {
-        setCreateStep('signing-in');
-        await login(addr, password);
-      }
+      setCreateStep('signing-in');
+      await login(addr, password);
+      clearRegisterDraft();
       navigate('/onboarding');
       void clearClerkSession(clerk);
     } catch (err) {
@@ -454,14 +506,17 @@ function RegisterClerkFlow() {
         ? 'Signing you in…'
         : 'Create account →';
 
+  const passwordContext = {
+    email: email.trim().toLowerCase(),
+    businessName: companyName.trim(),
+    fullName: fullName.trim(),
+  };
+  const passwordValidationError = password ? validatePassword(password, passwordContext) : null;
+
   const detailsFormComplete =
     fullName.trim().length > 0 &&
     companyName.trim().length > 0 &&
-    validatePassword(password, {
-      email: email.trim().toLowerCase(),
-      businessName: companyName.trim(),
-      fullName: fullName.trim(),
-    }) === null;
+    passwordValidationError === null;
 
   return (
     <>
@@ -651,12 +706,19 @@ function RegisterClerkFlow() {
               <input
                 id="register-password"
                 name="register-password"
+                ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
                 className={styles.input}
                 placeholder="Strong password required"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
+                  if (fieldErrors.password) {
+                    setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                  }
+                }}
+                onInput={(e) => {
+                  setPassword(e.currentTarget.value);
                   if (fieldErrors.password) {
                     setFieldErrors((prev) => ({ ...prev, password: undefined }));
                   }
@@ -675,11 +737,11 @@ function RegisterClerkFlow() {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
-            {fieldErrors.password ? (
-              <span className={styles.error}>{fieldErrors.password}</span>
-            ) : (
-              <span className={styles.info}>{PASSWORD_HINT}</span>
-            )}
+            {fieldErrors.password || passwordValidationError ? (
+              <span className={styles.error}>
+                {fieldErrors.password ?? passwordValidationError}
+              </span>
+            ) : null}
           </div>
 
           {error ? <div className={styles.error}>{error}</div> : null}

@@ -1,13 +1,14 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  downloadSavedReportPdf,
+  downloadAtLetterPdf,
   fetchReportHistory,
   fetchSavedReport,
   getApiError,
   getApiErrorAsync,
   type SavedReportSummaryApi,
 } from '../../lib/api';
+import { pickPrimarySavedReport } from '../../lib/atLetterStatement';
 import { filenameFromDisposition, saveBlobDownload } from '../../lib/downloadReport';
 import type { AnalyzeResult } from '../../lib/analyzeResponse';
 import postmanStyles from './PostmanPanels.module.css';
@@ -91,20 +92,27 @@ export default function PreviousReportsPanel({
     }
   }, [navigate, onLoadReport]);
 
-  const downloadPdf = useCallback(async (row: SavedReportSummaryApi) => {
-    setBusyId(row.statement_id);
+  const latestReport = useMemo(() => pickPrimarySavedReport(reports), [reports]);
+
+  const downloadLatestAtLetter = useCallback(async () => {
+    const latest = latestReport;
+    if (!latest?.statement_id) return;
+    setBusyId(latest.statement_id);
     setActionError(null);
     try {
-      const { data, headers } = await downloadSavedReportPdf(row.statement_id);
-      const label = row.period_label?.replace(/\s+/g, '_') ?? 'Report';
-      const filename = filenameFromDisposition(headers['content-disposition'] as string | undefined, `${label}_Reconciliation.pdf`);
+      const { data, headers } = await downloadAtLetterPdf(latest.statement_id);
+      const label = latest.period_label?.replace(/\s+/g, '_') ?? 'AT_Letter';
+      const filename = filenameFromDisposition(
+        headers['content-disposition'] as string | undefined,
+        `${label}_AT_Letter.pdf`,
+      );
       saveBlobDownload(data, filename);
     } catch (err) {
-      setActionError(await getApiErrorAsync(err, 'Could not download PDF.'));
+      setActionError(await getApiErrorAsync(err, 'Could not download AT Letter.'));
     } finally {
       setBusyId(null);
     }
-  }, []);
+  }, [latestReport]);
 
   if (!active) return null;
   if (loading) {
@@ -145,7 +153,20 @@ export default function PreviousReportsPanel({
       {variant === 'default' && (
         <div className={postmanStyles.head}>
           <h2 className={postmanStyles.title}>Previous reports</h2>
-          <p className={postmanStyles.sub}>Open dashboard or download PDF for prior months.</p>
+          <p className={postmanStyles.sub}>
+            Open a saved month on the dashboard. The AT Letter rolls up your latest 1–3 uploads — not one letter per old month.
+          </p>
+          {latestReport?.statement_id && latestReport.has_pdf !== false ? (
+            <button
+              type="button"
+              className={postmanStyles.linkBtn}
+              disabled={busyId === latestReport.statement_id}
+              onClick={() => void downloadLatestAtLetter()}
+              style={{ marginTop: 8 }}
+            >
+              Download latest AT Letter
+            </button>
+          ) : null}
         </div>
       )}
       <div className={postmanStyles.tableWrap}>
@@ -163,7 +184,6 @@ export default function PreviousReportsPanel({
                 <td>{fmtDate(row.uploaded_at)}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <button type="button" className={postmanStyles.linkBtn} disabled={busyId === row.statement_id} onClick={() => void openReport(row)}>Open</button>
-                  {row.has_pdf !== false && (<>{' · '}<button type="button" className={postmanStyles.linkBtn} disabled={busyId === row.statement_id} onClick={() => void downloadPdf(row)}>PDF</button></>)}
                 </td>
               </tr>
             ))}
