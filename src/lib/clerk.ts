@@ -219,7 +219,9 @@ type SignInOAuth = {
 export async function startGoogleOAuth(signIn: SignInOAuth, clerk: ClerkClient) {
   const { redirectUrl, redirectUrlComplete } = clerkOAuthUrls();
 
-  await clearClerkSession(clerk);
+  if (clerk.session?.id) {
+    await clearClerkSession(clerk);
+  }
 
   await signIn.create({
     strategy: 'oauth_google',

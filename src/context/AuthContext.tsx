@@ -15,7 +15,7 @@ import {
   fetchCurrentUser,
   getToken,
   login as apiLogin,
-  clerkLogin,
+  clerkLoginWithRetry,
   logoutApi,
   normalizeUser,
   resetUserScopedState,
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithClerkSession = useCallback(
     async (sessionId: string) => {
       resetUserScopedState();
-      const { data } = await clerkLogin(sessionId);
+      const { data } = await clerkLoginWithRetry(sessionId);
       applyAuthResponse(data);
     },
     [applyAuthResponse],

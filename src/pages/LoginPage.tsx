@@ -14,7 +14,7 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 import { useAuth } from '../context/AuthContext';
 
-import { extractNotRegistered, getApiError, warmupAuthServiceReady } from '../lib/api';
+import { extractNotRegistered, getApiError, warmupServices } from '../lib/api';
 
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
   } as const;
 
   useEffect(() => {
-    void warmupAuthServiceReady();
+    warmupServices();
   }, []);
 
   useEffect(() => {
