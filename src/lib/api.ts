@@ -496,31 +496,63 @@ export const validateUploads = (files: UploadFiles) => {
 
 /** Wake Render services before login or upload (no-op when already warm). */
 export function warmupBackend() {
-  void mainApi.get('/api/health', { timeout: 90_000 }).catch(() => {});
+  void mainApi.get('/api/health', { timeout: 15_000 }).catch(() => {});
 }
 
 export function warmupAuthService() {
-  void authApi.get('/health', { timeout: 90_000 }).catch(() => {});
+  void authApi.get('/health', { timeout: 15_000 }).catch(() => {});
 }
 
-/** Resolve when auth service responds (wakes Render cold starts). */
-export async function warmupAuthServiceReady(timeoutMs = 90_000): Promise<boolean> {
-  try {
-    await authApi.get('/health', { timeout: timeoutMs });
-    return true;
-  } catch {
-    return false;
-  }
+const AUTH_WARM_TTL_MS = 3 * 60 * 1000;
+let authWarmUntil = 0;
+let authWarmupInFlight: Promise<boolean> | null = null;
+
+export function isAuthServiceWarm(): boolean {
+  return Date.now() < authWarmUntil;
+}
+
+function markAuthServiceWarm() {
+  authWarmUntil = Date.now() + AUTH_WARM_TTL_MS;
+}
+
+/** Probe auth health; cache success so repeat sign-ins skip cold-start waits. */
+export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<boolean> {
+  if (isAuthServiceWarm()) return true;
+  if (authWarmupInFlight) return authWarmupInFlight;
+
+  authWarmupInFlight = (async () => {
+    try {
+      await authApi.get('/health', { timeout: probeTimeoutMs });
+      markAuthServiceWarm();
+      return true;
+    } catch {
+      void authApi
+        .get('/health', { timeout: 60_000 })
+        .then(() => markAuthServiceWarm())
+        .catch(() => {});
+      return false;
+    } finally {
+      authWarmupInFlight = null;
+    }
+  })();
+
+  return authWarmupInFlight;
+}
+
+/** @deprecated Prefer ensureAuthServiceReady */
+export async function warmupAuthServiceReady(timeoutMs = 4_000): Promise<boolean> {
+  return ensureAuthServiceReady(timeoutMs);
 }
 
 export function warmupRegistrationService() {
-  void registerApi.get('/health', { timeout: 90_000 }).catch(() => {});
+  void registerApi.get('/health', { timeout: 15_000 }).catch(() => {});
 }
 
 export function warmupServices() {
   warmupBackend();
   warmupAuthService();
   warmupRegistrationService();
+  void ensureAuthServiceReady(4_000);
 }
 
 const attachBearer = (cfg: InternalAxiosRequestConfig) => {
@@ -563,7 +595,41 @@ export const login = (email: string, password: string) =>
   authApi.post('/api/auth/login', { email, password });
 
 export const clerkLogin = (sessionId: string) =>
-  authApi.post('/api/auth/clerk-login', { sessionId }, { timeout: 20_000 });
+  authApi.post('/api/auth/clerk-login', { sessionId }, { timeout: 12_000 });
+
+const CLERK_LOGIN_MAX_ATTEMPTS = 4;
+const CLERK_LOGIN_RETRY_MS = 1_200;
+
+function isRetryableClerkLoginError(err: unknown): boolean {
+  const axiosErr = err as AxiosError;
+  if (!axiosErr.response) return true;
+  const status = axiosErr.response.status;
+  return status === 408 || status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+/** Retry clerk-login while Auth Service cold-starts (common after Google redirect). */
+export async function clerkLoginWithRetry(sessionId: string) {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < CLERK_LOGIN_MAX_ATTEMPTS; attempt += 1) {
+    if (attempt > 0) {
+      warmupAuthService();
+      await new Promise((resolve) => window.setTimeout(resolve, CLERK_LOGIN_RETRY_MS * attempt));
+    } else if (!isAuthServiceWarm()) {
+      void ensureAuthServiceReady(3_000);
+    }
+    try {
+      const response = await clerkLogin(sessionId);
+      markAuthServiceWarm();
+      return response;
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableClerkLoginError(err) || attempt === CLERK_LOGIN_MAX_ATTEMPTS - 1) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
 
 /** Remove Clerk OAuth identity when Google account never completed AskTill registration. */
 export const clerkCleanupUnregistered = (sessionId: string) =>

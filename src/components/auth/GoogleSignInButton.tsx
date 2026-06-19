@@ -8,7 +8,7 @@ import {
   startGoogleOAuth,
   startGoogleOAuthSignUp,
 } from '../../lib/clerk';
-import { warmupAuthServiceReady, warmupServices } from '../../lib/api';
+import { ensureAuthServiceReady, warmupServices } from '../../lib/api';
 import styles from '../../pages/LoginPage.module.css';
 
 function GoogleIcon() {
@@ -59,6 +59,10 @@ export default function GoogleSignInButton({ disabled, onError, mode = 'signin' 
   };
 
   useEffect(() => {
+    warmupServices();
+  }, []);
+
+  useEffect(() => {
     return () => clearRedirectTimer();
   }, []);
 
@@ -70,8 +74,7 @@ export default function GoogleSignInButton({ disabled, onError, mode = 'signin' 
 
     onError('');
     setLoading(true);
-    warmupServices();
-    void warmupAuthServiceReady(6_000);
+    void ensureAuthServiceReady(3_000);
 
     redirectTimer.current = window.setTimeout(() => {
       redirectTimer.current = null;
