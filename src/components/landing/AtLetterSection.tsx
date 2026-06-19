@@ -2,10 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAtLetterPreview } from '../../hooks/useAtLetterPreview';
-import {
-  downloadSavedReportPdf,
-  getApiErrorAsync,
-} from '../../lib/api';
+import { useAtLetterTemplate } from '../../hooks/useAtLetterTemplate';
+import { downloadAtLetterPdf, getApiErrorAsync } from '../../lib/api';
 import { atLetterMailtoUrl } from '../../lib/atLetterPreview';
 import { filenameFromDisposition, saveBlobDownload } from '../../lib/downloadReport';
 import {
@@ -37,26 +35,28 @@ export default function AtLetterSection() {
   const navigate = useNavigate();
   const { isAuth, ready } = useAuth();
   const { letter, loading, error, isSample } = useAtLetterPreview();
+  const { statementId } = useAtLetterTemplate();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
+  const downloadStatementId = letter.statementId ?? statementId;
   const canUseLetterActions = letter.mode === 'live' && !isSample;
-  const canDownloadPdf = canUseLetterActions && Boolean(letter.statementId) && isAuth;
-  const needsSignInForPdf = canUseLetterActions && Boolean(letter.statementId) && !isAuth;
+  const canDownloadPdf = canUseLetterActions && Boolean(downloadStatementId) && isAuth;
+  const needsSignInForPdf = canUseLetterActions && Boolean(downloadStatementId) && !isAuth;
   const canForward = canUseLetterActions;
 
-  const runPdfDownload = useCallback(async (statementId: string) => {
+  const runPdfDownload = useCallback(async (id: string) => {
     setPdfBusy(true);
     setPdfError(null);
     try {
-      const res = await downloadSavedReportPdf(statementId);
+      const res = await downloadAtLetterPdf(id);
       const name = filenameFromDisposition(
         res.headers['content-disposition'],
-        'asktill-reconciliation.pdf',
+        'asktill-at-letter.pdf',
       );
       saveBlobDownload(res.data, name);
     } catch (err) {
-      setPdfError(await getApiErrorAsync(err, 'Could not download PDF.'));
+      setPdfError(await getApiErrorAsync(err, 'Could not download AT Letter PDF.'));
     } finally {
       setPdfBusy(false);
     }
@@ -71,14 +71,14 @@ export default function AtLetterSection() {
   }, [ready, isAuth, runPdfDownload]);
 
   const downloadPdf = useCallback(async () => {
-    if (!letter.statementId) return;
+    if (!downloadStatementId) return;
     if (!isAuth) {
-      setPendingPdfDownload(letter.statementId);
+      setPendingPdfDownload(downloadStatementId);
       navigate('/login', { state: { from: '/' } });
       return;
     }
-    await runPdfDownload(letter.statementId);
-  }, [letter.statementId, isAuth, navigate, runPdfDownload]);
+    await runPdfDownload(downloadStatementId);
+  }, [downloadStatementId, isAuth, navigate, runPdfDownload]);
 
   const leftCta =
     letter.mode === 'live' ? (
@@ -157,24 +157,19 @@ export default function AtLetterSection() {
                     {' · '}
                     {isAuth ? 'Yours' : 'Yours (sign in)'}
                   </span>
+                ) : letter.mode === 'empty' && isAuth ? (
+                  <span className={styles.letterLiveTag}> · Welcome</span>
                 ) : null}
               </span>
             </div>
             <div className={styles.letterBody}>
               {isSample ? (
                 <p className={styles.letterSign} style={{ marginBottom: 12, color: '#5a6478' }}>
-                  This is a demo letter for new visitors.{' '}
+                  Sample letter for new visitors.{' '}
                   <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>
                     Sign in
                   </Link>{' '}
-                  to see your own after you upload statements.
-                </p>
-              ) : !isAuth && letter.mode === 'empty' ? (
-                <p className={styles.letterSign} style={{ marginBottom: 12, color: '#5a6478' }}>
-                  <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>
-                    Sign in
-                  </Link>{' '}
-                  to view your saved letter — the Sarah demo is hidden once you have uploaded.
+                  to see yours after you upload.
                 </p>
               ) : null}
               {error && isAuth ? (
@@ -184,39 +179,80 @@ export default function AtLetterSection() {
               ) : null}
               <p className={styles.letterGreeting}>Hi {letter.firstName},</p>
               <p className={styles.letterPara}>{letter.periodIntro}</p>
-              <div className={styles.statGrid}>
-                <div className={styles.statBox}>
-                  <div className={styles.statLbl}>Brought in</div>
-                  <div className={styles.statVal}>{letter.broughtIn}</div>
+              {letter.mode === 'empty' ? (
+                <div className={styles.statEmpty}>
+                  <div className={styles.statEmptyTitle}>Your numbers go here</div>
+                  <p>
+                    {isAuth ? (
+                      <>
+                        Upload bank, POS, and ecommerce for one month — then{' '}
+                        <strong>Brought in</strong>, <strong>Spent</strong>, and <strong>Kept</strong>{' '}
+                        fill in from your statements.
+                      </>
+                    ) : (
+                      <>
+                        <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>
+                          Sign in
+                        </Link>{' '}
+                        or upload your first month to see <strong>Brought in</strong>,{' '}
+                        <strong>Spent</strong>, and <strong>Kept</strong> here.
+                      </>
+                    )}
+                  </p>
                 </div>
-                <div className={styles.statBox}>
-                  <div className={styles.statLbl}>Spent</div>
-                  <div className={styles.statVal}>{letter.spent}</div>
+              ) : (
+                <div className={styles.statGrid}>
+                  <div className={styles.statBox}>
+                    <div className={styles.statLbl}>Brought in</div>
+                    <div className={styles.statVal}>{letter.broughtIn}</div>
+                  </div>
+                  <div className={styles.statBox}>
+                    <div className={styles.statLbl}>Spent</div>
+                    <div className={styles.statVal}>{letter.spent}</div>
+                  </div>
+                  <div className={styles.statBox}>
+                    <div className={styles.statLbl}>Kept</div>
+                    <div className={styles.statVal}>{letter.kept}</div>
+                  </div>
                 </div>
-                <div className={styles.statBox}>
-                  <div className={styles.statLbl}>Kept</div>
-                  <div className={styles.statVal}>{letter.kept}</div>
+              )}
+              {letter.summary ? (
+                <p className={styles.letterPara}>
+                  {letter.summaryEmphasis ? (
+                    <>
+                      That&apos;s your{' '}
+                      <strong style={{ fontWeight: 600 }}>{letter.summaryEmphasis}</strong>{' '}
+                      {letter.summary}
+                    </>
+                  ) : (
+                    letter.summary
+                  )}
+                </p>
+              ) : null}
+              {letter.mode !== 'empty' && letter.watchTitle && letter.watchText ? (
+                <div className={styles.calloutRed}>
+                  <div className={styles.calloutRedTitle}>{letter.watchTitle}</div>
+                  <p>{letter.watchText}</p>
                 </div>
-              </div>
-              <p className={styles.letterPara}>
-                {letter.summaryEmphasis ? (
-                  <>
-                    That&apos;s your{' '}
-                    <strong style={{ fontWeight: 600 }}>{letter.summaryEmphasis}</strong>{' '}
-                    {letter.summary}
-                  </>
-                ) : (
-                  letter.summary
-                )}
-              </p>
-              <div className={styles.calloutRed}>
-                <div className={styles.calloutRedTitle}>{letter.watchTitle}</div>
-                <p>{letter.watchText}</p>
-              </div>
-              <div className={styles.calloutBlue}>
-                <div className={styles.calloutBlueTitle}>{letter.actionTitle}</div>
-                <p>{letter.actionText}</p>
-              </div>
+              ) : null}
+              {letter.actionTitle && letter.actionText ? (
+                <div className={styles.calloutBlue}>
+                  <div className={styles.calloutBlueTitle}>{letter.actionTitle}</div>
+                  <p>
+                    {letter.mode === 'empty' && isAuth ? (
+                      <Link to="/onboarding" style={{ color: 'inherit', fontWeight: 600 }}>
+                        {letter.actionText}
+                      </Link>
+                    ) : letter.mode === 'empty' && !isAuth ? (
+                      <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>
+                        {letter.actionText}
+                      </Link>
+                    ) : (
+                      letter.actionText
+                    )}
+                  </p>
+                </div>
+              ) : null}
               <p className={styles.letterPara} style={{ marginBottom: 3 }}>
                 {letter.closingLine}
               </p>
@@ -226,20 +262,20 @@ export default function AtLetterSection() {
                 <div className={styles.letterFooterBtns}>
                   {canDownloadPdf ? (
                     <button type="button" onClick={downloadPdf} disabled={pdfBusy}>
-                      {pdfBusy ? 'Downloading…' : 'Download PDF'}
+                      {pdfBusy ? 'Downloading…' : 'Download AT Letter'}
                     </button>
                   ) : needsSignInForPdf ? (
                     <button
                       type="button"
                       onClick={downloadPdf}
                       disabled={pdfBusy}
-                      title="Sign in — your PDF will download automatically after"
+                      title="Sign in — your AT Letter PDF will download automatically after"
                     >
-                      {pdfBusy ? 'Downloading…' : 'Sign in to download PDF'}
+                      {pdfBusy ? 'Downloading…' : 'Sign in to download AT Letter'}
                     </button>
                   ) : (
-                    <button type="button" disabled title="Upload and analyze to generate a PDF">
-                      Download PDF
+                    <button type="button" disabled title="Upload and analyze to generate your AT Letter">
+                      Download AT Letter
                     </button>
                   )}
                   {canForward ? (

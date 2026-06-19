@@ -230,7 +230,7 @@
 /* AT Letter */
 .letterSection {
   background: var(--bg-soft);
-  padding: 72px 0;
+  padding: 48px 0;
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
 }
@@ -238,7 +238,7 @@
 .letterGrid {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
-  gap: 56px;
+  gap: 36px;
   align-items: start;
 }
 
@@ -274,9 +274,88 @@
   background: var(--bg);
 }
 
+.letterSampleBanner {
+  background: #eaf1fb;
+  border-bottom: 1px solid #b8d0f0;
+  color: #1b4d8e;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 16px;
+}
+
+.letterSampleLink {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.letterLiveBanner {
+  background: #e8f5ee;
+  border-bottom: 1px solid #b8e0c8;
+  color: #1a7a47;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 10px 16px;
+}
+
+.letterErrorBanner {
+  background: #fcebeb;
+  border-bottom: 1px solid #e8b4b4;
+  color: #a32d2d;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 16px;
+}
+
+.letterTemplateViewport {
+  background: #f4f6f9;
+  max-height: min(85vh, 920px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.letterTemplateFrame {
+  border: none;
+  display: block;
+  min-height: 480px;
+  width: 100%;
+}
+
+.letterTemplateLoading,
+.letterTemplateEmpty {
+  color: #6b7e99;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.letterTemplateEmptyTitle {
+  color: #1b2a4a;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.letterTemplateEmpty p {
+  color: #5a6478;
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 0 auto;
+  max-width: 420px;
+}
+
+.letterPdfError {
+  color: #a32d2d;
+  font-size: 12px;
+  margin: 0;
+  padding: 0 16px 12px;
+}
+
 .letterHead {
   background: #2563eb;
-  padding: 18px 24px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -332,20 +411,20 @@
 }
 
 .letterBody {
-  padding: 26px 24px;
+  padding: 16px;
 }
 
 .statGrid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin: 16px 0;
+  gap: 6px;
+  margin: 10px 0;
 }
 
 .statBox {
   background: var(--brand-tint);
   border-radius: var(--radius-sm);
-  padding: 11px 13px;
+  padding: 8px 10px;
   text-align: center;
 }
 
@@ -357,17 +436,47 @@
 }
 
 .statVal {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--brand-deep);
 }
 
+.statEmpty {
+  background: var(--brand-tint);
+  border: 1px dashed var(--brand-soft);
+  border-radius: var(--radius-sm);
+  margin: 10px 0;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.statEmptyTitle {
+  color: var(--brand-deep);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.statEmpty p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.statEmpty strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .calloutRed {
   border-left: 3px solid #e24b4a;
-  padding: 11px 15px;
+  padding: 8px 12px;
   background: #fcebeb;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .calloutRedTitle {
@@ -380,17 +489,17 @@
 }
 
 .calloutRed p {
-  font-size: 13px;
+  font-size: 12px;
   color: #791f1f;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .calloutBlue {
   border-left: 3px solid var(--brand-bright);
-  padding: 11px 15px;
+  padding: 8px 12px;
   background: var(--brand-tint);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .calloutBlueTitle {
@@ -403,14 +512,14 @@
 }
 
 .calloutBlue p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--brand);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .letterFooter {
   border-top: 1px solid var(--rule);
-  padding-top: 14px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -444,24 +553,24 @@
 }
 
 .letterGreeting {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .letterPara {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink);
-  line-height: 1.75;
-  margin-bottom: 14px;
+  line-height: 1.55;
+  margin-bottom: 10px;
 }
 
 .letterSign {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
   font-style: italic;
   font-family: var(--font-serif);
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 /* Rewards */

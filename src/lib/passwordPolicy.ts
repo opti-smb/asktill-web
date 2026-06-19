@@ -7,6 +7,12 @@
 const REPEATED = /(.)\1{2,}/;
 const TOKEN = /[a-z0-9]+/gi;
 
+function includesForbiddenToken(password: string, token: string): boolean {
+  if (token.length < 3) return false;
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, 'i').test(password);
+}
+
 function forbiddenTokens(ctx?: PasswordContext): Array<{ token: string; message: string }> {
   const out: Array<{ token: string; message: string }> = [];
   const business = ctx?.businessName?.trim();
@@ -65,12 +71,11 @@ export function validatePassword(password: string, ctx?: PasswordContext): strin
   if (REPEATED.test(password)) {
     return 'Avoid repeating the same character three or more times in a row.';
   }
-  const lowered = password.toLowerCase();
   for (const { token, message } of forbiddenTokens(ctx)) {
-    if (lowered.includes(token)) return message;
+    if (includesForbiddenToken(password, token)) return message;
   }
   return null;
 }
 
 export const PASSWORD_HINT =
-  'At least 8 characters with upper and lower case, a number, and a symbol. Do not use your name, company name, email, or repeated characters.';
+  'Use at least 8 characters with upper and lower case, a number, and a symbol.';

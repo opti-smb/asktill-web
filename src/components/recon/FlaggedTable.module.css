@@ -109,6 +109,11 @@
   color: #B45309;
 }
 
+.prior {
+  background: #FFEDD5;
+  color: #C2410C;
+}
+
 .txAmount {
   font-family: var(--font-serif);
   font-weight: 600;
@@ -125,6 +130,13 @@
 
 .txLink:hover {
   text-decoration: underline;
+}
+
+.txEmpty {
+  padding: 16px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
 }
 
 @media (max-width: 1000px) {

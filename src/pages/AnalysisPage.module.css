@@ -37,6 +37,13 @@
   color: var(--muted);
 }
 
+.emptyHint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .processorGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;

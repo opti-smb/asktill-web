@@ -25,6 +25,7 @@ import {
   markUserHasSavedLetter,
   saveAtLetterCache,
 } from '../lib/atLetterCache';
+import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
@@ -50,6 +51,7 @@ interface AnalysisContextValue {
   clearStatementDuplicate: () => void;
   mergeWeekReports: (weekReports: WeekReportsViewApi) => void;
   loadSavedReport: (saved: AnalyzeResult) => void;
+  clearResult: () => void;
 }
 
 const AnalysisContext = createContext<AnalysisContextValue | null>(null);
@@ -77,6 +79,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   );
 
   const resetSession = useCallback(() => {
+    clearJustAnalyzedGrace();
     setFilesState({});
     setResult(null);
     setLoading(false);
@@ -131,6 +134,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
       setFilesState(active);
       setResult(data);
+      markJustAnalyzed();
       setStatementDuplicate(null);
       setAnalyzeProgress(null);
 
@@ -145,6 +149,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
           markUserHasSavedLetter(user.userId);
         }
         window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+        window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
       }
 
       return data;
@@ -189,6 +194,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setUploadMismatch(null);
   }, []);
 
+  const clearResult = useCallback(() => {
+    setResult(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       files,
@@ -206,6 +215,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       clearStatementDuplicate,
       mergeWeekReports,
       loadSavedReport,
+      clearResult,
     }),
     [
       files,
@@ -223,6 +233,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       clearStatementDuplicate,
       mergeWeekReports,
       loadSavedReport,
+      clearResult,
     ]
   );
 

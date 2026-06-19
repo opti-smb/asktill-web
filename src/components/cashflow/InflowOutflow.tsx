@@ -5,13 +5,13 @@ import {
   outflows as mockOutflows,
   inflowMonthBars,
   outflowMonthBars,
-  upcomingItems,
 } from '../../data/cashflow';
 import MonthTrendChart from './MonthTrendChart';
 import styles from './InflowOutflow.module.css';
 
 interface InflowOutflowProps {
   cashFlow?: CashFlowUiApi | null;
+  hasLiveAnalysis?: boolean;
 }
 
 function deltaPillClass(deltaType?: string | null): string {
@@ -70,6 +70,7 @@ function MockMonthBars({
 
 export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
   const hasLiveData = Boolean(cashFlow);
+  const useSample = false;
   const inflows = cashFlow?.inflows?.length
     ? cashFlow.inflows.map((row) => ({
         label: row.label,
@@ -77,7 +78,9 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
         color: row.color,
         value: row.value_usd,
       }))
-    : mockInflows;
+    : useSample
+      ? mockInflows
+      : [];
 
   const outflows = cashFlow?.outflows?.length
     ? cashFlow.outflows.map((row) => ({
@@ -86,9 +89,9 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
         color: row.color,
         value: row.value_usd,
       }))
-    : hasLiveData
-      ? []
-      : mockOutflows;
+    : useSample
+      ? mockOutflows
+      : [];
 
   const bankDebitLines = cashFlow?.bank_debit_lines ?? [];
   const [debitDetailsOpen, setDebitDetailsOpen] = useState(false);
@@ -101,10 +104,10 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
     setDebitDetailsOpen(false);
   }, [debitLinesKey]);
 
-  const moneyIn = cashFlow?.money_in_usd ?? (hasLiveData ? '—' : '$58,234');
-  const moneyOut = cashFlow?.money_out_usd ?? (hasLiveData ? '—' : '$47,521');
-  const inSubtitle = cashFlow?.money_in_subtitle ?? 'March · vs Feb · 3-mo avg';
-  const outSubtitle = cashFlow?.money_out_subtitle ?? 'March · vs Feb · 3-mo avg';
+  const moneyIn = cashFlow?.money_in_usd ?? (useSample ? '$58,234' : '—');
+  const moneyOut = cashFlow?.money_out_usd ?? (useSample ? '$47,521' : '—');
+  const inSubtitle = cashFlow?.money_in_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see inflows');
+  const outSubtitle = cashFlow?.money_out_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see outflows');
   const inTrend = cashFlow?.money_in_trend;
   const outTrend = cashFlow?.money_out_trend;
 
@@ -181,12 +184,12 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
               </>
             ) : hasLiveData ? (
               <span className={styles.cardMetaText}>{bankBasedFlow ? 'Bank credits' : 'Revenue by channel'}</span>
-            ) : (
+            ) : useSample ? (
               <>
                 <span className={`${styles.pill} ${styles.up}`}>▲ 12.4% vs Feb</span>
                 <span className={styles.cardMetaText}>3-mo avg: $52,840</span>
               </>
-            )}
+            ) : null}
           </div>
           <div className={styles.breakdown}>
             {inflows.map((item) => (
@@ -204,9 +207,9 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
           )}
           {hasLiveData ? (
             <MonthTrendChart trend={inTrend} />
-          ) : (
+          ) : useSample ? (
             <MockMonthBars bars={inflowMonthBars} avgY={32} avgValue="$52,858" />
-          )}
+          ) : null}
         </div>
 
         <div className={styles.card}>
@@ -238,12 +241,12 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
                 {bankBasedFlow ? 'Bank debits' : 'Fees and charges'}
                 {debitsReconciled === true && bankBasedFlow ? ' · verified against statement' : ''}
               </span>
-            ) : (
+            ) : useSample ? (
               <>
                 <span className={`${styles.pill} ${styles.down}`}>▲ 15.2% vs Feb</span>
                 <span className={styles.cardMetaText}>3-mo avg: $42,180</span>
               </>
-            )}
+            ) : null}
           </div>
           {moneyOutNote && bankBasedFlow && (
             <div className={debitsReconciled === false ? styles.reconNoteWarn : styles.reconNote}>
@@ -325,45 +328,11 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
           )}
           {hasLiveData ? (
             <MonthTrendChart trend={outTrend} />
-          ) : (
+          ) : useSample ? (
             <MockMonthBars bars={outflowMonthBars} avgY={36} avgValue="$42,500" />
-          )}
+          ) : null}
         </div>
       </div>
-
-      {!hasLiveData && (
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon} style={{ background: 'var(--brand-tint)', color: 'var(--brand)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className={styles.cardTitle}>Next 14 days</div>
-              <div className={styles.cardSubtitle}>What&apos;s hitting your account · sorted by date</div>
-            </div>
-          </div>
-          <div className={styles.upcomingList}>
-            {upcomingItems.map((item, i) => (
-              <div key={i} className={styles.upcomingItem}>
-                <div className={styles.upcomingDate}>
-                  <div className={styles.upcomingDay}>{item.day}</div>
-                  <div className={styles.upcomingMo}>{item.month}</div>
-                </div>
-                <div className={styles.upcomingBody}>
-                  <div className={styles.upcomingTitle}>{item.title}</div>
-                  <div className={styles.upcomingSub}>{item.sub}</div>
-                </div>
-                <div className={`${styles.upcomingAmount} ${styles[item.type]}`}>{item.amount}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </>
   );
 }

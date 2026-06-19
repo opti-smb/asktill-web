@@ -1,0 +1,45 @@
+.card {
+  background: linear-gradient(180deg, var(--brand-tint) 0%, var(--bg) 100%);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  margin-top: 4px;
+  max-width: 640px;
+  padding: 24px 26px;
+}
+
+.lead {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.lead strong {
+  color: var(--brand-deep);
+  font-weight: 600;
+}
+
+.detail {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 18px;
+  max-width: 52ch;
+}
+
+.cta {
+  background: var(--brand);
+  border-radius: 8px;
+  color: #fff;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  text-decoration: none;
+}
+
+.cta:hover {
+  background: var(--brand-deep);
+}

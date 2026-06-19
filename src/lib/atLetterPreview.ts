@@ -72,6 +72,19 @@ function periodMonthName(periodLabel: string | null | undefined): string {
   return periodLabel.trim();
 }
 
+function totalCashDeposited(analysis: UiAnalysisView | null | undefined): number | null {
+  const cb = analysis?.channel_breakdown;
+  if (cb) {
+    const pos = cb.pos?.deposited_to_bank ?? cb.pos?.net_to_bank;
+    const ecom = cb.ecommerce?.deposited_to_bank ?? cb.ecommerce?.net_to_bank;
+    const total = (pos ?? 0) + (ecom ?? 0);
+    if (total > 0.01) return Math.round(total * 100) / 100;
+  }
+  const depKpi = analysis?.kpis?.find((k) => /cash deposited|deposited to bank/i.test(k.label ?? ''));
+  if (typeof depKpi?.value === 'number' && depKpi.value > 0) return depKpi.value;
+  return null;
+}
+
 function pickWatchInsight(insights: StandardInsight[]): StandardInsight | null {
   const warn = insights.find((i) => i.severity === 'warn');
   if (warn) return warn;
@@ -143,7 +156,13 @@ export function buildAtLetterPreview(
   const periodLabel = analysis?.period_label ?? analysis?.cash_flow?.period_label ?? null;
   const periodName = periodMonthName(periodLabel);
   const cf = analysis?.cash_flow;
-  const broughtIn = cf?.money_in_usd && cf.money_in_usd !== '—' ? cf.money_in_usd : fmtUsd(cf?.money_in);
+  const deposited = totalCashDeposited(analysis);
+  const broughtIn =
+    deposited != null
+      ? fmtUsd(deposited)
+      : cf?.money_in_usd && cf.money_in_usd !== '—'
+        ? cf.money_in_usd
+        : fmtUsd(cf?.money_in);
   const spent = cf?.money_out_usd && cf.money_out_usd !== '—' ? cf.money_out_usd : fmtUsd(cf?.money_out);
   let kept = '—';
   if (cf?.cash_on_hand_usd && cf.cash_on_hand_usd !== '—') {
@@ -203,44 +222,44 @@ export function buildAtLetterPreview(
   };
 }
 
-/** Shown when logged out but this browser already saved a real letter after upload. */
+/** Shown when logged out but this browser previously saved a letter hint. */
 export function buildLoggedOutSavedLetterPreview(): AtLetterPreview {
   return {
     mode: 'empty',
     firstName: 'there',
-    letterDateLabel: `${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · AT Letter`,
-    periodIntro: 'Your letter is saved to your account.',
-    broughtIn: '—',
-    spent: '—',
-    kept: '—',
-    summary:
-      'You uploaded statements while signed in. Sign in again to see your personalized numbers — not the Sarah demo.',
-    watchTitle: 'Why you see this',
-    watchText:
-      'We only show the demo letter to visitors who have never uploaded. Your reports are stored securely under your account.',
-    actionTitle: 'View your letter',
-    actionText: 'Sign in with the same account you used to upload. Your latest saved report loads automatically.',
-    closingLine: 'Your data is waiting.',
+    letterDateLabel: 'AT Letter',
+    periodIntro: 'Sign in to pick up your AT Letter.',
+    broughtIn: '',
+    spent: '',
+    kept: '',
+    summary: '',
+    watchTitle: '',
+    watchText: '',
+    actionTitle: 'Continue',
+    actionText: 'Sign in with the same account you used to upload.',
+    closingLine: 'Your letter loads automatically after sign-in.',
     footerMeta: 'Sign in to continue',
   };
 }
 
 export function buildEmptyAtLetterPreview(user: AuthUser | null | undefined): AtLetterPreview {
+  const firstName = firstNameFromUser(user);
+  const greeting = firstName === 'there' ? 'Welcome' : `Welcome, ${firstName}`;
   return {
     mode: 'empty',
-    firstName: firstNameFromUser(user),
-    letterDateLabel: `${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · AT Letter`,
-    periodIntro: 'Your first letter appears after you upload a statement.',
-    broughtIn: '—',
-    spent: '—',
-    kept: '—',
-    summary: 'Upload your bank statement (and POS or ecommerce reports if you have them) to get a plain-English summary tailored to your business.',
-    watchTitle: 'What you will get',
-    watchText: 'Cash flow, risk signals, and trends in about 30 seconds — with one thing to act on.',
+    firstName,
+    letterDateLabel: 'AT Letter',
+    periodIntro: `${greeting} — upload your statements to get your first AT Letter.`,
+    broughtIn: '',
+    spent: '',
+    kept: '',
+    summary: '',
+    watchTitle: '',
+    watchText: '',
     actionTitle: 'Get started',
-    actionText: 'Upload and analyze your statements — we save each report to your account history.',
-    closingLine: 'We will write this letter for you.',
-    footerMeta: user?.businessName?.trim() || 'Your business',
+    actionText: 'Upload your statements, run analyze, and your AT Letter appears here.',
+    closingLine: 'We will write your first letter for you.',
+    footerMeta: user?.businessName?.trim() || 'New to AskTill',
   };
 }
 

@@ -5,6 +5,7 @@ import styles from './ReconSummary.module.css';
 
 interface Props {
   reconciliation?: ReconciliationUiApi | null;
+  hasLiveAnalysis?: boolean;
 }
 
 function StatTrend({
@@ -41,14 +42,22 @@ function StatTrend({
 }
 
 export default function ReconSummary({ reconciliation }: Props) {
-  const hero = reconciliation?.hero ?? {
+  const useDemo = false;
+  const hero = reconciliation?.hero ?? (useDemo ? {
     matched: reconSummary.matched,
     total: reconSummary.total,
     in_flight_usd: reconSummary.inFlight,
     in_flight_batches: reconSummary.inFlightBatches,
     flagged: reconSummary.flagged,
     flagged_amount_usd: reconSummary.flaggedAmount,
-  };
+  } : {
+    matched: 0,
+    total: 0,
+    in_flight_usd: '—',
+    in_flight_batches: 0,
+    flagged: 0,
+    flagged_amount_usd: '$0.00',
+  });
   const bq = reconciliation?.big_question;
   const answerSections = getReconAnswerSections(bq);
   const buckets = reconciliation?.buckets;
@@ -57,6 +66,10 @@ export default function ReconSummary({ reconciliation }: Props) {
   const showCash = Boolean(reconciliation?.hero?.cash_count && reconciliation.hero.cash_count > 0);
   const flaggedAmount = Number(bq?.flagged_usd?.replace(/[$,]/g, '') ?? 0);
   const pendingAtBank = Number(bq?.in_flight_usd?.replace(/[$,]/g, '') ?? 0);
+  const priorMonthTotal = Number(
+    reconciliation?.prior_month_total_usd?.replace(/[$,]/g, '') ?? 0,
+  );
+  const priorMonthCount = reconciliation?.prior_month_count ?? 0;
   const refundsAdj = Number(bq?.refunds_usd?.replace(/[$,]/g, '') ?? 0);
   const otherAdj = Number(bq?.other_adjustments_usd?.replace(/[$,]/g, '') ?? 0);
 
@@ -168,6 +181,22 @@ export default function ReconSummary({ reconciliation }: Props) {
                   {bq?.in_flight_label ?? 'Pending at bank (net payouts)'}
                 </div>
                 <div className={styles.decompRowNum} style={{ color: 'var(--warn)' }}>{bq?.in_flight_usd}</div>
+              </div>
+            ) : null}
+            {priorMonthTotal > 0 ? (
+              <div className={styles.decompRow}>
+                <div className={styles.decompRowLabel}>
+                  <span className={styles.decompRowDot} style={{ background: '#B45309' }} />
+                  Prior month credits on bank statement
+                </div>
+                <div className={styles.decompRowNum} style={{ color: '#B45309' }}>
+                  {reconciliation?.prior_month_total_usd}
+                  {priorMonthCount > 0 ? (
+                    <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', marginLeft: 6 }}>
+                      ({priorMonthCount} item{priorMonthCount === 1 ? '' : 's'})
+                    </span>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             {refundsAdj > 0 ? (

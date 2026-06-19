@@ -128,6 +128,28 @@ function extractApiErrorPayload(
   return d ?? null;
 }
 
+function isBackendApiRequest(err: AxiosError): boolean {
+  const url = String(err.config?.url ?? '');
+  const base = String(err.config?.baseURL ?? '');
+  if (url.includes('/api/reports/') || url.includes('/api/analyze')) {
+    return true;
+  }
+  if (import.meta.env.DEV) {
+    const devBackend = import.meta.env.VITE_API_BASE_URL ?? '';
+    if (devBackend && base.includes(String(devBackend).replace(/\/$/, ''))) {
+      return true;
+    }
+    if (!base || base === window.location.origin) {
+      return url.startsWith('/api/reports') || url.startsWith('/api/analyze');
+    }
+  }
+  const backendBase = import.meta.env.VITE_API_BASE_URL ?? '';
+  if (backendBase && base.startsWith(String(backendBase).replace(/\/$/, ''))) {
+    return true;
+  }
+  return false;
+}
+
 function formatApiError(
   d: { detail?: unknown; message?: string; error?: string } | null,
   fallback: string,
@@ -148,9 +170,23 @@ function formatApiError(
     return axiosErr?.message ?? fallback;
   }
   if (axiosErr.response.status >= 500) {
+    const detailText =
+      typeof d?.detail === 'string'
+        ? d.detail
+        : typeof d?.message === 'string'
+          ? d.message
+          : typeof d?.error === 'string'
+            ? d.error
+            : null;
+    if (detailText) return detailText;
+    const backend = isBackendApiRequest(axiosErr);
     return import.meta.env.DEV
-      ? `Server error (${axiosErr.response.status}). Check Authentication Service logs on port 8002.`
-      : 'Sign-in server error — wait 30 seconds and try again. If it persists, use Forgot password or register again.';
+      ? backend
+        ? `Server error (${axiosErr.response.status}). Check Backend logs on port 8000.`
+        : `Server error (${axiosErr.response.status}). Check Authentication Service logs on port 8002.`
+      : backend
+        ? 'Server error — wait 30 seconds and try again.'
+        : 'Sign-in server error — wait 30 seconds and try again. If it persists, use Forgot password or register again.';
   }
   if (axiosErr.response.status === 404 && (!d?.detail || d.detail === 'Not Found')) {
     const url = String(axiosErr.config?.url ?? '');
@@ -177,6 +213,7 @@ function formatApiError(
 export interface UploadValidationResult {
   ok: boolean;
   slot_mismatches: Array<{ slot: string; filename: string; message: string }>;
+  format_warnings?: Array<{ slot: string; filename: string; message: string; code?: string }>;
   period_mismatches: Array<{
     slot: string;
     filename: string;
@@ -335,6 +372,7 @@ export function primaryWarningForSlot(
   };
   return (
     pick(result.slot_mismatches)
+    || pick(result.format_warnings ?? [])
     || pick(result.period_mismatches)
     || pick(result.missing_period_warnings ?? [])
   );
@@ -397,6 +435,7 @@ export function slotIssuesInResult(
   if (!result) return false;
   const lists = [
     result.slot_mismatches,
+    result.format_warnings ?? [],
     result.period_mismatches,
     result.missing_period_warnings ?? [],
   ];
@@ -451,7 +490,7 @@ export const validateUploads = (files: UploadFiles) => {
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
   return mainApi.post<UploadValidationResult>('/api/validate-uploads', form, {
-    timeout: 120_000,
+    timeout: 45_000,
   });
 };
 
@@ -524,16 +563,20 @@ export const login = (email: string, password: string) =>
   authApi.post('/api/auth/login', { email, password });
 
 export const clerkLogin = (sessionId: string) =>
-  authApi.post('/api/auth/clerk-login', { sessionId });
+  authApi.post('/api/auth/clerk-login', { sessionId }, { timeout: 20_000 });
 
 /** Remove Clerk OAuth identity when Google account never completed AskTill registration. */
 export const clerkCleanupUnregistered = (sessionId: string) =>
   authApi.post<{ message: string }>('/api/auth/clerk/cleanup-unregistered', {
     sessionId,
-  });
+  }, { timeout: 20_000 });
 
 export const checkEmail = (email: string) =>
-  authApi.post<{ registered: boolean; message?: string }>('/api/auth/check-email', { email });
+  authApi.post<{ registered: boolean; message?: string }>(
+    '/api/auth/check-email',
+    { email },
+    { timeout: 10_000 },
+  );
 
 /** Sync AskTill DB password after Clerk forgot-password flow (Clerk emails the OTP). */
 export const forgotPasswordCompleteClerk = (sessionId: string, newPassword: string) =>
@@ -773,6 +816,20 @@ export const fetchSavedReport = (statementId: string) =>
 
 export const downloadSavedReportPdf = (statementId: string) =>
   mainApi.get(`/api/reports/${statementId}/pdf`, { responseType: 'blob' });
+
+/** HTML preview of the full backend AT Letter template (?preview=1). */
+export const fetchAtLetterHtmlPreview = (statementId: string) =>
+  mainApi.get<string>(`/api/reports/${encodeURIComponent(statementId)}/at-letter`, {
+    params: { preview: 1 },
+    responseType: 'text',
+    transformResponse: [(data) => data],
+  });
+
+/** PDF download — same template as backend AT Letter export. */
+export const downloadAtLetterPdf = (statementId: string) =>
+  mainApi.get(`/api/reports/${encodeURIComponent(statementId)}/at-letter`, {
+    responseType: 'blob',
+  });
 
 /** Same uploads as analyze; reconciliation PDF (POST /api/analyze/export). */
 export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {

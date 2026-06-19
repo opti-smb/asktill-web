@@ -6,6 +6,8 @@ import DownloadReportButton from '../components/analysis/DownloadReportButton';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import WeekReportPanel from '../components/analysis/WeekReportPanel';
 import { useAnalysis } from '../context/AnalysisContext';
+import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
+import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
 import { fetchWeekReports, getApiError } from '../lib/api';
 import { getAnalyzeAnalysis, type WeekReportsViewApi } from '../lib/analyzeResponse';
 import type { Period } from '../types';
@@ -19,6 +21,8 @@ function hasUploadFiles(files: { bank?: File; pos?: File; ecommerce?: File }) {
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('Month');
   const { result, files, mergeWeekReports, loadSavedReport } = useAnalysis();
+  const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
+  const { historyReady } = useReportSync();
   const analysis = getAnalyzeAnalysis(result);
   const documents = result?.documents ?? [];
   const fallbackBusinessName = useMemo(() => {
@@ -93,6 +97,20 @@ export default function ReportsPage() {
     return key ? `${m[2]}-${key}` : null;
   }, [analysis?.period_label]);
 
+  if (!hasLiveAnalysis) {
+    return (
+      <div className={styles.main}>
+        <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.sectionSub} />
+        <div className="wrap">
+          <PreviousReportsPanel
+            excludePeriodKey={currentPeriodKey}
+            onLoadReport={loadSavedReport}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <SectionHeader
@@ -102,13 +120,8 @@ export default function ReportsPage() {
       />
       <div className={styles.main}>
         <div className="wrap">
-          {!result ? (
-            <p className={styles.sectionSub}>
-              Upload and analyze your statements first to see reconciliation and weekly breakdowns here.
-            </p>
-          ) : (
-            <>
-              <DownloadReportButton files={files} period={period} />
+          <>
+            <DownloadReportButton files={files} period={period} />
 
               {period === 'Month' && (
                 <>
@@ -167,8 +180,7 @@ export default function ReportsPage() {
                   </div>
                 </section>
               )}
-            </>
-          )}
+          </>
 
           <PreviousReportsPanel
             excludePeriodKey={currentPeriodKey}
