@@ -3,6 +3,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { isTokenExpired } from './jwt';
 
 import {
+  ANALYZE_TIMEOUT_MS,
   buildFallbackPipelineEvents,
   PIPELINE_TICK_MS,
   type AnalyzeProgressEvent,
@@ -495,12 +496,52 @@ export const validateUploads = (files: UploadFiles) => {
 };
 
 /** Wake Render services before login or upload (no-op when already warm). */
+function serviceOrigin(envKey: 'VITE_API_BASE_URL' | 'VITE_AUTH_API_URL' | 'VITE_REGISTER_API_URL'): string {
+  const raw = import.meta.env[envKey];
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw.trim().replace(/\/$/, '');
+  }
+  if (envKey === 'VITE_API_BASE_URL') return 'http://localhost:8000';
+  if (envKey === 'VITE_AUTH_API_URL') return 'http://localhost:8002';
+  return 'http://localhost:8003';
+}
+
+function isHealthyServicePayload(data: unknown): boolean {
+  return Boolean(
+    data &&
+      typeof data === 'object' &&
+      'status' in data &&
+      (data as { status?: string }).status === 'ok',
+  );
+}
+
+async function probeServiceHealth(url: string, timeoutMs: number): Promise<boolean> {
+  try {
+    const res = await axios.get(url, { timeout: timeoutMs });
+    return res.status === 200 && isHealthyServicePayload(res.data);
+  } catch {
+    return false;
+  }
+}
+
 export function warmupBackend() {
-  void mainApi.get('/api/health', { timeout: 15_000 }).catch(() => {});
+  void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
+}
+
+async function probeAuthHealth(timeoutMs: number): Promise<boolean> {
+  try {
+    if (import.meta.env.DEV) {
+      const res = await authApi.get('/health', { timeout: timeoutMs });
+      return res.status === 200 && isHealthyServicePayload(res.data);
+    }
+    return probeServiceHealth(`${serviceOrigin('VITE_AUTH_API_URL')}/health`, timeoutMs);
+  } catch {
+    return false;
+  }
 }
 
 export function warmupAuthService() {
-  void authApi.get('/health', { timeout: 15_000 }).catch(() => {});
+  void probeAuthHealth(15_000);
 }
 
 const AUTH_WARM_TTL_MS = 3 * 60 * 1000;
@@ -522,14 +563,14 @@ export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<bo
 
   authWarmupInFlight = (async () => {
     try {
-      await authApi.get('/health', { timeout: probeTimeoutMs });
-      markAuthServiceWarm();
-      return true;
-    } catch {
-      void authApi
-        .get('/health', { timeout: 60_000 })
-        .then(() => markAuthServiceWarm())
-        .catch(() => {});
+      const ok = await probeAuthHealth(probeTimeoutMs);
+      if (ok) {
+        markAuthServiceWarm();
+        return true;
+      }
+      void probeAuthHealth(60_000).then((warm) => {
+        if (warm) markAuthServiceWarm();
+      });
       return false;
     } finally {
       authWarmupInFlight = null;
@@ -545,7 +586,13 @@ export async function warmupAuthServiceReady(timeoutMs = 4_000): Promise<boolean
 }
 
 export function warmupRegistrationService() {
-  void registerApi.get('/health', { timeout: 15_000 }).catch(() => {});
+  void probeServiceHealth(`${serviceOrigin('VITE_REGISTER_API_URL')}/health`, 15_000);
+}
+
+export function isLocalDevServices(): boolean {
+  if (!import.meta.env.DEV) return false;
+  const auth = serviceOrigin('VITE_AUTH_API_URL');
+  return auth.includes('localhost') || auth.includes('127.0.0.1');
 }
 
 export function warmupServices() {
@@ -609,13 +656,22 @@ function isRetryableClerkLoginError(err: unknown): boolean {
 
 /** Retry clerk-login while Auth Service cold-starts (common after Google redirect). */
 export async function clerkLoginWithRetry(sessionId: string) {
+  const localDev = isLocalDevServices();
   let lastErr: unknown;
+
+  // Warm auth in parallel — do not block the first login on health probes.
+  if (!isAuthServiceWarm()) {
+    void ensureAuthServiceReady(localDev ? 8_000 : 10_000);
+  }
+
   for (let attempt = 0; attempt < CLERK_LOGIN_MAX_ATTEMPTS; attempt += 1) {
     if (attempt > 0) {
       warmupAuthService();
-      await new Promise((resolve) => window.setTimeout(resolve, CLERK_LOGIN_RETRY_MS * attempt));
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, (localDev ? 300 : CLERK_LOGIN_RETRY_MS) * attempt),
+      );
+      await ensureAuthServiceReady(localDev ? 8_000 : 6_000);
     }
-    await ensureAuthServiceReady(attempt === 0 ? 6_000 : 4_000);
     try {
       const response = await clerkLogin(sessionId);
       markAuthServiceWarm();
@@ -720,7 +776,9 @@ function mainApiBaseUrl(): string {
 }
 
 const analyze = (bank?: File, pos?: File, ecommerce?: File) =>
-  mainApi.post('/api/analyze', analyzeFormData(bank, pos, ecommerce));
+  mainApi.post('/api/analyze', analyzeFormData(bank, pos, ecommerce), {
+    timeout: ANALYZE_TIMEOUT_MS,
+  });
 
 async function analyzeViaStream(
   files: UploadFiles,
@@ -731,11 +789,25 @@ async function analyzeViaStream(
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${mainApiBaseUrl()}/api/analyze/stream`, {
-    method: 'POST',
-    headers,
-    body: form,
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${mainApiBaseUrl()}/api/analyze/stream`, {
+      method: 'POST',
+      headers,
+      body: form,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('Analysis timed out after 45 seconds. Try again with smaller files.');
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   if (res.status === 404 || res.status === 405) {
     throw Object.assign(new Error('STREAM_UNAVAILABLE'), { code: 'STREAM_UNAVAILABLE' });
@@ -826,7 +898,7 @@ async function analyzeViaClassicEndpoint(
     if (stepIndex < timeline.length) {
       onEvent(timeline[stepIndex]);
     }
-  }, PIPELINE_TICK_MS + 400);
+  }, PIPELINE_TICK_MS + 120);
 
   try {
     const { data } = await analyze(files.bank, files.pos, files.ecommerce);
@@ -916,13 +988,6 @@ export const fetchAtLetterHtmlPreview = (statementId: string) =>
     params: { preview: 1 },
     responseType: 'text',
     transformResponse: [(data) => data],
-  });
-
-/** PDF download — same template as backend AT Letter export. */
-export const downloadAtLetterPdf = (statementId: string) =>
-  mainApi.get(`/api/reports/${encodeURIComponent(statementId)}/at-letter`, {
-    responseType: 'blob',
-    timeout: 120_000,
   });
 
 export const downloadWeekReports = (bank?: File, pos?: File, ecommerce?: File) => {

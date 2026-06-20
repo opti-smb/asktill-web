@@ -2,7 +2,6 @@ import SectionHeader from '../components/layout/SectionHeader';
 import KPICard from '../components/common/KPICard';
 import StandardQuestions from '../components/analysis/StandardQuestions';
 import ProcessorCard from '../components/analysis/ProcessorCard';
-import QuestionPicker from '../components/analysis/QuestionPicker';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
@@ -108,14 +107,6 @@ export default function AnalysisPage() {
               ))}
             </div>
           ) : null}
-
-          <div className={styles.sectionHead}>
-            <div className={styles.sectionH}>
-              Pick two to <em>explore deeper.</em>
-            </div>
-            <div className={styles.sectionSub}>Tap to expand · AskTill will pull the answer</div>
-          </div>
-          <QuestionPicker />
         </div>
       </div>
     </>

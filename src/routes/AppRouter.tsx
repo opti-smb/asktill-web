@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import PendingPdfDownloadHandler from '../components/PendingPdfDownloadHandler';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
 import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
@@ -12,6 +11,7 @@ import UploadPage from '../pages/UploadPage';
 import AnalysisPage from '../pages/AnalysisPage';
 import CashFlowPage from '../pages/CashFlowPage';
 import ReconPage from '../pages/ReconPage';
+import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import ProfilePage from '../pages/ProfilePage';
 import DashboardNav from '../components/layout/DashboardNav';
@@ -53,6 +53,7 @@ function AppRoutes() {
           <Route path="overview" element={<AnalysisPage />} />
           <Route path="cashflow" element={<CashFlowPage />} />
           <Route path="reconciliation" element={<ReconPage />} />
+          <Route path="at-letter" element={<AtLetterPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
@@ -63,7 +64,6 @@ function AppRoutes() {
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <PendingPdfDownloadHandler />
       {isClerkEnabled() ? (
         <ClerkAuthProvider>
           <AppRoutes />

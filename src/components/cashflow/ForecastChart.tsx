@@ -1,5 +1,6 @@
 import type { AnalyzeResult, CashFlowUiApi } from '../../lib/analyzeResponse';
 import { fmtMoney, reportMatchedDeposits } from '../../lib/analyzeResponse';
+import { FONT_SANS } from '../../lib/fonts';
 import styles from './ForecastChart.module.css';
 
 interface ForecastChartProps {
@@ -126,7 +127,7 @@ export default function ForecastChart({ cashFlow, result }: ForecastChartProps) 
             </defs>
 
             {forecast.y_axis_labels.map((label, index) => (
-              <text key={`y-${label}`} x="0" y={(forecast.grid_y[index] ?? 20) + 4} fontFamily="Inter" fontSize="10" fill="#94A3B8">
+              <text key={`y-${label}`} x="0" y={(forecast.grid_y[index] ?? 20) + 4} fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">
                 {label}
               </text>
             ))}
@@ -154,7 +155,7 @@ export default function ForecastChart({ cashFlow, result }: ForecastChartProps) 
               strokeWidth="1"
               strokeDasharray="4 4"
             />
-            <text x={forecast.today_x + 2} y="14" fontFamily="Inter" fontSize="10" fill="#1E40AF" fontWeight="700">
+            <text x={forecast.today_x + 2} y="14" fontFamily={FONT_SANS} fontSize="10" fill="#1E40AF" fontWeight="700">
               TODAY
             </text>
             <circle cx={forecast.today_x} cy={forecast.today_y} r="5" fill="#1E40AF" />
@@ -162,7 +163,7 @@ export default function ForecastChart({ cashFlow, result }: ForecastChartProps) 
             {forecast.payroll_markers?.map((marker, index) => (
               <g key={`pay-${index}`}>
                 <circle cx={marker.x} cy={marker.y} r="6" fill="#B91C1C" />
-                <text x={marker.x} y={marker.y - 10} textAnchor="middle" fontFamily="Inter" fontSize="9" fill="#B91C1C" fontWeight="700">
+                <text x={marker.x} y={marker.y - 10} textAnchor="middle" fontFamily={FONT_SANS} fontSize="9" fill="#B91C1C" fontWeight="700">
                   {marker.label}
                 </text>
               </g>
@@ -174,7 +175,7 @@ export default function ForecastChart({ cashFlow, result }: ForecastChartProps) 
                 x={item.x}
                 y="215"
                 textAnchor="middle"
-                fontFamily="Inter"
+                fontFamily={FONT_SANS}
                 fontSize="9"
                 fill={item.bold ? '#1E40AF' : '#94A3B8'}
                 fontWeight={item.bold ? 700 : 400}
@@ -184,7 +185,7 @@ export default function ForecastChart({ cashFlow, result }: ForecastChartProps) 
             ))}
 
             <circle cx={forecast.end_x} cy={forecast.end_y} r="5" fill="#1E40AF" />
-            <text x={forecast.end_x - 20} y={forecast.end_y - 10} textAnchor="end" fontFamily="Inter" fontSize="11" fill="#1E40AF" fontWeight="700">
+            <text x={forecast.end_x - 20} y={forecast.end_y - 10} textAnchor="end" fontFamily={FONT_SANS} fontSize="11" fill="#1E40AF" fontWeight="700">
               {forecast.end_forecast_usd}
             </text>
           </svg>

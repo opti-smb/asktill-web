@@ -77,7 +77,7 @@ export default function DashboardNav() {
 
               <NavLink
 
-                to="/onboarding"
+                to="/dashboard/at-letter"
 
                 className={({ isActive }) =>
 
@@ -87,7 +87,7 @@ export default function DashboardNav() {
 
               >
 
-                Sources
+                AT Letter
 
               </NavLink>
 

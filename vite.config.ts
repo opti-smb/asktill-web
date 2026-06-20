@@ -6,6 +6,7 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TOKEN_'],
   server: {
     proxy: {
+      '/health': { target: 'http://localhost:8002', changeOrigin: true },
       '/api/register': { target: 'http://localhost:8003', changeOrigin: true },
       '/api/auth': { target: 'http://localhost:8002', changeOrigin: true },
       '/api/ask': { target: 'http://localhost:8000', changeOrigin: true },

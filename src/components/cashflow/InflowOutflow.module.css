@@ -26,12 +26,11 @@
 }
 
 .askBannerQ {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 13px;
+  font-weight: 600;
   color: var(--ink);
-  font-style: italic;
   margin-bottom: 4px;
-  font-variation-settings: "opsz" 60, "SOFT" 70;
 }
 
 .askBannerA {
@@ -233,11 +232,10 @@
 }
 
 .cardTitle {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 13px;
   color: var(--ink);
-  font-weight: 500;
-  font-variation-settings: "opsz" 60;
+  font-weight: 600;
 }
 
 .cardSubtitle {
@@ -251,7 +249,6 @@
   color: var(--ink);
   font-weight: 500;
   margin-bottom: 4px;
-  font-variation-settings: "opsz" 144;
   line-height: 1;
 }
 
@@ -446,7 +443,7 @@
   font-size: 18px;
   font-weight: 700;
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   line-height: 1;
 }
 

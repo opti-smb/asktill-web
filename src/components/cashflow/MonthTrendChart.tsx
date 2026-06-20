@@ -1,4 +1,5 @@
 import type { CashFlowMonthBarApi, CashFlowMonthTrendApi } from '../../lib/analyzeResponse';
+import { FONT_SANS } from '../../lib/fonts';
 import styles from './InflowOutflow.module.css';
 
 interface MonthTrendChartProps {
@@ -88,7 +89,7 @@ export default function MonthTrendChart({ trend, avgLineY }: MonthTrendChartProp
               x={barCenterX(bar)}
               y={MONTH_LABEL_Y}
               textAnchor="middle"
-              fontFamily="Inter, system-ui, sans-serif"
+              fontFamily={FONT_SANS}
               fontSize="10"
               fill={bar.text_fill}
               fontWeight="700"

@@ -20,6 +20,8 @@ export interface AnalyzeProgressState {
   activeIndex: number;
   /** Furthest stage the server has reached (animation catches up one step at a time). */
   targetIndex: number;
+  /** Server finished — UI ticks through remaining steps before dismiss. */
+  complete: boolean;
 }
 
 /** One SSE event from POST /api/analyze/stream */
@@ -59,6 +61,7 @@ export function buildInitialAnalyzeProgress(): AnalyzeProgressState {
     steps: ANALYZE_PIPELINE_STEPS.map((s) => ({ ...s })),
     activeIndex: 0,
     targetIndex: 0,
+    complete: false,
   };
 }
 
@@ -67,6 +70,7 @@ export function applyPipelineEvent(
   prev: AnalyzeProgressState,
   event: AnalyzeProgressEvent,
 ): AnalyzeProgressState {
+  const last = prev.steps.length - 1;
   let target = Math.max(prev.targetIndex, pipelineIndexForStage(event.stage));
   const detail =
     typeof event.detail === 'string' && event.detail.trim().length > 0
@@ -75,27 +79,46 @@ export function applyPipelineEvent(
   const steps = prev.steps.map((step, index) =>
     index === target && detail ? { ...step, detail } : step,
   );
-  const last = prev.steps.length - 1;
-  let activeIndex = prev.activeIndex;
-  if (event.stage === 'views' || event.stage === 'complete') {
-    activeIndex = Math.max(activeIndex, target);
-  }
+  const complete = prev.complete || event.stage === 'complete';
   if (event.stage === 'complete') {
-    activeIndex = last + 1;
     target = last;
   }
-  return { steps, activeIndex, targetIndex: target };
+  let activeIndex = Math.max(prev.activeIndex, target);
+  if (complete) {
+    activeIndex = prev.steps.length;
+  }
+  return {
+    steps,
+    activeIndex,
+    targetIndex: target,
+    complete,
+  };
 }
 
 /** Advance visual progress by one completed step (call on a timer). */
 export function tickPipelineForward(prev: AnalyzeProgressState): AnalyzeProgressState | null {
-  if (prev.activeIndex >= prev.targetIndex) {
-    return null;
+  if (prev.activeIndex < prev.targetIndex) {
+    return { ...prev, activeIndex: prev.activeIndex + 1 };
   }
-  return { ...prev, activeIndex: prev.activeIndex + 1 };
+  if (prev.complete && prev.activeIndex < prev.steps.length) {
+    return { ...prev, activeIndex: prev.activeIndex + 1 };
+  }
+  return null;
 }
 
-export const PIPELINE_TICK_MS = 550;
+export function shouldRunPipelineTick(prev: AnalyzeProgressState): boolean {
+  if (prev.activeIndex < prev.targetIndex) return true;
+  if (prev.complete && prev.activeIndex < prev.steps.length) return true;
+  return false;
+}
+
+export function isPipelineDisplayComplete(prev: AnalyzeProgressState): boolean {
+  return prev.complete && prev.activeIndex >= prev.steps.length;
+}
+
+export const PIPELINE_TICK_MS = 180;
+export const PIPELINE_DONE_HOLD_MS = 280;
+export const ANALYZE_TIMEOUT_MS = 45_000;
 
 /** Fallback timeline when /api/analyze/stream is unavailable. */
 export function buildFallbackPipelineEvents(): AnalyzeProgressEvent[] {

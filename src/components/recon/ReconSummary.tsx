@@ -1,5 +1,6 @@
 import { reconSummary } from '../../data/recon';
 import type { ReconciliationUiApi } from '../../lib/analyzeResponse';
+import { FONT_SANS } from '../../lib/fonts';
 import { getReconAnswerSections } from './reconAnswerDisplay';
 import styles from './ReconSummary.module.css';
 
@@ -288,10 +289,10 @@ export default function ReconSummary({ reconciliation }: Props) {
             <line x1="30" y1="50" x2="640" y2="50" stroke="#F1F5F9" strokeWidth="1" />
             <line x1="30" y1="90" x2="640" y2="90" stroke="#F1F5F9" strokeWidth="1" />
             <line x1="30" y1="130" x2="640" y2="130" stroke="#F1F5F9" strokeWidth="1" />
-            <text x="0" y="14" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">100%</text>
-            <text x="0" y="54" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">99%</text>
-            <text x="0" y="94" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">98%</text>
-            <text x="0" y="134" fontFamily="Inter, sans-serif" fontSize="10" fill="#94A3B8">97%</text>
+            <text x="0" y="14" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">100%</text>
+            <text x="0" y="54" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">99%</text>
+            <text x="0" y="94" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">98%</text>
+            <text x="0" y="134" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">97%</text>
             {(health?.bars?.length ? health.bars : []).map((bar) => (
               <g key={`${bar.label}-${bar.matched_pct_label}`}>
                 <rect x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx="3" fill={bar.matched_fill} />
@@ -305,7 +306,7 @@ export default function ReconSummary({ reconciliation }: Props) {
                   x={bar.x + bar.width / 2}
                   y={bar.pct_text_y}
                   textAnchor="middle"
-                  fontFamily="Inter, sans-serif"
+                  fontFamily={FONT_SANS}
                   fontSize="11"
                   fill="#047857"
                   fontWeight="700"
@@ -316,7 +317,7 @@ export default function ReconSummary({ reconciliation }: Props) {
                   x={bar.x + bar.width / 2}
                   y="148"
                   textAnchor="middle"
-                  fontFamily="Inter, sans-serif"
+                  fontFamily={FONT_SANS}
                   fontSize="11"
                   fill="#1E40AF"
                   fontWeight="700"

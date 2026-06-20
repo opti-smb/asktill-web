@@ -77,12 +77,18 @@ export async function savePdfBlob(
  * AT Letter / report PDF: open save dialog immediately, then fetch and write.
  * Avoids browsers blocking download after long Playwright PDF generation (~15–20s).
  */
+export type PdfDownloadStage = 'picker' | 'generating' | 'saving';
+
 export async function downloadPdfWithSaveDialog(options: {
   suggestedFilename: string;
   fetchBlob: () => Promise<Blob>;
+  onStage?: (stage: PdfDownloadStage) => void;
 }): Promise<void> {
+  options.onStage?.('picker');
   const saveHandle = await pickPdfSaveHandle(options.suggestedFilename);
+  options.onStage?.('generating');
   const blob = await options.fetchBlob();
+  options.onStage?.('saving');
   await savePdfBlob(blob, options.suggestedFilename, saveHandle);
 }
 

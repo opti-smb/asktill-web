@@ -1,4 +1,5 @@
 import type { KPI } from '../../types';
+import { FONT_SANS } from '../../lib/fonts';
 import styles from './KPICard.module.css';
 
 interface KPICardProps {
@@ -34,7 +35,7 @@ export default function KPICard({ kpi }: KPICardProps) {
                 x={labelX[i] ?? 64}
                 y={bar.y - 2}
                 textAnchor="middle"
-                fontFamily="Inter"
+                fontFamily={FONT_SANS}
                 fontSize="7"
                 fill={bar.labelFill}
                 fontWeight={i === kpi.sparkBars.length - 1 ? '700' : undefined}
