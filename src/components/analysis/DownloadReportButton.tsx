@@ -6,7 +6,11 @@ import {
   getApiErrorAsync,
   type UploadFiles,
 } from '../../lib/api';
-import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../../lib/downloadReport';
+import {
+  downloadPdfWithSaveDialog,
+  filenameFromDisposition,
+  type PdfDownloadStage,
+} from '../../lib/downloadReport';
 import type { Period } from '../../types';
 import styles from './PostmanPanels.module.css';
 
@@ -17,14 +21,32 @@ interface Props {
   statementId?: string | null;
 }
 
+function downloadStageLabel(stage: PdfDownloadStage | null): string {
+  if (stage === 'picker') return 'Choose save location…';
+  if (stage === 'generating') return 'Generating PDF…';
+  if (stage === 'saving') return 'Saving file…';
+  return 'Preparing download…';
+}
+
 export default function DownloadReportButton({ files, period, statementId }: Props) {
   const [exporting, setExporting] = useState(false);
+  const [exportStage, setExportStage] = useState<PdfDownloadStage | null>(null);
   const [error, setError] = useState('');
 
   const hasAll = Boolean(files.bank && files.pos && files.ecommerce);
   const canDownloadMonth = Boolean(statementId || hasAll);
   const isWeek = period === 'Week';
   const isQuarter = period === 'Quarter';
+
+  async function fetchMonthlyCompactPdf() {
+    if (statementId) {
+      return downloadSavedReportCompact(statementId);
+    }
+    if (hasAll) {
+      return downloadCompactReconciliation(files.bank, files.pos, files.ecommerce);
+    }
+    throw new Error('Upload bank, POS, and ecommerce files, or open a saved month to download.');
+  }
 
   async function handleDownload() {
     if (isQuarter) {
@@ -41,6 +63,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
     }
 
     setExporting(true);
+    setExportStage(null);
     setError('');
     try {
       if (isWeek) {
@@ -49,6 +72,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
         const filename = filenameFromDisposition(disposition, 'Weekly_Report.pdf');
         await downloadPdfWithSaveDialog({
           suggestedFilename: filename,
+          onStage: setExportStage,
           fetchBlob: async () => new File([data], filename, { type: 'application/pdf' }),
         });
         return;
@@ -57,13 +81,9 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
       const fallbackName = 'Reconciliation_Report.pdf';
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
+        onStage: setExportStage,
         fetchBlob: async () => {
-          // Prefer fresh file export (Postman POST /api/analyze/export/compact) when uploads remain.
-          const { data, headers } = hasAll
-            ? await downloadCompactReconciliation(files.bank, files.pos, files.ecommerce)
-            : statementId
-              ? await downloadSavedReportCompact(statementId)
-              : await downloadCompactReconciliation(files.bank, files.pos, files.ecommerce);
+          const { data, headers } = await fetchMonthlyCompactPdf();
           const filename = filenameFromDisposition(
             headers['content-disposition'] as string | undefined,
             fallbackName,
@@ -80,6 +100,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
       );
     } finally {
       setExporting(false);
+      setExportStage(null);
     }
   }
 
@@ -89,10 +110,10 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
 
   const hint = isWeek
     ? 'PDF with Week 1, Week 2, … breakdowns for this statement month.'
-    : hasAll
-      ? 'Compact monthly report from uploaded files (Postman POST /api/analyze/export/compact).'
-      : statementId
-        ? 'Compact monthly report (same layout as Postman GET /api/reports/{id}/compact).'
+    : statementId
+      ? 'Compact monthly report from your saved statement (fast — no re-upload).'
+      : hasAll
+        ? 'Compact monthly report from uploaded files (may take longer while statements are processed).'
         : 'Upload bank, POS, and ecommerce files to download.';
 
   return (
@@ -104,7 +125,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
         onClick={handleDownload}
         disabled={exporting || (isWeek ? !hasAll : !canDownloadMonth) || isQuarter}
       >
-        {exporting ? 'Preparing download…' : label}
+        {exporting ? downloadStageLabel(exportStage) : label}
       </button>
       {error && (
         <p className={styles.toolbarHint} style={{ color: 'var(--neg)', width: '100%' }}>

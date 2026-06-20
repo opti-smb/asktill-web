@@ -70,6 +70,28 @@ export function loadAtLetterCache(userId: string): AtLetterPreview | null {
   return null;
 }
 
+/** Cached live letter for logged-out landing (same account the user uploaded with). */
+export function loadLandingAtLetterCache(): AtLetterPreview | null {
+  const hinted = savedLetterUserId();
+  if (hinted) {
+    const fromHint = loadAtLetterCache(hinted);
+    if (fromHint) return fromHint;
+  }
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(PREFIX)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as CachedAtLetter;
+      if (parsed?.letter?.mode === 'live') return parsed.letter;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export function clearAtLetterCache(userId?: string): void {
   if (!userId?.trim()) return;
   try {
@@ -98,11 +120,24 @@ export function clearUserAtLetterState(userId: string): void {
   window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
 }
 
-/**
- * Logout: keep cached letter on this device so landing still shows your last upload;
- * session token is cleared separately. Hint stays so we skip the Sarah demo.
- */
-export function clearUserAtLetterOnLogout(userId: string): void {
-  void userId;
-  window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+/** Remove all AT letter keys from localStorage (logged-out landing / after server wipe). */
+export function clearAllAtLetterDeviceCache(): void {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(PREFIX) || key === HAS_LETTER_KEY) {
+        keys.push(key);
+      }
+    }
+    keys.forEach((key) => localStorage.removeItem(key));
+    window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Logout keeps the letter card on landing so users see their last upload until sign-in. */
+export function clearUserAtLetterOnLogout(_userId: string): void {
+  /* intentionally no-op — cache cleared only on empty history / DB wipe */
 }

@@ -15,11 +15,10 @@
 }
 
 .txTitle {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--ink);
-  font-weight: 500;
-  font-variation-settings: "opsz" 60;
+  font-weight: 600;
 }
 
 .txTitle em {
@@ -118,7 +117,6 @@
   font-family: var(--font-serif);
   font-weight: 600;
   font-size: 12px;
-  font-variation-settings: "opsz" 144;
 }
 
 .txLink {

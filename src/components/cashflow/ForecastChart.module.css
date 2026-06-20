@@ -31,7 +31,6 @@
   font-weight: 500;
   line-height: 1;
   margin-bottom: 8px;
-  font-variation-settings: "opsz" 144;
 }
 
 .heroMeta {
@@ -100,11 +99,10 @@
 }
 
 .forecastTitle {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 13px;
   color: var(--ink);
-  font-weight: 500;
-  font-variation-settings: "opsz" 60;
+  font-weight: 600;
 }
 
 .forecastLegend {

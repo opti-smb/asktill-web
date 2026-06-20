@@ -4,7 +4,14 @@ import { useClerk, useSession, useUser } from '@clerk/clerk-react';
 import AuthNav from '../components/auth/AuthNav';
 import AuthOAuthProgress from '../components/auth/AuthOAuthProgress';
 import { useAuth } from '../context/AuthContext';
-import { extractNotRegistered, ensureAuthServiceReady, getApiError, getToken, warmupServices } from '../lib/api';
+import {
+  ensureAuthServiceReady,
+  extractNotRegistered,
+  getApiError,
+  getToken,
+  isLocalDevServices,
+  warmupServices,
+} from '../lib/api';
 import {
   clearClerkSession,
   clearGoogleSignInAttempt,
@@ -19,9 +26,9 @@ import styles from './LoginPage.module.css';
 
 import { getPostLoginRedirect } from '../lib/pendingPdfDownload';
 const FLOW_TIMEOUT_MS = 45_000;
-const SESSION_WAIT_MS = 8_000;
-const SLOW_HINT_MS = 2_000;
-const POLL_MS = 150;
+const SESSION_WAIT_MS = 12_000;
+const SLOW_HINT_MS = 1_500;
+const POLL_MS = 100;
 
 export default function LoginOAuthComplete() {
   const navigate = useNavigate();
@@ -33,11 +40,12 @@ export default function LoginOAuthComplete() {
   const inFlightRef = useRef(false);
   const flowStartedRef = useRef(Date.now());
   const [slowHint, setSlowHint] = useState(false);
+  const [phase, setPhase] = useState<'session' | 'auth' | 'done'>('session');
 
   useEffect(() => {
     flowStartedRef.current = Date.now();
     warmupServices();
-    void ensureAuthServiceReady(6_000);
+    void ensureAuthServiceReady(isLocalDevServices() ? 8_000 : 10_000);
   }, []);
 
   useEffect(() => {
@@ -68,11 +76,11 @@ export default function LoginOAuthComplete() {
     }
 
     async function finish() {
-      if (!clerk.loaded || finishedRef.current || cancelled || inFlightRef.current) {
+      if (finishedRef.current || cancelled || inFlightRef.current) {
         return;
       }
       const sessionId = session?.id ?? clerk.session?.id;
-      if (!sessionLoaded && !sessionId) {
+      if (!sessionId && !clerk.loaded && !sessionLoaded) {
         return;
       }
 
@@ -100,12 +108,14 @@ export default function LoginOAuthComplete() {
       }
 
       inFlightRef.current = true;
+      setPhase('auth');
       try {
         await loginWithClerkSession(sessionId);
         if (!getToken()) {
           throw new Error('Sign-in did not complete. Try again.');
         }
         finishedRef.current = true;
+        setPhase('done');
         clearGoogleSignInAttempt();
         if (!cancelled) {
           navigate(getPostLoginRedirect(), { replace: true });
@@ -155,11 +165,20 @@ export default function LoginOAuthComplete() {
 
   const oauthMode = getGoogleOAuthMode();
   const title = oauthMode === 'signup' ? 'Checking your Google account' : 'Signing in with Google';
-  const hint = slowHint
-    ? 'Waking up services… this can take a moment on first sign-in.'
-    : oauthMode === 'signup'
+  const hint = (() => {
+    if (phase === 'auth') {
+      return 'Connecting to your AskTill account…';
+    }
+    if (phase === 'done') {
+      return 'Opening your dashboard…';
+    }
+    if (slowHint) {
+      return 'Still finishing Google sign-in… this step talks to Google and can take a few seconds.';
+    }
+    return oauthMode === 'signup'
       ? 'Finishing Google sign-up…'
       : 'Finishing sign-in…';
+  })();
 
   return (
     <div className={styles.page}>

@@ -1,14 +1,8 @@
-import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAtLetterPreview } from '../../hooks/useAtLetterPreview';
-import { useAtLetterTemplate } from '../../hooks/useAtLetterTemplate';
-import { downloadAtLetterPdfByIdSafe } from '../../lib/atLetterDownload';
 import { atLetterMailtoUrl } from '../../lib/atLetterPreview';
-import {
-  getPostLoginRedirect,
-  setPendingPdfDownload,
-} from '../../lib/pendingPdfDownload';
 import styles from './landingV2.module.css';
 
 const CHECKS = [
@@ -26,41 +20,16 @@ const CHECKS = [
   },
   {
     title: 'Shareable with your CPA',
-    desc: 'Download as PDF or forward from your inbox.',
+    desc: 'Forward from your inbox in one click.',
   },
 ];
 
 export default function AtLetterSection() {
-  const navigate = useNavigate();
   const { isAuth } = useAuth();
   const { letter, loading, error, isSample } = useAtLetterPreview();
-  const { statementId } = useAtLetterTemplate();
-  const [pdfBusy, setPdfBusy] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
 
-  const downloadStatementId = letter.statementId ?? statementId;
   const canUseLetterActions = letter.mode === 'live' && !isSample;
-  const canDownloadPdf = canUseLetterActions && Boolean(downloadStatementId) && isAuth;
-  const needsSignInForPdf = canUseLetterActions && Boolean(downloadStatementId) && !isAuth;
   const canForward = canUseLetterActions;
-
-  const runPdfDownload = useCallback(async (id: string) => {
-    setPdfBusy(true);
-    setPdfError(null);
-    const ok = await downloadAtLetterPdfByIdSafe(id, setPdfError);
-    setPdfBusy(false);
-    return ok;
-  }, []);
-
-  const downloadPdf = useCallback(async () => {
-    if (!downloadStatementId) return;
-    if (!isAuth) {
-      setPendingPdfDownload(downloadStatementId);
-      navigate('/login', { state: { from: getPostLoginRedirect('/') } });
-      return;
-    }
-    await runPdfDownload(downloadStatementId);
-  }, [downloadStatementId, isAuth, navigate, runPdfDownload]);
 
   const leftCta =
     letter.mode === 'live' ? (
@@ -242,24 +211,6 @@ export default function AtLetterSection() {
               <div className={styles.letterFooter}>
                 <span>{letter.footerMeta}</span>
                 <div className={styles.letterFooterBtns}>
-                  {canDownloadPdf ? (
-                    <button type="button" onClick={downloadPdf} disabled={pdfBusy}>
-                      {pdfBusy ? 'Downloading…' : 'Download AT Letter'}
-                    </button>
-                  ) : needsSignInForPdf ? (
-                    <button
-                      type="button"
-                      onClick={downloadPdf}
-                      disabled={pdfBusy}
-                      title="Sign in — your AT Letter PDF will download automatically after"
-                    >
-                      {pdfBusy ? 'Downloading…' : 'Sign in to download AT Letter'}
-                    </button>
-                  ) : (
-                    <button type="button" disabled title="Upload and analyze to generate your AT Letter">
-                      Download AT Letter
-                    </button>
-                  )}
                   {canForward ? (
                     <button type="button" onClick={forwardLetter} title="Open your email app with this letter">
                       Forward
@@ -271,11 +222,6 @@ export default function AtLetterSection() {
                   )}
                 </div>
               </div>
-              {pdfError ? (
-                <p className={styles.letterSign} style={{ color: '#a32d2d', marginTop: 8 }}>
-                  {pdfError}
-                </p>
-              ) : null}
             </div>
           </div>
         </div>

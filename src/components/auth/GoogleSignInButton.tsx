@@ -8,7 +8,7 @@ import {
   startGoogleOAuth,
   startGoogleOAuthSignUp,
 } from '../../lib/clerk';
-import { ensureAuthServiceReady, warmupServices } from '../../lib/api';
+import { ensureAuthServiceReady, isLocalDevServices, warmupServices } from '../../lib/api';
 import styles from '../../pages/LoginPage.module.css';
 
 function GoogleIcon() {
@@ -64,7 +64,7 @@ export default function GoogleSignInButton({ disabled, onError, mode = 'signin' 
     setLoading(true);
 
     try {
-      await ensureAuthServiceReady(5_000);
+      void ensureAuthServiceReady(isLocalDevServices() ? 8_000 : 5_000);
       markGoogleOAuthAttempt(isSignup ? 'signup' : 'signin');
       if (isSignup && signUp) {
         await startGoogleOAuthSignUp(signUp, clerk);

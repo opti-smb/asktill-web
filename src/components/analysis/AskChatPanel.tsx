@@ -32,7 +32,7 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
         { role: 'user', text },
         {
           role: 'assistant',
-          text: 'Upload bank, POS, and ecommerce reports at Sources first, then run analysis.',
+          text: 'Upload bank, POS, and ecommerce reports first, then run analysis.',
         },
       ]);
       return;

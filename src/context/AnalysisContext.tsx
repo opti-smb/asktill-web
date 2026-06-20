@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -25,11 +26,15 @@ import {
   markUserHasSavedLetter,
   saveAtLetterCache,
 } from '../lib/atLetterCache';
+import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
+  isPipelineDisplayComplete,
+  PIPELINE_DONE_HOLD_MS,
   PIPELINE_TICK_MS,
+  shouldRunPipelineTick,
   tickPipelineForward,
   type AnalyzeProgressState,
 } from '../lib/analyzeProgress';
@@ -65,6 +70,30 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [uploadMismatch, setUploadMismatch] = useState<UploadValidationResult | null>(null);
   const [statementDuplicate, setStatementDuplicate] = useState<StatementDuplicateInfo | null>(null);
+  const pipelineFinishRef = useRef<(() => void) | null>(null);
+  const pipelineSafetyRef = useRef<number | null>(null);
+
+  const clearPipelineWaiters = useCallback(() => {
+    if (pipelineSafetyRef.current != null) {
+      window.clearTimeout(pipelineSafetyRef.current);
+      pipelineSafetyRef.current = null;
+    }
+    pipelineFinishRef.current = null;
+  }, []);
+
+  /** Wait for step animation to finish after the server already returned. */
+  const waitForPipelineDisplay = useCallback(() => {
+    return new Promise<void>((resolve) => {
+      clearPipelineWaiters();
+      pipelineFinishRef.current = resolve;
+      pipelineSafetyRef.current = window.setTimeout(() => {
+        pipelineFinishRef.current = null;
+        pipelineSafetyRef.current = null;
+        setAnalyzeProgress(null);
+        resolve();
+      }, 2500);
+    });
+  }, [clearPipelineWaiters]);
 
   const setFiles = useCallback((next: UploadFiles) => {
     setFilesState(next);
@@ -80,6 +109,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
   const resetSession = useCallback(() => {
     clearJustAnalyzedGrace();
+    clearPipelineWaiters();
     setFilesState({});
     setResult(null);
     setLoading(false);
@@ -100,7 +130,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   }, [resetSession]);
 
   useEffect(() => {
-    if (!analyzeProgress || analyzeProgress.activeIndex >= analyzeProgress.targetIndex) {
+    if (!analyzeProgress || !shouldRunPipelineTick(analyzeProgress)) {
       return undefined;
     }
     const timer = window.setTimeout(() => {
@@ -109,6 +139,22 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         return tickPipelineForward(prev) ?? prev;
       });
     }, PIPELINE_TICK_MS);
+    return () => window.clearTimeout(timer);
+  }, [analyzeProgress]);
+
+  useEffect(() => {
+    if (!analyzeProgress || !isPipelineDisplayComplete(analyzeProgress)) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setAnalyzeProgress(null);
+      if (pipelineSafetyRef.current != null) {
+        window.clearTimeout(pipelineSafetyRef.current);
+        pipelineSafetyRef.current = null;
+      }
+      pipelineFinishRef.current?.();
+      pipelineFinishRef.current = null;
+    }, PIPELINE_DONE_HOLD_MS);
     return () => window.clearTimeout(timer);
   }, [analyzeProgress]);
 
@@ -136,7 +182,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       setResult(data);
       markJustAnalyzed();
       setStatementDuplicate(null);
-      setAnalyzeProgress(null);
 
       if (isAuth && user?.userId) {
         const preview = buildAtLetterPreview(data, user, {
@@ -152,8 +197,26 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
       }
 
+      if (data.statement_id) {
+        void prefetchAtLetterHtml(data.statement_id);
+      }
+
+      // Server is done — show all steps complete, brief hold, then dashboard.
+      setAnalyzeProgress((prev) =>
+        prev
+          ? {
+              ...prev,
+              complete: true,
+              targetIndex: prev.steps.length - 1,
+              activeIndex: prev.steps.length,
+            }
+          : prev,
+      );
+      await waitForPipelineDisplay();
+
       return data;
     } catch (err) {
+      clearPipelineWaiters();
       setAnalyzeProgress(null);
       const duplicate = extractStatementDuplicate(err);
       if (duplicate) {
@@ -175,7 +238,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [files, isAuth, user]);
+  }, [files, isAuth, user, waitForPipelineDisplay, clearPipelineWaiters]);
 
   const mergeWeekReports = useCallback((weekReports: WeekReportsViewApi) => {
     setResult((prev) => {

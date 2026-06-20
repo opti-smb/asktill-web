@@ -9,8 +9,15 @@ import {
 
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchReportHistory, USER_LOGOUT_EVENT } from '../lib/api';
+import { fetchReportHistory, fetchSavedReport, USER_LOGOUT_EVENT, type SavedReportSummaryApi } from '../lib/api';
 import { clearUserAtLetterState, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
+import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
+import {
+  periodKeyFromLabel,
+  pickPrimarySavedReport,
+  resolveAtLetterStatementId,
+} from '../lib/atLetterStatement';
+import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 import type { AnalyzeResult } from '../lib/analyzeResponse';
 
 const JUST_ANALYZED_KEY = 'asktill:just-analyzed';
@@ -20,11 +27,13 @@ export const REPORT_HISTORY_REFRESH_EVENT = 'asktill:report-history-refresh';
 interface ReportSyncContextValue {
   historyReady: boolean;
   savedCount: number;
+  primaryReport: SavedReportSummaryApi | null;
 }
 
 const ReportSyncContext = createContext<ReportSyncContextValue>({
   historyReady: false,
   savedCount: 0,
+  primaryReport: null,
 });
 
 /** Set after a successful analyze so we do not wipe in-memory results before DB history lists. */
@@ -77,10 +86,11 @@ export function useReportSync(): ReportSyncContextValue {
 
 export function ReportSyncProvider({ children }: { children: ReactNode }) {
   const { isAuth, ready, user } = useAuth();
-  const { clearResult, loading: analyzeLoading } = useAnalysis();
+  const { result, clearResult, loading: analyzeLoading, loadSavedReport } = useAnalysis();
   const [tick, setTick] = useState(0);
   const [historyReady, setHistoryReady] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [primaryReport, setPrimaryReport] = useState<SavedReportSummaryApi | null>(null);
 
   useEffect(() => {
     const onUpdate = () => setTick((n) => n + 1);
@@ -88,6 +98,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     const onLogout = () => {
       setHistoryReady(true);
       setSavedCount(0);
+      setPrimaryReport(null);
+      clearAtLetterHtmlCache();
       setTick((n) => n + 1);
     };
     window.addEventListener(LETTER_UPDATED_EVENT, onUpdate);
@@ -101,15 +113,30 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!ready || !isAuth) return;
+    const sessionAnalysis = getAnalyzeAnalysis(result);
+    const statementId = resolveAtLetterStatementId({
+      sessionStatementId: result?.statement_id,
+      sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
+      primaryReport,
+    });
+    if (statementId) {
+      void prefetchAtLetterHtml(statementId);
+    }
+  }, [ready, isAuth, result?.statement_id, result?.analysis, primaryReport]);
+
+  useEffect(() => {
     if (!ready) {
       setHistoryReady(false);
       setSavedCount(0);
+      setPrimaryReport(null);
       return;
     }
 
     if (!isAuth || !user?.userId) {
       setHistoryReady(true);
       setSavedCount(0);
+      setPrimaryReport(null);
       return;
     }
 
@@ -117,10 +144,12 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     setHistoryReady(false);
 
     fetchReportHistory()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (cancelled) return;
         const reports = data.reports ?? [];
+        const primary = pickPrimarySavedReport(reports);
         setSavedCount(reports.length);
+        setPrimaryReport(primary);
         setHistoryReady(true);
 
         if (reports.length > 0) {
@@ -129,9 +158,30 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           } catch {
             /* ignore */
           }
+
+          const sessionAnalysis = getAnalyzeAnalysis(result);
+          const statementId = resolveAtLetterStatementId({
+            sessionStatementId: result?.statement_id,
+            sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
+            primaryReport: primary,
+          });
+          if (statementId) {
+            void prefetchAtLetterHtml(statementId);
+          }
+
+          if (!result?.analysis && primary && !analyzeLoading) {
+            try {
+              const { data: saved } = await fetchSavedReport(primary.statement_id);
+              if (!cancelled) loadSavedReport(saved);
+            } catch {
+              /* overview can still open saved report manually */
+            }
+          }
           return;
         }
 
+        setPrimaryReport(null);
+        clearAtLetterHtmlCache();
         clearJustAnalyzedGrace();
         if (user.userId) {
           clearUserAtLetterState(user.userId);
@@ -143,17 +193,18 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         if (cancelled) return;
         setSavedCount(0);
+        setPrimaryReport(null);
         setHistoryReady(true);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [ready, isAuth, user?.userId, tick, clearResult, analyzeLoading]);
+  }, [ready, isAuth, user?.userId, tick, clearResult, analyzeLoading, loadSavedReport, result?.statement_id, result?.analysis]);
 
   const value = useMemo(
-    () => ({ historyReady, savedCount }),
-    [historyReady, savedCount],
+    () => ({ historyReady, savedCount, primaryReport }),
+    [historyReady, savedCount, primaryReport],
   );
 
   return <ReportSyncContext.Provider value={value}>{children}</ReportSyncContext.Provider>;

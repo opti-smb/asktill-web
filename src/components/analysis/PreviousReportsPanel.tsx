@@ -1,7 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  downloadAtLetterPdf,
   downloadSavedReportCompact,
   fetchReportHistory,
   fetchSavedReport,
@@ -9,7 +8,6 @@ import {
   getApiErrorAsync,
   type SavedReportSummaryApi,
 } from '../../lib/api';
-import { pickPrimarySavedReport } from '../../lib/atLetterStatement';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../../lib/downloadReport';
 import type { AnalyzeResult } from '../../lib/analyzeResponse';
 import postmanStyles from './PostmanPanels.module.css';
@@ -93,34 +91,6 @@ export default function PreviousReportsPanel({
     }
   }, [navigate, onLoadReport]);
 
-  const latestReport = useMemo(() => pickPrimarySavedReport(reports), [reports]);
-
-  const downloadLatestAtLetter = useCallback(async () => {
-    const latest = latestReport;
-    if (!latest?.statement_id) return;
-    setBusyId(latest.statement_id);
-    setActionError(null);
-    const label = latest.period_label?.replace(/\s+/g, '_') ?? 'AT_Letter';
-    const fallbackName = `${label}_AT_Letter.pdf`;
-    try {
-      await downloadPdfWithSaveDialog({
-        suggestedFilename: fallbackName,
-        fetchBlob: async () => {
-          const { data, headers } = await downloadAtLetterPdf(latest.statement_id);
-          const filename = filenameFromDisposition(
-            headers['content-disposition'] as string | undefined,
-            fallbackName,
-          );
-          return new File([data], filename, { type: 'application/pdf' });
-        },
-      });
-    } catch (err) {
-      setActionError(await getApiErrorAsync(err, 'Could not download AT Letter.'));
-    } finally {
-      setBusyId(null);
-    }
-  }, [latestReport]);
-
   const downloadMonthlyReport = useCallback(async (row: SavedReportSummaryApi) => {
     if (!row.statement_id) return;
     setBusyId(row.statement_id);
@@ -186,19 +156,8 @@ export default function PreviousReportsPanel({
         <div className={postmanStyles.head}>
           <h2 className={postmanStyles.title}>Previous reports</h2>
           <p className={postmanStyles.sub}>
-            Open a saved month on the dashboard. The AT Letter rolls up your latest 1–3 uploads — not one letter per old month.
+            Open a saved month on the dashboard. The AT Letter rolls up your latest 1–3 uploads — view it on the AT Letter tab.
           </p>
-          {latestReport?.statement_id && latestReport.has_pdf !== false ? (
-            <button
-              type="button"
-              className={postmanStyles.linkBtn}
-              disabled={busyId === latestReport.statement_id}
-              onClick={() => void downloadLatestAtLetter()}
-              style={{ marginTop: 8 }}
-            >
-              Download latest AT Letter
-            </button>
-          ) : null}
         </div>
       )}
       <div className={postmanStyles.tableWrap}>

@@ -26,7 +26,6 @@ import {
 } from '../lib/api';
 import { clearUserAtLetterOnLogout, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
-import { clearPendingPdfDownload } from '../lib/pendingPdfDownload';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS } from '../lib/session';
 
@@ -93,7 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (logoutUserId) {
       clearUserAtLetterOnLogout(logoutUserId);
     }
-    clearPendingPdfDownload();
     clearAppSession();
     setTok(null);
     setUser(null);
