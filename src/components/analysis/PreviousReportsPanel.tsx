@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   downloadAtLetterPdf,
+  downloadSavedReportCompact,
   fetchReportHistory,
   fetchSavedReport,
   getApiError,
@@ -9,7 +10,7 @@ import {
   type SavedReportSummaryApi,
 } from '../../lib/api';
 import { pickPrimarySavedReport } from '../../lib/atLetterStatement';
-import { filenameFromDisposition, saveBlobDownload } from '../../lib/downloadReport';
+import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../../lib/downloadReport';
 import type { AnalyzeResult } from '../../lib/analyzeResponse';
 import postmanStyles from './PostmanPanels.module.css';
 
@@ -99,20 +100,51 @@ export default function PreviousReportsPanel({
     if (!latest?.statement_id) return;
     setBusyId(latest.statement_id);
     setActionError(null);
+    const label = latest.period_label?.replace(/\s+/g, '_') ?? 'AT_Letter';
+    const fallbackName = `${label}_AT_Letter.pdf`;
     try {
-      const { data, headers } = await downloadAtLetterPdf(latest.statement_id);
-      const label = latest.period_label?.replace(/\s+/g, '_') ?? 'AT_Letter';
-      const filename = filenameFromDisposition(
-        headers['content-disposition'] as string | undefined,
-        `${label}_AT_Letter.pdf`,
-      );
-      saveBlobDownload(data, filename);
+      await downloadPdfWithSaveDialog({
+        suggestedFilename: fallbackName,
+        fetchBlob: async () => {
+          const { data, headers } = await downloadAtLetterPdf(latest.statement_id);
+          const filename = filenameFromDisposition(
+            headers['content-disposition'] as string | undefined,
+            fallbackName,
+          );
+          return new File([data], filename, { type: 'application/pdf' });
+        },
+      });
     } catch (err) {
       setActionError(await getApiErrorAsync(err, 'Could not download AT Letter.'));
     } finally {
       setBusyId(null);
     }
   }, [latestReport]);
+
+  const downloadMonthlyReport = useCallback(async (row: SavedReportSummaryApi) => {
+    if (!row.statement_id) return;
+    setBusyId(row.statement_id);
+    setActionError(null);
+    const label = row.period_label?.replace(/\s+/g, '_') ?? 'Reconciliation';
+    const fallbackName = `${label}_Reconciliation.pdf`;
+    try {
+      await downloadPdfWithSaveDialog({
+        suggestedFilename: fallbackName,
+        fetchBlob: async () => {
+          const { data, headers } = await downloadSavedReportCompact(row.statement_id);
+          const filename = filenameFromDisposition(
+            headers['content-disposition'] as string | undefined,
+            fallbackName,
+          );
+          return new File([data], filename, { type: 'application/pdf' });
+        },
+      });
+    } catch (err) {
+      setActionError(await getApiErrorAsync(err, 'Could not download monthly report.'));
+    } finally {
+      setBusyId(null);
+    }
+  }, []);
 
   if (!active) return null;
   if (loading) {
@@ -184,6 +216,12 @@ export default function PreviousReportsPanel({
                 <td>{fmtDate(row.uploaded_at)}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <button type="button" className={postmanStyles.linkBtn} disabled={busyId === row.statement_id} onClick={() => void openReport(row)}>Open</button>
+                  {row.has_pdf !== false ? (
+                    <>
+                      {' · '}
+                      <button type="button" className={postmanStyles.linkBtn} disabled={busyId === row.statement_id} onClick={() => void downloadMonthlyReport(row)}>Download</button>
+                    </>
+                  ) : null}
                 </td>
               </tr>
             ))}

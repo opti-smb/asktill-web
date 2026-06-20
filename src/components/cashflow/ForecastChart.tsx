@@ -1,15 +1,18 @@
-import type { CashFlowUiApi } from '../../lib/analyzeResponse';
+import type { AnalyzeResult, CashFlowUiApi } from '../../lib/analyzeResponse';
+import { fmtMoney, reportMatchedDeposits } from '../../lib/analyzeResponse';
 import styles from './ForecastChart.module.css';
 
 interface ForecastChartProps {
   cashFlow?: CashFlowUiApi | null;
+  result?: AnalyzeResult | null;
 }
 
-export default function ForecastChart({ cashFlow }: ForecastChartProps) {
+export default function ForecastChart({ cashFlow, result }: ForecastChartProps) {
   const period = cashFlow?.period_label ?? 'Today';
   const hasLiveData = Boolean(cashFlow);
   const useSample = false;
   const forecast = cashFlow?.forecast_chart;
+  const matchedDeposits = reportMatchedDeposits(result);
   const cashOnHand = hasLiveData ? (cashFlow?.cash_on_hand_usd ?? '—') : useSample ? '$27,341' : '—';
 
   return (
@@ -56,13 +59,19 @@ export default function ForecastChart({ cashFlow }: ForecastChartProps) {
                   )}
                 </div>
               )}
-              {cashFlow?.net_to_bank_usd && (
+              {matchedDeposits != null ? (
+                <div>
+                  <strong>Matched processor deposits {fmtMoney(matchedDeposits)}</strong>
+                  {' · '}
+                  <span className={styles.pos}>POS + e-commerce on bank statement</span>
+                </div>
+              ) : cashFlow?.net_to_bank_usd ? (
                 <div>
                   <strong>Net processor deposits {cashFlow.net_to_bank_usd}</strong>
                   {' · '}
                   <span className={styles.pos}>Card and online payouts to bank</span>
                 </div>
-              )}
+              ) : null}
               {cashFlow?.hero_avg_label && (
                 <div>
                   {cashFlow.hero_avg_label}

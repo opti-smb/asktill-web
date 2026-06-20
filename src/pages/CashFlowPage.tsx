@@ -30,8 +30,8 @@ export default function CashFlowPage() {
       />
       <div className={styles.main}>
         <div className="wrap">
-          <ForecastChart cashFlow={cashFlow} />
-          <InflowOutflow cashFlow={cashFlow} />
+          <ForecastChart cashFlow={cashFlow} result={result} />
+          <InflowOutflow cashFlow={cashFlow} result={result} />
         </div>
       </div>
     </>

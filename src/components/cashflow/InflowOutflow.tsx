@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CashFlowUiApi } from '../../lib/analyzeResponse';
+import type { AnalyzeResult, CashFlowUiApi } from '../../lib/analyzeResponse';
+import { fmtMoney, reportMatchedDeposits } from '../../lib/analyzeResponse';
 import {
   inflows as mockInflows,
   outflows as mockOutflows,
@@ -11,6 +12,7 @@ import styles from './InflowOutflow.module.css';
 
 interface InflowOutflowProps {
   cashFlow?: CashFlowUiApi | null;
+  result?: AnalyzeResult | null;
   hasLiveAnalysis?: boolean;
 }
 
@@ -68,9 +70,10 @@ function MockMonthBars({
   );
 }
 
-export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
+export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) {
   const hasLiveData = Boolean(cashFlow);
   const useSample = false;
+  const matchedDeposits = reportMatchedDeposits(result);
   const inflows = cashFlow?.inflows?.length
     ? cashFlow.inflows.map((row) => ({
         label: row.label,
@@ -104,9 +107,15 @@ export default function InflowOutflow({ cashFlow }: InflowOutflowProps) {
     setDebitDetailsOpen(false);
   }, [debitLinesKey]);
 
-  const moneyIn = cashFlow?.money_in_usd ?? (useSample ? '$58,234' : '—');
+  const moneyIn =
+    matchedDeposits != null
+      ? fmtMoney(matchedDeposits)
+      : cashFlow?.money_in_usd ?? (useSample ? '$58,234' : '—');
   const moneyOut = cashFlow?.money_out_usd ?? (useSample ? '$47,521' : '—');
-  const inSubtitle = cashFlow?.money_in_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see inflows');
+  const inSubtitle =
+    matchedDeposits != null
+      ? 'POS + e-commerce matched to bank (same as compact report)'
+      : cashFlow?.money_in_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see inflows');
   const outSubtitle = cashFlow?.money_out_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see outflows');
   const inTrend = cashFlow?.money_in_trend;
   const outTrend = cashFlow?.money_out_trend;

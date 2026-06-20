@@ -97,3 +97,12 @@ export function clearUserAtLetterState(userId: string): void {
   clearSavedLetterHint(userId);
   window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
 }
+
+/**
+ * Logout: keep cached letter on this device so landing still shows your last upload;
+ * session token is cleared separately. Hint stays so we skip the Sarah demo.
+ */
+export function clearUserAtLetterOnLogout(userId: string): void {
+  void userId;
+  window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+}
