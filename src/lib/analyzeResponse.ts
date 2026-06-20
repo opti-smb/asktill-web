@@ -478,12 +478,73 @@ export const REPORT_TOTAL_FIELDS = [
   { key: 'difference', label: 'difference' },
 ] as const;
 
-function getAnalyzeReport(result: AnalyzeResult | null | undefined) {
+export function getAnalyzeReport(result: AnalyzeResult | null | undefined) {
   return result?.report ?? null;
 }
 
 export function getAnalyzeAnalysis(result: AnalyzeResult | null | undefined) {
   return result?.analysis ?? null;
+}
+
+export interface ReportChannelDeposits {
+  pos: number | null;
+  ecommerce: number | null;
+  total: number | null;
+}
+
+/** Per-channel bank-matched deposits from channel_breakdown (compact / AT Letter basis). */
+export function reportChannelDeposits(result: AnalyzeResult | null | undefined): ReportChannelDeposits {
+  const analysis = getAnalyzeAnalysis(result);
+  const cb = analysis?.channel_breakdown;
+  const pos = cb?.pos?.deposited_to_bank ?? cb?.pos?.net_to_bank ?? null;
+  const ecom = cb?.ecommerce?.deposited_to_bank ?? cb?.ecommerce?.net_to_bank ?? null;
+  const total = Math.round(((pos ?? 0) + (ecom ?? 0)) * 100) / 100;
+  return {
+    pos: pos != null && pos > 0 ? pos : null,
+    ecommerce: ecom != null && ecom > 0 ? ecom : null,
+    total: total > 0.01 ? total : null,
+  };
+}
+
+/** POS + e-commerce bank-matched deposits — same basis as AT Letter and compact report. */
+export function reportMatchedDeposits(result: AnalyzeResult | null | undefined): number | null {
+  const channels = reportChannelDeposits(result);
+  if (channels.total != null) return channels.total;
+  const report = getAnalyzeReport(result);
+  const expected = report?.expected_bank_inflows;
+  if (expected != null && expected > 0) return expected;
+  const netBank = report?.total_net_to_bank;
+  if (netBank != null && netBank > 0) return netBank;
+  return null;
+}
+
+export interface ReportReconciliationTotals {
+  matchedDeposits: number | null;
+  posDeposited: number | null;
+  ecomDeposited: number | null;
+  expectedInflows: number | null;
+  actualBankCredits: number | null;
+  gap: number | null;
+}
+
+/** Report-level reconciliation — prefer report.*, same fields as compact export. */
+export function reportReconciliationTotals(
+  result: AnalyzeResult | null | undefined,
+): ReportReconciliationTotals {
+  const report = getAnalyzeReport(result);
+  const channels = reportChannelDeposits(result);
+  return {
+    matchedDeposits: reportMatchedDeposits(result),
+    posDeposited: channels.pos,
+    ecomDeposited: channels.ecommerce,
+    expectedInflows: report?.expected_bank_inflows ?? null,
+    actualBankCredits: report?.actual_bank_credits ?? null,
+    gap: report?.difference ?? null,
+  };
+}
+
+export function matchedDepositsLabel(result: AnalyzeResult | null | undefined): string {
+  return fmtMoney(reportMatchedDeposits(result));
 }
 
 export function getReportTotals(result: AnalyzeResult | null | undefined) {

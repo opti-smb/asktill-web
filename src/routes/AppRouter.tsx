@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import PendingPdfDownloadHandler from '../components/PendingPdfDownloadHandler';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
 import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
@@ -62,6 +63,7 @@ function AppRoutes() {
 export default function AppRouter() {
   return (
     <BrowserRouter>
+      <PendingPdfDownloadHandler />
       {isClerkEnabled() ? (
         <ClerkAuthProvider>
           <AppRoutes />

@@ -1,6 +1,6 @@
 import type { KPI } from '../types';
 import type { KpiCardApi, ProcessorCardApi } from './analyzeResponse';
-import { fmtMoney } from './analyzeResponse';
+import { fmtMoney, reportReconciliationTotals } from './analyzeResponse';
 
 const defaultSpark = (fill: string): KPI['sparkBars'] => [
   { x: 6, y: 14, height: 14, fill: '#CBD5E1' },
@@ -25,21 +25,31 @@ function mapSparkBars(kpi: KpiCardApi, fallbackFill: string): KPI['sparkBars'] {
   return defaultSpark(fallbackFill);
 }
 
-export function mapApiKpisToUi(kpis: KpiCardApi[] | undefined): KPI[] {
+export function mapApiKpisToUi(
+  kpis: KpiCardApi[] | undefined,
+  result?: import('./analyzeResponse').AnalyzeResult | null,
+): KPI[] {
   if (!kpis?.length) return [];
   const fills = ['#1E40AF', '#047857', '#B45309', '#64748B'];
-  return kpis.map((kpi, index) => ({
-    label: kpi.label,
-    value: kpi.formatted_value,
-    delta: kpi.delta ?? '',
-    deltaType: (kpi.delta_type as KPI['deltaType']) ?? 'flat',
-    prev: kpi.prev_label ?? '',
-    avgLabel: kpi.avg_label ?? '',
-    avgNote: kpi.comparison_note ?? kpi.avg_note ?? kpi.footnote ?? '',
-    avgNoteType: (kpi.avg_note_type as KPI['avgNoteType']) ?? 'muted',
-    helperText: kpi.helper_text ?? undefined,
-    sparkBars: mapSparkBars(kpi, fills[index % fills.length]),
-  }));
+  const gapFromReport = result ? reportReconciliationTotals(result).gap : null;
+  return kpis.map((kpi, index) => {
+    let value = kpi.formatted_value;
+    if (kpi.id === 'reconciliation_gap' && gapFromReport != null) {
+      value = fmtMoney(gapFromReport);
+    }
+    return {
+      label: kpi.label,
+      value,
+      delta: kpi.delta ?? '',
+      deltaType: (kpi.delta_type as KPI['deltaType']) ?? 'flat',
+      prev: kpi.prev_label ?? '',
+      avgLabel: kpi.avg_label ?? '',
+      avgNote: kpi.comparison_note ?? kpi.avg_note ?? kpi.footnote ?? '',
+      avgNoteType: (kpi.avg_note_type as KPI['avgNoteType']) ?? 'muted',
+      helperText: kpi.helper_text ?? undefined,
+      sparkBars: mapSparkBars(kpi, fills[index % fills.length]),
+    };
+  });
 }
 
 export function processorIconType(icon: string): 'pos' | 'ecomm' {

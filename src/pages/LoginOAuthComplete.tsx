@@ -4,7 +4,7 @@ import { useClerk, useSession, useUser } from '@clerk/clerk-react';
 import AuthNav from '../components/auth/AuthNav';
 import AuthOAuthProgress from '../components/auth/AuthOAuthProgress';
 import { useAuth } from '../context/AuthContext';
-import { extractNotRegistered, getApiError, getToken, warmupServices } from '../lib/api';
+import { extractNotRegistered, ensureAuthServiceReady, getApiError, getToken, warmupServices } from '../lib/api';
 import {
   clearClerkSession,
   clearGoogleSignInAttempt,
@@ -17,10 +17,11 @@ import {
 } from '../lib/clerk';
 import styles from './LoginPage.module.css';
 
-const UPLOAD_PATH = '/onboarding';
+import { getPostLoginRedirect } from '../lib/pendingPdfDownload';
 const FLOW_TIMEOUT_MS = 45_000;
-const SESSION_WAIT_MS = 12_000;
-const SLOW_HINT_MS = 3_000;
+const SESSION_WAIT_MS = 8_000;
+const SLOW_HINT_MS = 2_000;
+const POLL_MS = 150;
 
 export default function LoginOAuthComplete() {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ export default function LoginOAuthComplete() {
   useEffect(() => {
     flowStartedRef.current = Date.now();
     warmupServices();
+    void ensureAuthServiceReady(6_000);
   }, []);
 
   useEffect(() => {
@@ -66,7 +68,11 @@ export default function LoginOAuthComplete() {
     }
 
     async function finish() {
-      if (!clerk.loaded || !sessionLoaded || finishedRef.current || cancelled || inFlightRef.current) {
+      if (!clerk.loaded || finishedRef.current || cancelled || inFlightRef.current) {
+        return;
+      }
+      const sessionId = session?.id ?? clerk.session?.id;
+      if (!sessionLoaded && !sessionId) {
         return;
       }
 
@@ -77,7 +83,6 @@ export default function LoginOAuthComplete() {
         return;
       }
 
-      const sessionId = session?.id;
       const fromGoogleOAuth = wasGoogleSignInAttempt();
       const accountEmail = clerkUser?.primaryEmailAddress?.emailAddress?.trim() ?? '';
 
@@ -103,7 +108,7 @@ export default function LoginOAuthComplete() {
         finishedRef.current = true;
         clearGoogleSignInAttempt();
         if (!cancelled) {
-          navigate(UPLOAD_PATH, { replace: true });
+          navigate(getPostLoginRedirect(), { replace: true });
         }
         void clearClerkSession(clerk, { stayOnPage: true });
       } catch (err) {
@@ -130,7 +135,7 @@ export default function LoginOAuthComplete() {
       if (!finishedRef.current && !inFlightRef.current) {
         void finish();
       }
-    }, 350);
+    }, POLL_MS);
 
     return () => {
       cancelled = true;
@@ -140,6 +145,7 @@ export default function LoginOAuthComplete() {
   }, [
     clerk,
     clerk.loaded,
+    clerk.session?.id,
     clerkUser,
     loginWithClerkSession,
     navigate,

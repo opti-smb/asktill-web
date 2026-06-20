@@ -24,8 +24,9 @@ import {
   type AuthUser,
   warmupServices,
 } from '../lib/api';
-import { clearUserAtLetterState } from '../lib/atLetterCache';
+import { clearUserAtLetterOnLogout, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
+import { clearPendingPdfDownload } from '../lib/pendingPdfDownload';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS } from '../lib/session';
 
@@ -90,8 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hadToken = Boolean(stored);
     const logoutUserId = user?.userId || (stored ? getTokenSubject(stored) : null);
     if (logoutUserId) {
-      clearUserAtLetterState(logoutUserId);
+      clearUserAtLetterOnLogout(logoutUserId);
     }
+    clearPendingPdfDownload();
     clearAppSession();
     setTok(null);
     setUser(null);
@@ -133,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTok(stored);
           setUser(profile);
           scheduleSessionExpiry(stored);
+          window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+          window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
         }
       } catch (err) {
         const status = (err as AxiosError)?.response?.status;
@@ -205,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     warmupServices();
     window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+    window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
   }, [scheduleSessionExpiry]);
 
   const establishSessionFromResponse = useCallback(

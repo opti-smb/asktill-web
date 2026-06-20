@@ -1,5 +1,11 @@
 import type { AuthUser, SavedReportSummaryApi } from './api';
-import type { AnalyzeResult, StandardInsight, UiAnalysisView } from './analyzeResponse';
+import {
+  getAnalyzeAnalysis,
+  reportMatchedDeposits,
+  type AnalyzeResult,
+  type StandardInsight,
+  type UiAnalysisView,
+} from './analyzeResponse';
 
 export type AtLetterMode = 'sample' | 'live' | 'empty';
 
@@ -72,14 +78,10 @@ function periodMonthName(periodLabel: string | null | undefined): string {
   return periodLabel.trim();
 }
 
-function totalCashDeposited(analysis: UiAnalysisView | null | undefined): number | null {
-  const cb = analysis?.channel_breakdown;
-  if (cb) {
-    const pos = cb.pos?.deposited_to_bank ?? cb.pos?.net_to_bank;
-    const ecom = cb.ecommerce?.deposited_to_bank ?? cb.ecommerce?.net_to_bank;
-    const total = (pos ?? 0) + (ecom ?? 0);
-    if (total > 0.01) return Math.round(total * 100) / 100;
-  }
+function totalCashDeposited(result: AnalyzeResult | null | undefined): number | null {
+  const matched = reportMatchedDeposits(result);
+  if (matched != null) return matched;
+  const analysis = getAnalyzeAnalysis(result);
   const depKpi = analysis?.kpis?.find((k) => /cash deposited|deposited to bank/i.test(k.label ?? ''));
   if (typeof depKpi?.value === 'number' && depKpi.value > 0) return depKpi.value;
   return null;
@@ -126,7 +128,7 @@ export function buildAtLetterFromSummary(
     firstName,
     letterDateLabel: `${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · AT Letter`,
     periodIntro: `Here's your ${periodName} in plain English.`,
-    broughtIn: fmtUsd(summary.total_gross),
+    broughtIn: fmtUsd(summary.net_to_bank),
     spent: '—',
     kept: fmtUsd(summary.net_to_bank),
     summary: `Your latest saved report for ${periodName}. Open the dashboard for full cash flow and reconciliation detail.`,
@@ -149,26 +151,22 @@ export function buildAtLetterPreview(
   user: AuthUser | null | undefined,
   meta?: { statementId?: string; hasPdf?: boolean },
 ): AtLetterPreview | null {
-  const analysis = result?.analysis;
+  const analysis = getAnalyzeAnalysis(result);
   if (!hasLetterData(analysis)) return null;
 
   const firstName = firstNameFromUser(user);
   const periodLabel = analysis?.period_label ?? analysis?.cash_flow?.period_label ?? null;
   const periodName = periodMonthName(periodLabel);
   const cf = analysis?.cash_flow;
-  const deposited = totalCashDeposited(analysis);
-  const broughtIn =
-    deposited != null
-      ? fmtUsd(deposited)
-      : cf?.money_in_usd && cf.money_in_usd !== '—'
-        ? cf.money_in_usd
-        : fmtUsd(cf?.money_in);
-  const spent = cf?.money_out_usd && cf.money_out_usd !== '—' ? cf.money_out_usd : fmtUsd(cf?.money_out);
+  const deposited = totalCashDeposited(result);
+  const broughtIn = deposited != null ? fmtUsd(deposited) : '—';
+  const spent =
+    cf?.money_out_usd && cf.money_out_usd !== '—' ? cf.money_out_usd : fmtUsd(cf?.money_out);
   let kept = '—';
   if (cf?.cash_on_hand_usd && cf.cash_on_hand_usd !== '—') {
     kept = cf.cash_on_hand_usd;
-  } else if (cf?.money_in != null && cf?.money_out != null) {
-    kept = fmtUsd(cf.money_in - cf.money_out);
+  } else if (deposited != null && cf?.money_out != null) {
+    kept = fmtUsd(deposited - cf.money_out);
   }
 
   const insights = analysis?.standard_insights ?? [];

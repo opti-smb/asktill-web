@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAtLetterPreview } from '../../hooks/useAtLetterPreview';
 import { useAtLetterTemplate } from '../../hooks/useAtLetterTemplate';
-import { downloadAtLetterPdf, getApiErrorAsync } from '../../lib/api';
+import { downloadAtLetterPdfByIdSafe } from '../../lib/atLetterDownload';
 import { atLetterMailtoUrl } from '../../lib/atLetterPreview';
-import { filenameFromDisposition, saveBlobDownload } from '../../lib/downloadReport';
 import {
-  consumePendingPdfDownload,
+  getPostLoginRedirect,
   setPendingPdfDownload,
 } from '../../lib/pendingPdfDownload';
 import styles from './landingV2.module.css';
@@ -33,7 +32,7 @@ const CHECKS = [
 
 export default function AtLetterSection() {
   const navigate = useNavigate();
-  const { isAuth, ready } = useAuth();
+  const { isAuth } = useAuth();
   const { letter, loading, error, isSample } = useAtLetterPreview();
   const { statementId } = useAtLetterTemplate();
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -48,33 +47,16 @@ export default function AtLetterSection() {
   const runPdfDownload = useCallback(async (id: string) => {
     setPdfBusy(true);
     setPdfError(null);
-    try {
-      const res = await downloadAtLetterPdf(id);
-      const name = filenameFromDisposition(
-        res.headers['content-disposition'],
-        'asktill-at-letter.pdf',
-      );
-      saveBlobDownload(res.data, name);
-    } catch (err) {
-      setPdfError(await getApiErrorAsync(err, 'Could not download AT Letter PDF.'));
-    } finally {
-      setPdfBusy(false);
-    }
+    const ok = await downloadAtLetterPdfByIdSafe(id, setPdfError);
+    setPdfBusy(false);
+    return ok;
   }, []);
-
-  useEffect(() => {
-    if (!ready || !isAuth) return;
-    const pendingId = consumePendingPdfDownload();
-    if (pendingId) {
-      void runPdfDownload(pendingId);
-    }
-  }, [ready, isAuth, runPdfDownload]);
 
   const downloadPdf = useCallback(async () => {
     if (!downloadStatementId) return;
     if (!isAuth) {
       setPendingPdfDownload(downloadStatementId);
-      navigate('/login', { state: { from: '/' } });
+      navigate('/login', { state: { from: getPostLoginRedirect('/') } });
       return;
     }
     await runPdfDownload(downloadStatementId);

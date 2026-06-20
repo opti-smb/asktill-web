@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useClerk, useSignIn, useSignUp } from '@clerk/clerk-react';
 import {
   clearClerkSession,
@@ -46,24 +46,12 @@ export default function GoogleSignInButton({ disabled, onError, mode = 'signin' 
   const { isLoaded: signInLoaded, signIn } = useSignIn();
   const { isLoaded: signUpLoaded, signUp } = useSignUp();
   const [loading, setLoading] = useState(false);
-  const redirectTimer = useRef<number | null>(null);
 
   const isSignup = mode === 'signup';
   const ready = isSignup ? signUpLoaded && Boolean(signUp) : signInLoaded && Boolean(signIn);
 
-  const clearRedirectTimer = () => {
-    if (redirectTimer.current != null) {
-      window.clearTimeout(redirectTimer.current);
-      redirectTimer.current = null;
-    }
-  };
-
   useEffect(() => {
     warmupServices();
-  }, []);
-
-  useEffect(() => {
-    return () => clearRedirectTimer();
   }, []);
 
   const handleClick = async () => {
@@ -74,36 +62,25 @@ export default function GoogleSignInButton({ disabled, onError, mode = 'signin' 
 
     onError('');
     setLoading(true);
-    void ensureAuthServiceReady(3_000);
-
-    redirectTimer.current = window.setTimeout(() => {
-      redirectTimer.current = null;
-      setLoading(false);
-      onError(
-        'Google sign-in did not open. Allow pop-ups/redirects for this site, or try again.',
-      );
-    }, 12_000);
 
     try {
+      await ensureAuthServiceReady(5_000);
       markGoogleOAuthAttempt(isSignup ? 'signup' : 'signin');
       if (isSignup && signUp) {
         await startGoogleOAuthSignUp(signUp, clerk);
       } else if (signIn) {
         await startGoogleOAuth(signIn, clerk);
       }
-      clearRedirectTimer();
     } catch (err) {
       if (!isSignup && signIn && isClerkAlreadySignedInError(err)) {
         try {
           await clearClerkSession(clerk);
           await startGoogleOAuth(signIn, clerk);
-          clearRedirectTimer();
           return;
         } catch (retryErr) {
           err = retryErr;
         }
       }
-      clearRedirectTimer();
       setLoading(false);
       const fallback = isSignup
         ? 'Google sign-up failed. Try again or use email verification.'

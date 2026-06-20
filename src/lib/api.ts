@@ -614,9 +614,8 @@ export async function clerkLoginWithRetry(sessionId: string) {
     if (attempt > 0) {
       warmupAuthService();
       await new Promise((resolve) => window.setTimeout(resolve, CLERK_LOGIN_RETRY_MS * attempt));
-    } else if (!isAuthServiceWarm()) {
-      void ensureAuthServiceReady(3_000);
     }
+    await ensureAuthServiceReady(attempt === 0 ? 6_000 : 4_000);
     try {
       const response = await clerkLogin(sessionId);
       markAuthServiceWarm();
@@ -880,8 +879,36 @@ export const fetchReportHistory = () =>
 export const fetchSavedReport = (statementId: string) =>
   mainApi.get<AnalyzeResult>(`/api/reports/${statementId}`);
 
+export const downloadSavedReportCompact = (statementId: string) =>
+  mainApi.get(`/api/reports/${encodeURIComponent(statementId)}/compact`, {
+    responseType: 'blob',
+    timeout: 120_000,
+  });
+
+/** @deprecated Use downloadSavedReportCompact — legacy fpdf export */
 export const downloadSavedReportPdf = (statementId: string) =>
   mainApi.get(`/api/reports/${statementId}/pdf`, { responseType: 'blob' });
+
+/** Compact reconciliation PDF (Postman layout) from saved statement or fresh uploads. */
+export const downloadCompactReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {
+  const form = new FormData();
+  if (bank) form.append('bank', bank, bank.name);
+  if (pos) form.append('pos', pos, pos.name);
+  if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
+  return mainApi.post('/api/analyze/export/compact', form, {
+    responseType: 'blob',
+    timeout: 120_000,
+  });
+};
+
+/** @deprecated Use downloadCompactReconciliation */
+export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {
+  const form = new FormData();
+  if (bank) form.append('bank', bank, bank.name);
+  if (pos) form.append('pos', pos, pos.name);
+  if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
+  return mainApi.post('/api/analyze/export', form, { responseType: 'blob' });
+};
 
 /** HTML preview of the full backend AT Letter template (?preview=1). */
 export const fetchAtLetterHtmlPreview = (statementId: string) =>
@@ -895,16 +922,8 @@ export const fetchAtLetterHtmlPreview = (statementId: string) =>
 export const downloadAtLetterPdf = (statementId: string) =>
   mainApi.get(`/api/reports/${encodeURIComponent(statementId)}/at-letter`, {
     responseType: 'blob',
+    timeout: 120_000,
   });
-
-/** Same uploads as analyze; reconciliation PDF (POST /api/analyze/export). */
-export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {
-  const form = new FormData();
-  if (bank) form.append('bank', bank, bank.name);
-  if (pos) form.append('pos', pos, pos.name);
-  if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
-  return mainApi.post('/api/analyze/export', form, { responseType: 'blob' });
-};
 
 export const downloadWeekReports = (bank?: File, pos?: File, ecommerce?: File) => {
   const form = new FormData();

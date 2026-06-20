@@ -11,21 +11,38 @@ import {
 } from '../lib/atLetterPreview';
 import {
   LETTER_UPDATED_EVENT,
+  loadAtLetterCache,
   saveAtLetterCache,
   clearUserAtLetterState,
+  savedLetterUserId,
   userHasSavedLetterHint,
 } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT, useReportSync } from '../hooks/useReportSync';
-import { fetchReportHistory, fetchSavedReport, getApiError, type SavedReportSummaryApi } from '../lib/api';
+import {
+  fetchReportHistory,
+  fetchSavedReport,
+  getApiError,
+  USER_LOGOUT_EVENT,
+  type SavedReportSummaryApi,
+} from '../lib/api';
 import {
   periodKeyFromLabel,
   pickPrimarySavedReport,
   sessionAnalyzeIsLatest,
 } from '../lib/atLetterStatement';
-import { getAnalyzeAnalysis, type UiAnalysisView } from '../lib/analyzeResponse';
+import { type AnalyzeResult } from '../lib/analyzeResponse';
 
 function welcomeLoading(user: ReturnType<typeof useAuth>['user'], message: string): AtLetterPreview {
   return { ...buildEmptyAtLetterPreview(user), periodIntro: message };
+}
+
+function loggedOutLetterPreview(): AtLetterPreview {
+  const uid = savedLetterUserId();
+  const cached = uid ? loadAtLetterCache(uid) : null;
+  if (cached) {
+    return cached;
+  }
+  return buildLoggedOutSavedLetterPreview();
 }
 
 export function useAtLetterPreview(): {
@@ -38,7 +55,7 @@ export function useAtLetterPreview(): {
   const { user, isAuth, ready } = useAuth();
   const { result: sessionResult } = useAnalysis();
   const { historyReady, savedCount } = useReportSync();
-  const [savedAnalysis, setSavedAnalysis] = useState<UiAnalysisView | null>(null);
+  const [savedReport, setSavedReport] = useState<AnalyzeResult | null>(null);
   const [latestSummary, setLatestSummary] = useState<SavedReportSummaryApi | null>(null);
   const [statementId, setStatementId] = useState<string | undefined>();
   const [hasPdf, setHasPdf] = useState(false);
@@ -65,11 +82,22 @@ export function useAtLetterPreview(): {
 
   useEffect(() => {
     const onRefresh = () => setTick((n) => n + 1);
+    const onLogout = () => {
+      setSavedReport(null);
+      setLatestSummary(null);
+      setStatementId(undefined);
+      setHasPdf(false);
+      setLoading(false);
+      setError(null);
+      setTick((n) => n + 1);
+    };
     window.addEventListener(LETTER_UPDATED_EVENT, onRefresh);
     window.addEventListener(REPORT_HISTORY_REFRESH_EVENT, onRefresh);
+    window.addEventListener(USER_LOGOUT_EVENT, onLogout);
     return () => {
       window.removeEventListener(LETTER_UPDATED_EVENT, onRefresh);
       window.removeEventListener(REPORT_HISTORY_REFRESH_EVENT, onRefresh);
+      window.removeEventListener(USER_LOGOUT_EVENT, onLogout);
     };
   }, []);
 
@@ -81,7 +109,7 @@ export function useAtLetterPreview(): {
 
   useEffect(() => {
     if (!ready || !isAuth) {
-      setSavedAnalysis(null);
+      setSavedReport(null);
       setLatestSummary(null);
       setStatementId(undefined);
       setHasPdf(false);
@@ -100,7 +128,7 @@ export function useAtLetterPreview(): {
         const reports = data.reports ?? [];
         const latest = pickPrimarySavedReport(reports);
         if (!latest) {
-          setSavedAnalysis(null);
+          setSavedReport(null);
           setLatestSummary(null);
           setStatementId(undefined);
           setHasPdf(false);
@@ -111,13 +139,12 @@ export function useAtLetterPreview(): {
         }
         const { data: detail } = await fetchSavedReport(latest.statement_id);
         if (cancelled) return;
-        const analysis = getAnalyzeAnalysis(detail);
-        setSavedAnalysis(analysis);
+        setSavedReport(detail);
         setLatestSummary(latest);
         setStatementId(latest.statement_id);
         setHasPdf(Boolean(latest.has_pdf));
-        if (user?.userId && analysis) {
-          const preview = buildAtLetterPreview({ analysis }, user, {
+        if (user?.userId) {
+          const preview = buildAtLetterPreview(detail, user, {
             statementId: latest.statement_id,
             hasPdf: Boolean(latest.has_pdf),
           });
@@ -129,7 +156,7 @@ export function useAtLetterPreview(): {
       .catch((err) => {
         if (cancelled) return;
         setError(getApiError(err, 'Could not load your AT Letter.'));
-        setSavedAnalysis(null);
+        setSavedReport(null);
         setLatestSummary(null);
         setStatementId(undefined);
         setHasPdf(false);
@@ -156,7 +183,7 @@ export function useAtLetterPreview(): {
 
     if (!isAuth) {
       if (userHasSavedLetterHint()) {
-        return buildLoggedOutSavedLetterPreview();
+        return loggedOutLetterPreview();
       }
       return SAMPLE_AT_LETTER;
     }
@@ -178,11 +205,7 @@ export function useAtLetterPreview(): {
       return sessionPreview;
     }
 
-    const fromSaved = buildAtLetterPreview(
-      savedAnalysis ? { analysis: savedAnalysis } : null,
-      user,
-      { statementId, hasPdf },
-    );
+    const fromSaved = buildAtLetterPreview(savedReport, user, { statementId, hasPdf });
     if (fromSaved) return fromSaved;
     if (latestSummary) return buildAtLetterFromSummary(latestSummary, user);
 
@@ -197,7 +220,7 @@ export function useAtLetterPreview(): {
     savedCount,
     sessionPreview,
     sessionPeriodKey,
-    savedAnalysis,
+    savedReport,
     latestSummary,
     statementId,
     hasPdf,

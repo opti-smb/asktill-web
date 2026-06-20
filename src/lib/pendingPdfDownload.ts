@@ -27,3 +27,20 @@ export function consumePendingPdfDownload(): string | null {
   }
   return id;
 }
+
+export function clearPendingPdfDownload(): void {
+  try {
+    sessionStorage.removeItem(PENDING_PDF_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** After sign-in: return to AT Letter when a download was queued; else honor explicit from or upload. */
+export function getPostLoginRedirect(explicitFrom?: string | null): string {
+  if (peekPendingPdfDownload()) {
+    return '/#at-letter';
+  }
+  const from = explicitFrom?.trim();
+  return from || '/onboarding';
+}

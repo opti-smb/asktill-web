@@ -34,7 +34,7 @@ export default function AnalysisPage() {
   const { historyReady } = useReportSync();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   const analysis = getAnalyzeAnalysis(result);
-  const apiKpis = mapApiKpisToUi(analysis?.kpis);
+  const apiKpis = mapApiKpisToUi(analysis?.kpis, result);
   const processors = mapApiProcessors(analysis?.processors);
   const insights = analysis?.standard_insights;
 

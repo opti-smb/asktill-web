@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { extractNotRegistered, getApiError, warmupServices } from '../lib/api';
 
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
+import { getPostLoginRedirect } from '../lib/pendingPdfDownload';
 
 import { emailFieldRules, isLoginEmailFailure } from '../lib/emailValidation';
 
@@ -81,8 +82,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (ready && isAuth) {
       const state = location.state as { from?: string } | null;
-      const redirectTo = state?.from ?? '/onboarding';
-      navigate(redirectTo, { replace: true });
+      navigate(getPostLoginRedirect(state?.from), { replace: true });
     }
   }, [ready, isAuth, navigate, location.state]);
 
@@ -140,7 +140,7 @@ export default function LoginPage() {
     try {
       await login(email, data.password);
 
-      const redirectTo = (location.state as { from?: string } | null)?.from ?? '/onboarding';
+      const redirectTo = getPostLoginRedirect((location.state as { from?: string } | null)?.from);
 
       navigate(redirectTo);
 

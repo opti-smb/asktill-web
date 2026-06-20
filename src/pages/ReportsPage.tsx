@@ -121,7 +121,7 @@ export default function ReportsPage() {
       <div className={styles.main}>
         <div className="wrap">
           <>
-            <DownloadReportButton files={files} period={period} />
+            <DownloadReportButton files={files} period={period} statementId={result?.statement_id} />
 
               {period === 'Month' && (
                 <>

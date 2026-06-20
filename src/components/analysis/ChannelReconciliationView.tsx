@@ -1,4 +1,10 @@
-import { fmtMoney, getAnalyzeAnalysis, getReportTotals, type AnalyzeResult } from '../../lib/analyzeResponse';
+import {
+  fmtMoney,
+  getAnalyzeAnalysis,
+  getReportTotals,
+  reportReconciliationTotals,
+  type AnalyzeResult,
+} from '../../lib/analyzeResponse';
 import styles from './PostmanPanels.module.css';
 
 /** Month report: channel revenue, processors, bank match, and notes (single view). */
@@ -12,15 +18,17 @@ export default function ChannelReconciliationView({
   const breakdown = analysis?.channel_breakdown;
   const processors = analysis?.processors ?? [];
   const periodLabel = analysis?.period_label;
+  const recon = reportReconciliationTotals(result);
 
   if (!report) return null;
 
   const hasChannels = report.channels.length > 0;
   const hasBank =
-    breakdown != null ||
-    report.expected_bank_inflows != null ||
-    report.actual_bank_credits != null ||
-    report.difference != null;
+    recon.expectedInflows != null ||
+    recon.actualBankCredits != null ||
+    recon.gap != null ||
+    recon.matchedDeposits != null ||
+    breakdown != null;
   const hasNotes = (report.notes?.length ?? 0) > 0;
 
   return (
@@ -102,21 +110,30 @@ export default function ChannelReconciliationView({
         <div className={styles.block}>
           <h3 className={styles.blockTitle}>Bank reconciliation</h3>
           <dl className={styles.dl}>
-            <dt>Expected inflows</dt>
-            <dd>
-              {breakdown?.total_expected_payouts_usd ??
-                fmtMoney(breakdown?.total_expected_payouts ?? report.expected_bank_inflows)}
-            </dd>
+            {recon.matchedDeposits != null ? (
+              <>
+                <dt>Matched deposits (POS + e-commerce)</dt>
+                <dd>{fmtMoney(recon.matchedDeposits)}</dd>
+                {recon.posDeposited != null ? (
+                  <>
+                    <dt>POS deposited to bank</dt>
+                    <dd>{fmtMoney(recon.posDeposited)}</dd>
+                  </>
+                ) : null}
+                {recon.ecomDeposited != null ? (
+                  <>
+                    <dt>E-commerce deposited to bank</dt>
+                    <dd>{fmtMoney(recon.ecomDeposited)}</dd>
+                  </>
+                ) : null}
+              </>
+            ) : null}
+            <dt>Expected processor inflows</dt>
+            <dd>{fmtMoney(recon.expectedInflows)}</dd>
             <dt>Bank credits</dt>
-            <dd>
-              {breakdown?.total_bank_credits_usd ??
-                fmtMoney(breakdown?.total_bank_credits ?? report.actual_bank_credits)}
-            </dd>
-            <dt>Difference</dt>
-            <dd>
-              {breakdown?.overall_difference_usd ??
-                fmtMoney(breakdown?.overall_difference ?? report.difference)}
-            </dd>
+            <dd>{fmtMoney(recon.actualBankCredits)}</dd>
+            <dt>Reconciliation gap</dt>
+            <dd>{fmtMoney(recon.gap)}</dd>
           </dl>
         </div>
       )}

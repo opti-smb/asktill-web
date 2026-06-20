@@ -9,7 +9,7 @@ import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import {
   duplicateInfoFromValidation,
-  downloadSavedReportPdf,
+  downloadSavedReportCompact,
   fetchReportHistory,
   fetchSavedReport,
   getApiErrorAsync,
@@ -25,7 +25,7 @@ import {
   warningsBySlot,
   type UploadValidationResult,
 } from '../lib/api';
-import { filenameFromDisposition, saveBlobDownload } from '../lib/downloadReport';
+import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
 import type { FileUploadState } from '../types';
 import styles from './UploadPage.module.css';
 
@@ -188,14 +188,20 @@ export default function UploadPage() {
 
   const downloadSavedPdf = useCallback(async (statementId: string, periodLabel?: string | null) => {
     setDuplicateBusy(true);
+    const label = periodLabel?.replace(/\s+/g, '_') ?? 'Report';
+    const fallbackName = `${label}_Reconciliation.pdf`;
     try {
-      const { data, headers } = await downloadSavedReportPdf(statementId);
-      const label = periodLabel?.replace(/\s+/g, '_') ?? 'Report';
-      const filename = filenameFromDisposition(
-        headers['content-disposition'] as string | undefined,
-        `${label}_Reconciliation.pdf`,
-      );
-      saveBlobDownload(data, filename);
+      await downloadPdfWithSaveDialog({
+        suggestedFilename: fallbackName,
+        fetchBlob: async () => {
+          const { data, headers } = await downloadSavedReportCompact(statementId);
+          const filename = filenameFromDisposition(
+            headers['content-disposition'] as string | undefined,
+            fallbackName,
+          );
+          return new File([data], filename, { type: 'application/pdf' });
+        },
+      });
     } catch (err) {
       setUploadPrompt(await getApiErrorAsync(err, 'Could not download PDF.'));
     } finally {
