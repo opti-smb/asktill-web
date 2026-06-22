@@ -20,7 +20,7 @@ const CHECKS = [
   },
   {
     title: 'Shareable with your CPA',
-    desc: 'Forward from your inbox in one click.',
+    desc: 'Forward the PDF from your inbox in one click.',
   },
 ];
 
@@ -207,7 +207,7 @@ export default function AtLetterSection() {
               <p className={styles.letterPara} style={{ marginBottom: 3 }}>
                 {letter.closingLine}
               </p>
-              <p className={styles.letterSign}>— Asktill</p>
+              <p className={styles.letterSign}>— AskTill</p>
               <div className={styles.letterFooter}>
                 <span>{letter.footerMeta}</span>
                 <div className={styles.letterFooterBtns}>
