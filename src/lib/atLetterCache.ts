@@ -120,6 +120,22 @@ export function clearUserAtLetterState(userId: string): void {
   window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
 }
 
+/** Drop this user's landing letter when the server has no saved reports (needs auth token). */
+export async function syncAtLetterCacheIfHistoryEmpty(userId: string): Promise<boolean> {
+  if (!userId.trim()) return false;
+  const { fetchReportHistory } = await import('./api');
+  try {
+    const { data } = await fetchReportHistory();
+    if ((data.reports ?? []).length === 0) {
+      clearUserAtLetterState(userId);
+      return true;
+    }
+  } catch {
+    /* offline / auth — keep cached letter */
+  }
+  return false;
+}
+
 /** Remove all AT letter keys from localStorage (logged-out landing / after server wipe). */
 export function clearAllAtLetterDeviceCache(): void {
   try {

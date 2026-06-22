@@ -990,6 +990,31 @@ export const fetchAtLetterHtmlPreview = (statementId: string) =>
     transformResponse: [(data) => data],
   });
 
+export interface AtLetterLandingMeta {
+  source: 'sample' | 'user';
+  period_label?: string | null;
+  business_name?: string | null;
+  user_id?: string;
+  statement_id?: string;
+}
+
+function atLetterLandingHeaders(userId?: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const id = userId?.trim();
+  if (id) headers['X-User-Id'] = id;
+  return headers;
+}
+
+/** Public landing metadata — user's latest letter or Brookline sample. */
+export const fetchAtLetterLandingMeta = (opts?: { userId?: string; email?: string }) => {
+  const userId = opts?.userId?.trim();
+  const email = opts?.email?.trim();
+  return mainApi.get<AtLetterLandingMeta>('/api/at-letter/landing', {
+    params: email ? { email } : userId ? { userId } : undefined,
+    headers: atLetterLandingHeaders(userId),
+  });
+};
+
 export const downloadWeekReports = (bank?: File, pos?: File, ecommerce?: File) => {
   const form = new FormData();
   if (bank) form.append('bank', bank, bank.name);

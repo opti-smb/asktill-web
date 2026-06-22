@@ -12,12 +12,14 @@ import {
 import {
   LETTER_UPDATED_EVENT,
   loadLandingAtLetterCache,
+  markUserHasSavedLetter,
   saveAtLetterCache,
   clearUserAtLetterState,
-  userHasSavedLetterHint,
+  savedLetterUserId,
 } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT, useReportSync } from '../hooks/useReportSync';
 import {
+  fetchAtLetterLandingMeta,
   fetchReportHistory,
   fetchSavedReport,
   getApiError,
@@ -52,6 +54,9 @@ export function useAtLetterPreview(): {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [landingSource, setLandingSource] = useState<'user' | 'sample' | null>(() =>
+    loadLandingAtLetterCache() ? 'user' : null,
+  );
 
   const sessionPreview = useMemo(
     () => buildAtLetterPreview(sessionResult, user),
@@ -79,6 +84,7 @@ export function useAtLetterPreview(): {
       setHasPdf(false);
       setLoading(false);
       setError(null);
+      // Keep landingSource — cached letter survives logout for the landing card.
       setTick((n) => n + 1);
     };
     window.addEventListener(LETTER_UPDATED_EVENT, onRefresh);
@@ -96,6 +102,38 @@ export function useAtLetterPreview(): {
       setTick((n) => n + 1);
     }
   }, [isAuth, user?.userId]);
+
+  // Logged-out landing: verify with public API, but keep local cache until server says sample.
+  useEffect(() => {
+    if (!ready || isAuth) return;
+
+    const userId = savedLetterUserId();
+    let cancelled = false;
+
+    if (loadLandingAtLetterCache()) {
+      setLandingSource('user');
+    }
+
+    void fetchAtLetterLandingMeta(userId ? { userId } : undefined)
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data.source === 'user') {
+          setLandingSource('user');
+          if (data.user_id) markUserHasSavedLetter(data.user_id);
+        } else {
+          setLandingSource('sample');
+          if (userId) clearUserAtLetterState(userId);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLandingSource(loadLandingAtLetterCache() ? 'user' : 'sample');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, isAuth, tick]);
 
   useEffect(() => {
     if (!ready || !isAuth) {
@@ -161,7 +199,7 @@ export function useAtLetterPreview(): {
   const hasServerReports = historyReady && savedCount > 0;
   const loggedOutCachedLetter = useMemo(
     () => (isAuth ? null : loadLandingAtLetterCache()),
-    [isAuth, tick],
+    [isAuth, tick, landingSource],
   );
 
   const letter = useMemo((): AtLetterPreview => {
@@ -171,7 +209,12 @@ export function useAtLetterPreview(): {
 
     if (!isAuth) {
       if (loggedOutCachedLetter) return loggedOutCachedLetter;
-      if (userHasSavedLetterHint()) return buildLoggedOutSavedLetterPreview();
+      if (landingSource === null) {
+        return welcomeLoading(null, 'Loading…');
+      }
+      if (landingSource === 'user') {
+        return buildLoggedOutSavedLetterPreview();
+      }
       return SAMPLE_AT_LETTER;
     }
 
@@ -215,6 +258,7 @@ export function useAtLetterPreview(): {
     latestSummary,
     statementId,
     hasPdf,
+    landingSource,
     loggedOutCachedLetter,
   ]);
 
@@ -225,14 +269,14 @@ export function useAtLetterPreview(): {
     return letter;
   }, [letter, statementId, hasPdf, hasServerReports]);
 
+  const loggedOutLoading =
+    !isAuth && landingSource === null && !loggedOutCachedLetter;
+
   return {
     letter: letterWithMeta,
-    loading: !ready || (isAuth && !historyReady),
+    loading: !ready || (isAuth && !historyReady) || loggedOutLoading,
     error,
     refresh: () => setTick((n) => n + 1),
-    isSample:
-      !isAuth
-        ? !loggedOutCachedLetter && !userHasSavedLetterHint()
-        : letterWithMeta.mode === 'sample',
+    isSample: !isAuth ? landingSource === 'sample' : letterWithMeta.mode === 'sample',
   };
 }
