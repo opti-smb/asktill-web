@@ -9,6 +9,7 @@ import {
   type AnalyzeProgressEvent,
 } from './analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
+import { periodKeyFromLabel } from './atLetterStatement';
 
 export { formatAskResponseForChat } from './analyzeResponse';
 
@@ -384,6 +385,18 @@ export function hasStoredPeriodConflict(result: UploadValidationResult | null): 
 
 export type UploadSlotId = 'bank' | 'pos' | 'ecommerce';
 
+/** Fast month hint from filename while server validation runs (matches backend name rules). */
+export function periodLabelFromFilename(filename: string | null | undefined): string | null {
+  if (!filename?.trim()) return null;
+  const key = periodKeyFromLabel(filename);
+  if (!key) return null;
+  const [year, month] = key.split('-');
+  const monthIndex = Number(month) - 1;
+  if (!year || monthIndex < 0 || monthIndex > 11) return null;
+  const monthName = new Date(Number(year), monthIndex, 1).toLocaleString('en-US', { month: 'long' });
+  return `${monthName} ${year}`;
+}
+
 /** One message per box: wrong statement type first, then month mismatch. */
 export function primaryWarningForSlot(
   result: UploadValidationResult | null,
@@ -551,9 +564,14 @@ export const validateUploads = (files: UploadFiles) => {
   });
 };
 
-/** Validate uploads after waking the backend; retry once on timeout or network errors. */
+let uploadValidationWarmed = false;
+
+/** Validate uploads; warm backend once per session, retry only on network/timeout. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  warmupBackend();
+  if (!uploadValidationWarmed) {
+    uploadValidationWarmed = true;
+    warmupBackend();
+  }
   try {
     return await validateUploads(files);
   } catch (err) {
@@ -563,8 +581,8 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
       || axiosErr?.message === 'Network Error'
       || !axiosErr?.response;
     if (!retryable) throw err;
-    warmupServices();
-    await new Promise((resolve) => window.setTimeout(resolve, 2500));
+    warmupBackend();
+    await new Promise((resolve) => window.setTimeout(resolve, 1500));
     return validateUploads(files);
   }
 }

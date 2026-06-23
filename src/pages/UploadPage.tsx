@@ -20,8 +20,10 @@ import {
   USER_STATE_RESET_EVENT,
   batchValidationPasses,
   mergeUploadValidationResults,
+  periodLabelFromFilename,
   validateUploadsWithRetry,
-  warmupServices,
+  ensureAuthServiceReady,
+  warmupBackend,
   warningsBySlot,
   type UploadValidationResult,
 } from '../lib/api';
@@ -78,13 +80,22 @@ function uploadStateFromFile(
 ): FileUploadState {
   if (!file) return { uploaded: false };
   const period = validation?.detected_periods?.[slot];
+  const filenamePeriod = periodLabelFromFilename(file.name);
   const size = `${Math.round(file.size / 1024)} KB`;
   const slotWarning = slotWarnings[slot]?.trim() || undefined;
+  const confirmedPeriod = !checking && !slotWarning ? period : undefined;
+  const pendingPeriod = checking && !slotWarning ? filenamePeriod : undefined;
   return {
     uploaded: true,
     checking: checking && !slotWarning,
     fileName: file.name,
-    detail: !checking && !slotWarning && period ? `${size} · ${period}` : checking ? undefined : size,
+    detail: confirmedPeriod
+      ? `${size} · ${confirmedPeriod}`
+      : pendingPeriod
+        ? `${size} · ${pendingPeriod} · checking…`
+        : checking
+          ? `${size} · checking file type & month…`
+          : size,
     warning:
       validationFailed && !slotWarning
         ? 'Could not verify this file.'
@@ -159,6 +170,11 @@ export default function UploadPage() {
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
   const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
+
+  useEffect(() => {
+    warmupBackend();
+    void ensureAuthServiceReady(8_000);
+  }, []);
 
   useEffect(() => {
     if (!authReady || !isAuth) {
@@ -287,7 +303,6 @@ export default function UploadPage() {
 
     const timer = window.setTimeout(() => {
       void (async () => {
-        warmupServices();
         try {
           const files = uploadFilesRef.current;
           const { data } = await validateUploadsWithRetry({
