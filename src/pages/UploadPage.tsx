@@ -156,6 +156,7 @@ export default function UploadPage() {
     clearStatementDuplicate,
     loadSavedReport,
     clearResult,
+    lastStreamStatementId,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
   const [showPreviousReports, setShowPreviousReports] = useState(false);
@@ -509,6 +510,16 @@ export default function UploadPage() {
       return;
     }
 
+    const streamId = lastStreamStatementId?.trim();
+    if (streamId) {
+      try {
+        await openSavedReport(streamId);
+        return;
+      } catch {
+        /* fall through — history recovery below */
+      }
+    }
+
     if (isAuth) {
       try {
         warmupBackend();
@@ -517,8 +528,8 @@ export default function UploadPage() {
         const count = data.reports?.length ?? 0;
         setSavedReportCount(count);
         const latestId = data.reports?.[0]?.statement_id;
-        if (latestId && count > reportsBefore) {
-          await openSavedReport(latestId);
+        if (latestId && (count > reportsBefore || force || streamId)) {
+          await openSavedReport(streamId ?? latestId);
           return;
         }
       } catch {

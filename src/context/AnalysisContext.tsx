@@ -13,8 +13,10 @@ import {
   analyzeWithProgress,
   extractStatementDuplicate,
   extractUploadMismatches,
+  fetchSavedReportWithRetry,
   getApiError,
   recoverSavedAnalyzeFromHistory,
+  statementIdFromProgressEvent,
   type StatementDuplicateInfo,
   USER_LOGOUT_EVENT,
   USER_STATE_RESET_EVENT,
@@ -63,6 +65,7 @@ interface AnalysisContextValue {
   mergeWeekReports: (weekReports: WeekReportsViewApi) => void;
   loadSavedReport: (saved: AnalyzeResult) => void;
   clearResult: () => void;
+  lastStreamStatementId: string | null;
 }
 
 const AnalysisContext = createContext<AnalysisContextValue | null>(null);
@@ -78,6 +81,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [statementDuplicate, setStatementDuplicate] = useState<StatementDuplicateInfo | null>(null);
   const pipelineFinishRef = useRef<(() => void) | null>(null);
   const pipelineSafetyRef = useRef<number | null>(null);
+  const lastStreamStatementIdRef = useRef<string | null>(null);
+  const [lastStreamStatementId, setLastStreamStatementId] = useState<string | null>(null);
 
   const clearPipelineWaiters = useCallback(() => {
     if (pipelineSafetyRef.current != null) {
@@ -192,6 +197,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     setUploadMismatch(null);
+    lastStreamStatementIdRef.current = null;
+    setLastStreamStatementId(null);
 
     let progressStarted = false;
     const ensureProgress = () => {
@@ -246,6 +253,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     try {
       const data = await analyzeWithProgress(active, (event) => {
         ensureProgress();
+        const sid = statementIdFromProgressEvent(event);
+        if (sid) {
+          lastStreamStatementIdRef.current = sid;
+          setLastStreamStatementId(sid);
+        }
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
       }, options);
 
@@ -263,6 +275,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       if (progressStarted) {
+        const sid = lastStreamStatementIdRef.current;
+        if (sid) {
+          try {
+            const loaded = await fetchSavedReportWithRetry(sid);
+            return finishWithResult(loaded, active);
+          } catch {
+            /* fall through — history recovery below */
+          }
+        }
         const recovered = await recoverSavedAnalyzeFromHistory();
         if (recovered) {
           return finishWithResult(recovered, active);
@@ -343,6 +364,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       mergeWeekReports,
       loadSavedReport,
       clearResult,
+      lastStreamStatementId,
     }),
     [
       files,
@@ -361,6 +383,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       mergeWeekReports,
       loadSavedReport,
       clearResult,
+      lastStreamStatementId,
     ]
   );
 

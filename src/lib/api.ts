@@ -892,7 +892,9 @@ function statementIdFromProgressEvent(event: AnalyzeProgressEvent): string | nul
   return null;
 }
 
-async function fetchSavedReportWithRetry(statementId: string): Promise<AnalyzeResult> {
+export { statementIdFromProgressEvent };
+
+export async function fetchSavedReportWithRetry(statementId: string): Promise<AnalyzeResult> {
   warmupBackend();
   await ensureAuthServiceReady(12_000);
   const id = statementId.trim();
@@ -904,7 +906,7 @@ async function fetchSavedReportWithRetry(statementId: string): Promise<AnalyzeRe
       timeout: 120_000,
     });
 
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
       const { data } = await request();
       return data as AnalyzeResult;
@@ -918,12 +920,12 @@ async function fetchSavedReportWithRetry(statementId: string): Promise<AnalyzeRe
         || axiosErr?.code === 'ECONNABORTED'
         || axiosErr?.message === 'Network Error'
         || !axiosErr?.response;
-      if (!retryable || attempt >= 3) {
+      if (!retryable || attempt >= 7) {
         throw err;
       }
-      await ensureAuthServiceReady(attempt >= 1 ? 45_000 : 12_000);
+      await ensureAuthServiceReady(attempt >= 2 ? 45_000 : 15_000);
       warmupBackend();
-      await new Promise((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
+      await new Promise((resolve) => window.setTimeout(resolve, 1200 * (attempt + 1)));
     }
   }
   throw new Error('Could not load saved report.');
@@ -964,7 +966,6 @@ async function recoverAnalyzeAfterStreamFailure(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
   force: boolean,
-  *,
   allowClassicRetry = false,
 ): Promise<AnalyzeResult> {
   warmupBackend();
@@ -1189,7 +1190,7 @@ export async function analyzeWithProgress(
     }
     const code = (err as { code?: string }).code;
     if (code === 'STREAM_UNAVAILABLE') {
-      return recoverAnalyzeAfterStreamFailure(files, onEvent, force, { allowClassicRetry: true });
+      return recoverAnalyzeAfterStreamFailure(files, onEvent, force, true);
     }
     if (err instanceof Error && err.message === 'Analysis finished without a result.') {
       return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
