@@ -29,12 +29,14 @@ interface ReportSyncContextValue {
   historyReady: boolean;
   savedCount: number;
   primaryReport: SavedReportSummaryApi | null;
+  savedReports: SavedReportSummaryApi[];
 }
 
 const ReportSyncContext = createContext<ReportSyncContextValue>({
   historyReady: false,
   savedCount: 0,
   primaryReport: null,
+  savedReports: [],
 });
 
 /** Set after a successful analyze so we do not wipe in-memory results before DB history lists. */
@@ -92,6 +94,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
   const [historyReady, setHistoryReady] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [primaryReport, setPrimaryReport] = useState<SavedReportSummaryApi | null>(null);
+  const [savedReports, setSavedReports] = useState<SavedReportSummaryApi[]>([]);
 
   useEffect(() => {
     const onUpdate = () => setTick((n) => n + 1);
@@ -100,6 +103,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       setHistoryReady(true);
       setSavedCount(0);
       setPrimaryReport(null);
+      setSavedReports([]);
       clearAtLetterHtmlCache();
       setTick((n) => n + 1);
     };
@@ -131,6 +135,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       setHistoryReady(false);
       setSavedCount(0);
       setPrimaryReport(null);
+      setSavedReports([]);
       return;
     }
 
@@ -138,6 +143,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       setHistoryReady(true);
       setSavedCount(0);
       setPrimaryReport(null);
+      setSavedReports([]);
       return;
     }
 
@@ -149,8 +155,14 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         const reports = data.reports ?? [];
         const primary = pickPrimarySavedReport(reports);
+        const sorted = [...reports].sort((a, b) => {
+          const byPeriod = comparePeriodKeys(a.period_key, b.period_key);
+          if (byPeriod !== 0) return byPeriod;
+          return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+        });
         setSavedCount(reports.length);
         setPrimaryReport(primary);
+        setSavedReports(sorted);
         setHistoryReady(true);
 
         if (reports.length > 0) {
@@ -218,8 +230,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
   }, [ready, isAuth, user?.userId, tick, clearResult, analyzeLoading, loadSavedReport, result?.statement_id, result?.analysis]);
 
   const value = useMemo(
-    () => ({ historyReady, savedCount, primaryReport }),
-    [historyReady, savedCount, primaryReport],
+    () => ({ historyReady, savedCount, primaryReport, savedReports }),
+    [historyReady, savedCount, primaryReport, savedReports],
   );
 
   return <ReportSyncContext.Provider value={value}>{children}</ReportSyncContext.Provider>;

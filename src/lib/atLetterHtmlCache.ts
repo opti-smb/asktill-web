@@ -1,42 +1,54 @@
 import { fetchAtLetterHtmlPreview, USER_LOGOUT_EVENT } from './api';
 
-const htmlByStatementId = new Map<string, string>();
+function cacheKey(statementId: string, monthOnly: boolean): string {
+  return `${statementId.trim()}:${monthOnly ? 'month' : 'rolling'}`;
+}
+
+const htmlByKey = new Map<string, string>();
 const inflight = new Map<string, Promise<string | null>>();
 
-export function getCachedAtLetterHtml(statementId?: string | null): string | null {
+export function getCachedAtLetterHtml(
+  statementId?: string | null,
+  monthOnly = false,
+): string | null {
   const id = statementId?.trim();
   if (!id) return null;
-  return htmlByStatementId.get(id) ?? null;
+  return htmlByKey.get(cacheKey(id, monthOnly)) ?? null;
 }
 
 export function clearAtLetterHtmlCache(): void {
-  htmlByStatementId.clear();
+  htmlByKey.clear();
   inflight.clear();
 }
 
 /** Fetch AT Letter HTML once; reuse in-memory for instant tab switches. */
-export async function prefetchAtLetterHtml(statementId: string): Promise<string | null> {
+export async function prefetchAtLetterHtml(
+  statementId: string,
+  opts?: { monthOnly?: boolean },
+): Promise<string | null> {
   const id = statementId.trim();
   if (!id) return null;
+  const monthOnly = Boolean(opts?.monthOnly);
+  const key = cacheKey(id, monthOnly);
 
-  const cached = htmlByStatementId.get(id);
+  const cached = htmlByKey.get(key);
   if (cached) return cached;
 
-  const pending = inflight.get(id);
+  const pending = inflight.get(key);
   if (pending) return pending;
 
-  const task = fetchAtLetterHtmlPreview(id)
+  const task = fetchAtLetterHtmlPreview(id, { monthOnly })
     .then(({ data }) => {
       const html = typeof data === 'string' ? data : String(data ?? '');
-      if (html) htmlByStatementId.set(id, html);
+      if (html) htmlByKey.set(key, html);
       return html || null;
     })
     .catch(() => null)
     .finally(() => {
-      inflight.delete(id);
+      inflight.delete(key);
     });
 
-  inflight.set(id, task);
+  inflight.set(key, task);
   return task;
 }
 
