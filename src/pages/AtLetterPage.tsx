@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import SectionHeader from '../components/layout/SectionHeader';
 import AtLetterTemplateFrame from '../components/landing/AtLetterTemplateFrame';
@@ -42,6 +42,19 @@ export default function AtLetterPage() {
   const { html, loading, error } = useAtLetterHtml(activeStatementId, { monthOnly });
 
   const showViewFilters = savedCount >= 2;
+
+  useEffect(() => {
+    if (activeView === ROLLING_VIEW) return;
+    if (!savedReports.some((row) => row.statement_id === activeView)) {
+      setActiveView(ROLLING_VIEW);
+    }
+  }, [savedReports, activeView]);
+
+  useEffect(() => {
+    if (savedCount < 2 && activeView !== ROLLING_VIEW) {
+      setActiveView(ROLLING_VIEW);
+    }
+  }, [savedCount, activeView]);
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
