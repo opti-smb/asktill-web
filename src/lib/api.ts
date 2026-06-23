@@ -904,8 +904,25 @@ async function analyzeViaStream(
   if (buffer.trim()) consumeLine(buffer.trim());
 
   if (!result && pendingStatementId) {
-    const { data } = await fetchSavedReport(pendingStatementId);
-    result = data as AnalyzeResult;
+    try {
+      const { data } = await fetchSavedReport(pendingStatementId);
+      result = data as AnalyzeResult;
+    } catch {
+      /* fall through — classic retry or history recovery below */
+    }
+  }
+
+  if (!result) {
+    try {
+      const { data: history } = await fetchReportHistory();
+      const latestId = history.reports?.[0]?.statement_id;
+      if (latestId) {
+        const { data } = await fetchSavedReport(latestId);
+        result = data as AnalyzeResult;
+      }
+    } catch {
+      /* ignore */
+    }
   }
 
   if (!result) {
@@ -942,6 +959,7 @@ async function analyzeViaClassicEndpoint(
 
 /**
  * Analyze with live Server-Sent Events when supported; otherwise classic POST /api/analyze.
+ * Production defaults to classic POST — more reliable through Render than SSE + large payloads.
  */
 export async function analyzeWithProgress(
   files: UploadFiles,
@@ -949,6 +967,13 @@ export async function analyzeWithProgress(
   options?: { force?: boolean },
 ): Promise<AnalyzeResult> {
   const force = Boolean(options?.force);
+  const preferClassic =
+    import.meta.env.PROD && import.meta.env.VITE_ANALYZE_STREAM !== '1';
+
+  if (preferClassic) {
+    return analyzeViaClassicEndpoint(files, onEvent, force);
+  }
+
   try {
     return await analyzeViaStream(files, onEvent, force);
   } catch (err) {
