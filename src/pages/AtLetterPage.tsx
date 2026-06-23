@@ -42,8 +42,9 @@ export default function AtLetterPage() {
 
   const monthOnly = activeView !== ROLLING_VIEW;
   const activeStatementId = monthOnly ? monthStatementId : rollingStatementId;
+  const letterStatementId = activeStatementId ?? undefined;
 
-  const { html, loading, error } = useAtLetterHtml(activeStatementId, { monthOnly });
+  const { html, loading, error } = useAtLetterHtml(letterStatementId, { monthOnly });
 
   const showViewFilters = savedCount >= 1 && Boolean(monthStatementId);
 
@@ -79,7 +80,7 @@ export default function AtLetterPage() {
 
   const periodMeta = periodLabel?.trim() || 'AT LETTER';
   const showLetter = Boolean(html);
-  const showLoading = !showLetter && (loading || !activeStatementId);
+  const showLoading = !showLetter && (loading || !letterStatementId);
 
   return (
     <>
