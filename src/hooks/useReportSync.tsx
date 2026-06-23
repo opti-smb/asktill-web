@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -95,6 +96,20 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
   const [savedCount, setSavedCount] = useState(0);
   const [primaryReport, setPrimaryReport] = useState<SavedReportSummaryApi | null>(null);
   const [savedReports, setSavedReports] = useState<SavedReportSummaryApi[]>([]);
+  const resultRef = useRef(result);
+  const analyzeLoadingRef = useRef(analyzeLoading);
+  const hydratedStatementIdRef = useRef<string | null>(null);
+  const historyReadyRef = useRef(historyReady);
+  const savedCountRef = useRef(savedCount);
+
+  resultRef.current = result;
+  analyzeLoadingRef.current = analyzeLoading;
+  historyReadyRef.current = historyReady;
+  savedCountRef.current = savedCount;
+
+  useEffect(() => {
+    hydratedStatementIdRef.current = null;
+  }, [user?.userId, tick]);
 
   useEffect(() => {
     const onUpdate = () => setTick((n) => n + 1);
@@ -148,7 +163,10 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false;
-    setHistoryReady(false);
+    const isBackgroundRefresh = historyReadyRef.current && savedCountRef.current > 0;
+    if (!isBackgroundRefresh) {
+      setHistoryReady(false);
+    }
 
     fetchReportHistory()
       .then(async ({ data }) => {
@@ -172,14 +190,15 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             /* ignore */
           }
 
-          const sessionAnalysis = getAnalyzeAnalysis(result);
+          const sessionResult = resultRef.current;
+          const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
           const sessionKey = periodKeyFromLabel(sessionAnalysis?.period_label);
           const primaryKey = periodKeyFromLabel(primary?.period_label);
           const sessionIsOlderThanPrimary =
             Boolean(primary && sessionKey && primaryKey)
             && comparePeriodKeys(sessionKey, primaryKey) > 0;
           const statementId = resolveAtLetterStatementId({
-            sessionStatementId: result?.statement_id,
+            sessionStatementId: sessionResult?.statement_id,
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
           });
@@ -189,14 +208,18 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
 
           const shouldHydrateFromServer =
             primary
-            && !analyzeLoading
+            && !analyzeLoadingRef.current
             && (
-              !result?.analysis
+              !sessionResult?.analysis
               || sessionIsOlderThanPrimary
-              || (result.statement_id && result.statement_id !== primary.statement_id)
+              || (sessionResult.statement_id && sessionResult.statement_id !== primary.statement_id)
             );
 
-          if (shouldHydrateFromServer) {
+          if (
+            shouldHydrateFromServer
+            && hydratedStatementIdRef.current !== primary.statement_id
+          ) {
+            hydratedStatementIdRef.current = primary.statement_id;
             try {
               const { data: saved } = await fetchSavedReport(primary.statement_id);
               if (!cancelled) loadSavedReport(saved);
@@ -207,13 +230,14 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        hydratedStatementIdRef.current = null;
         setPrimaryReport(null);
         clearAtLetterHtmlCache();
         clearJustAnalyzedGrace();
         if (user.userId) {
           clearUserAtLetterState(user.userId);
         }
-        if (!analyzeLoading) {
+        if (!analyzeLoadingRef.current) {
           clearResult();
         }
       })
@@ -227,7 +251,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [ready, isAuth, user?.userId, tick, clearResult, analyzeLoading, loadSavedReport, result?.statement_id, result?.analysis]);
+  }, [ready, isAuth, user?.userId, tick, clearResult, loadSavedReport]);
 
   const value = useMemo(
     () => ({ historyReady, savedCount, primaryReport, savedReports }),

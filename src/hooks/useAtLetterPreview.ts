@@ -193,7 +193,7 @@ export function useAtLetterPreview(): {
     return () => {
       cancelled = true;
     };
-  }, [ready, isAuth, tick, user]);
+  }, [ready, isAuth, tick, user?.userId]);
 
   const sessionPeriodKey = periodKeyFromLabel(sessionResult?.analysis?.period_label);
   const hasServerReports = historyReady && savedCount > 0;
