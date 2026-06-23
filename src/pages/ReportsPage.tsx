@@ -10,6 +10,7 @@ import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
 import { fetchWeekReports, getApiError } from '../lib/api';
 import { getAnalyzeAnalysis, type WeekReportsViewApi } from '../lib/analyzeResponse';
+import { periodKeyFromLabel, resolveAtLetterStatementId } from '../lib/atLetterStatement';
 import type { Period } from '../types';
 import styles from './ReportsPage.module.css';
 import postmanStyles from '../components/analysis/PostmanPanels.module.css';
@@ -22,8 +23,17 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('Month');
   const { result, files, mergeWeekReports, loadSavedReport } = useAnalysis();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
-  const { historyReady } = useReportSync();
+  const { historyReady, primaryReport } = useReportSync();
   const analysis = getAnalyzeAnalysis(result);
+  const pdfStatementId = useMemo(
+    () =>
+      resolveAtLetterStatementId({
+        sessionStatementId: result?.statement_id,
+        sessionPeriodKey: periodKeyFromLabel(analysis?.period_label),
+        primaryReport,
+      }) ?? result?.statement_id ?? null,
+    [result?.statement_id, analysis?.period_label, primaryReport],
+  );
   const documents = result?.documents ?? [];
   const fallbackBusinessName = useMemo(() => {
     const fromAnalysis = analysis?.business_name?.trim();
@@ -121,7 +131,7 @@ export default function ReportsPage() {
       <div className={styles.main}>
         <div className="wrap">
           <>
-            <DownloadReportButton files={files} period={period} statementId={result?.statement_id} />
+            <DownloadReportButton files={files} period={period} statementId={pdfStatementId} />
 
               {period === 'Month' && (
                 <>

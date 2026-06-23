@@ -379,11 +379,37 @@ export function primaryWarningForSlot(
   );
 }
 
+/** Already-stored month warning for a slot (shown in upload boxes, not only the header). */
+export function storedPeriodWarningForSlot(
+  result: UploadValidationResult | null,
+  slot: UploadSlotId,
+): string {
+  if (!result?.stored_period_warnings?.length) return '';
+  const warnings = result.stored_period_warnings;
+  const direct = warnings.find(
+    (w) => w.slot === slot && w.message?.trim(),
+  )?.message?.trim();
+  if (direct) return direct;
+  const batch = warnings.find((w) => w.message?.trim())?.message?.trim();
+  if (!batch) return '';
+  if (warnings.some((w) => w.slot === slot)) return batch;
+  if (result.detected_periods?.[slot]) return batch;
+  return '';
+}
+
+/** Per-box upload warning: file type / month issues, then already-stored month. */
+export function slotUploadWarning(
+  result: UploadValidationResult | null,
+  slot: UploadSlotId,
+): string {
+  return primaryWarningForSlot(result, slot) || storedPeriodWarningForSlot(result, slot);
+}
+
 export function warningsBySlot(result: UploadValidationResult | null) {
   return {
-    bank: primaryWarningForSlot(result, 'bank'),
-    pos: primaryWarningForSlot(result, 'pos'),
-    ecommerce: primaryWarningForSlot(result, 'ecommerce'),
+    bank: slotUploadWarning(result, 'bank'),
+    pos: slotUploadWarning(result, 'pos'),
+    ecommerce: slotUploadWarning(result, 'ecommerce'),
   };
 }
 
@@ -454,6 +480,7 @@ export function slotIssuesInResult(
 /** Safe gate for Continue — ok flag plus any per-box warning text. */
 export function batchValidationPasses(result: UploadValidationResult | null): boolean {
   if (!result?.ok) return false;
+  if (hasStoredPeriodConflict(result)) return false;
   const w = warningsBySlot(result);
   return !(w.bank || w.pos || w.ecommerce);
 }
@@ -495,9 +522,27 @@ export const validateUploads = (files: UploadFiles) => {
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
   return mainApi.post<UploadValidationResult>('/api/validate-uploads', form, {
-    timeout: 45_000,
+    timeout: 120_000,
   });
 };
+
+/** Validate uploads after waking the backend; retry once on timeout or network errors. */
+export async function validateUploadsWithRetry(files: UploadFiles) {
+  warmupBackend();
+  try {
+    return await validateUploads(files);
+  } catch (err) {
+    const axiosErr = err as AxiosError;
+    const retryable =
+      axiosErr?.code === 'ECONNABORTED'
+      || axiosErr?.message === 'Network Error'
+      || !axiosErr?.response;
+    if (!retryable) throw err;
+    warmupServices();
+    await new Promise((resolve) => window.setTimeout(resolve, 2500));
+    return validateUploads(files);
+  }
+}
 
 /** Wake Render services before login or upload (no-op when already warm). */
 function serviceOrigin(envKey: 'VITE_API_BASE_URL' | 'VITE_AUTH_API_URL' | 'VITE_REGISTER_API_URL'): string {
@@ -904,11 +949,16 @@ async function analyzeViaStream(
   if (buffer.trim()) consumeLine(buffer.trim());
 
   if (!result && pendingStatementId) {
-    try {
-      const { data } = await fetchSavedReport(pendingStatementId);
-      result = data as AnalyzeResult;
-    } catch {
-      /* fall through — classic retry or history recovery below */
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const { data } = await fetchSavedReport(pendingStatementId);
+        result = data as AnalyzeResult;
+        break;
+      } catch {
+        if (attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+        }
+      }
     }
   }
 
@@ -968,6 +1018,9 @@ export async function analyzeWithProgress(
   try {
     return await analyzeViaStream(files, onEvent, force);
   } catch (err) {
+    if (extractStatementDuplicate(err)) {
+      throw err;
+    }
     const code = (err as { code?: string }).code;
     if (code === 'STREAM_UNAVAILABLE') {
       return analyzeViaClassicEndpoint(files, onEvent, force);
@@ -997,16 +1050,67 @@ export const ask = (question: string, files: UploadFiles = {}) => {
 };
 
 export const fetchReportHistory = () =>
-  mainApi.get<SavedReportListApi>('/api/reports/history');
+  mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 120_000 });
 
 export const fetchSavedReport = (statementId: string) =>
-  mainApi.get<AnalyzeResult>(`/api/reports/${statementId}`);
-
-export const downloadSavedReportCompact = (statementId: string) =>
-  mainApi.get(`/api/reports/${encodeURIComponent(statementId)}/compact`, {
-    responseType: 'blob',
+  mainApi.get<AnalyzeResult>(`/api/reports/${encodeURIComponent(statementId)}`, {
     timeout: 120_000,
   });
+
+async function blobErrorFromAxiosResponse(data: Blob, status: number): Promise<Error> {
+  const err = new Error('Download failed.') as Error & {
+    response?: { status: number; data: unknown };
+  };
+  err.response = { status, data: null };
+  try {
+    const json = JSON.parse(await data.text()) as {
+      detail?: unknown;
+      message?: string;
+      error?: string;
+    };
+    err.response.data = json;
+    const detail = json.detail ?? json.message ?? json.error;
+    if (typeof detail === 'string' && detail.trim()) {
+      err.message = detail.trim();
+    }
+  } catch {
+    /* ignore parse errors */
+  }
+  return err;
+}
+
+/** Compact reconciliation PDF for a saved statement; falls back to stored legacy PDF. */
+export async function downloadMonthlyReportPdf(statementId: string) {
+  warmupBackend();
+  const id = statementId.trim();
+  if (!id) {
+    throw new Error('No saved statement to download.');
+  }
+  const compactPath = `/api/reports/${encodeURIComponent(id)}/compact`;
+  const legacyPath = `/api/reports/${encodeURIComponent(id)}/pdf`;
+  const fetchPdf = (path: string) =>
+    mainApi.get(path, {
+      responseType: 'blob',
+      timeout: 120_000,
+      validateStatus: () => true,
+    });
+
+  let res = await fetchPdf(compactPath);
+  if (res.status === 404) {
+    const legacy = await fetchPdf(legacyPath);
+    if (legacy.status < 400) {
+      return { data: legacy.data as Blob, headers: legacy.headers };
+    }
+    throw await blobErrorFromAxiosResponse(legacy.data as Blob, legacy.status);
+  }
+  if (res.status >= 400) {
+    throw await blobErrorFromAxiosResponse(res.data as Blob, res.status);
+  }
+  return { data: res.data as Blob, headers: res.headers };
+}
+
+export const downloadSavedReportCompact = (statementId: string) =>
+  downloadMonthlyReportPdf(statementId);
 
 /** @deprecated Use downloadSavedReportCompact — legacy fpdf export */
 export const downloadSavedReportPdf = (statementId: string) =>
