@@ -5,7 +5,7 @@ import { isTokenExpired } from './jwt';
 import {
   ANALYZE_TIMEOUT_MS,
   buildFallbackPipelineEvents,
-  PIPELINE_TICK_MS,
+  CLASSIC_PIPELINE_STEP_MS,
   type AnalyzeProgressEvent,
 } from './analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
@@ -931,7 +931,7 @@ async function analyzeViaStream(
   return result;
 }
 
-/** Fallback: POST /api/analyze with one pipeline step at a time while the request runs. */
+/** Fallback: POST /api/analyze with staged progress while the request runs. */
 async function analyzeViaClassicEndpoint(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
@@ -941,11 +941,10 @@ async function analyzeViaClassicEndpoint(
   let stepIndex = 0;
   onEvent(timeline[0]);
   const tick = window.setInterval(() => {
+    if (stepIndex >= timeline.length - 1) return;
     stepIndex += 1;
-    if (stepIndex < timeline.length) {
-      onEvent(timeline[stepIndex]);
-    }
-  }, PIPELINE_TICK_MS + 120);
+    onEvent(timeline[stepIndex]);
+  }, CLASSIC_PIPELINE_STEP_MS);
 
   try {
     const { data } = await analyze(files.bank, files.pos, files.ecommerce, force);
@@ -958,8 +957,7 @@ async function analyzeViaClassicEndpoint(
 }
 
 /**
- * Analyze with live Server-Sent Events when supported; otherwise classic POST /api/analyze.
- * Production defaults to classic POST — more reliable through Render than SSE + large payloads.
+ * Analyze with live Server-Sent Events; fall back to classic POST if the stream fails.
  */
 export async function analyzeWithProgress(
   files: UploadFiles,
@@ -967,13 +965,6 @@ export async function analyzeWithProgress(
   options?: { force?: boolean },
 ): Promise<AnalyzeResult> {
   const force = Boolean(options?.force);
-  const preferClassic =
-    import.meta.env.PROD && import.meta.env.VITE_ANALYZE_STREAM !== '1';
-
-  if (preferClassic) {
-    return analyzeViaClassicEndpoint(files, onEvent, force);
-  }
-
   try {
     return await analyzeViaStream(files, onEvent, force);
   } catch (err) {

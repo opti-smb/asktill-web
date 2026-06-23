@@ -135,7 +135,7 @@ export const PIPELINE_TICK_MS = 180;
 export const PIPELINE_DONE_HOLD_MS = 280;
 /** Gentle step advance when the server is quiet (SSE buffering / cold start). */
 export const PIPELINE_ESTIMATE_MS = 2_800;
-export const PIPELINE_ESTIMATE_MAX_INDEX = 3;
+export const PIPELINE_ESTIMATE_MAX_INDEX = 5;
 
 /** Advance one visual step while waiting for the next server event. */
 export function estimatePipelineWhileWaiting(prev: AnalyzeProgressState): AnalyzeProgressState | null {
@@ -156,6 +156,9 @@ export function buildFallbackPipelineEvents(): AnalyzeProgressEvent[] {
     { stage: 'views' },
   ];
 }
+
+/** Interval for classic POST fallback — advance one step while the server works. */
+export const CLASSIC_PIPELINE_STEP_MS = 3_500;
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
