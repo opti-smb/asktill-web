@@ -1,4 +1,5 @@
 import { fetchAtLetterHtmlPreview, USER_LOGOUT_EVENT } from './api';
+import { LETTER_WIPED_EVENT } from './atLetterCache';
 
 function cacheKey(statementId: string, monthOnly: boolean): string {
   return `${statementId.trim()}:${monthOnly ? 'month' : 'rolling'}`;
@@ -54,4 +55,5 @@ export async function prefetchAtLetterHtml(
 
 if (typeof window !== 'undefined') {
   window.addEventListener(USER_LOGOUT_EVENT, () => clearAtLetterHtmlCache());
+  window.addEventListener(LETTER_WIPED_EVENT, () => clearAtLetterHtmlCache());
 }

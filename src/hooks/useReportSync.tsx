@@ -11,7 +11,7 @@ import {
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
 import { fetchReportHistory, fetchSavedReport, USER_LOGOUT_EVENT, warmupBackend, type SavedReportSummaryApi } from '../lib/api';
-import { clearUserAtLetterState, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
+import { clearUserAtLetterState, clearAllAtLetterDeviceCache, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import {
   comparePeriodKeys,
@@ -240,6 +240,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
         if (user.userId) {
           clearUserAtLetterState(user.userId);
         }
+        clearAllAtLetterDeviceCache();
         if (!analyzeLoadingRef.current) {
           clearResult();
         }

@@ -4,6 +4,7 @@ const PREFIX = 'asktill:at-letter:';
 const HAS_LETTER_KEY = 'asktill:has-saved-letter';
 
 export const LETTER_UPDATED_EVENT = 'asktill:letter-updated';
+export const LETTER_WIPED_EVENT = 'asktill:letter-wiped';
 
 interface CachedAtLetter {
   letter: AtLetterPreview;
@@ -118,6 +119,7 @@ export function clearUserAtLetterState(userId: string): void {
   clearAtLetterCache(userId);
   clearSavedLetterHint(userId);
   window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+  window.dispatchEvent(new CustomEvent(LETTER_WIPED_EVENT));
 }
 
 /** Drop this user's landing letter when the server has no saved reports (needs auth token). */
@@ -148,6 +150,7 @@ export function clearAllAtLetterDeviceCache(): void {
     }
     keys.forEach((key) => localStorage.removeItem(key));
     window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+    window.dispatchEvent(new CustomEvent(LETTER_WIPED_EVENT));
   } catch {
     /* ignore */
   }
