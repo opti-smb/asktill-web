@@ -16,6 +16,7 @@ import ReportsPage from '../pages/ReportsPage';
 import ProfilePage from '../pages/ProfilePage';
 import DashboardNav from '../components/layout/DashboardNav';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
+import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
 import { useAuth } from '../context/AuthContext';
 
 function UploadPageRoute() {
@@ -49,8 +50,9 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="at-letter" replace />} />
-          <Route path="overview" element={<AnalysisPage />} />
+          <Route index element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
+          <Route path="overview" element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
+          <Route path="analysis" element={<AnalysisPage />} />
           <Route path="cashflow" element={<CashFlowPage />} />
           <Route path="reconciliation" element={<ReconPage />} />
           <Route path="at-letter" element={<AtLetterPage />} />

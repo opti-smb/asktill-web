@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 import Logo from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_DASHBOARD_PATH } from '../../lib/pendingPdfDownload';
 
 import FloatingAskButton from './FloatingAskButton';
 import UserAccountMenu from './UserAccountMenu';
@@ -23,13 +24,13 @@ export default function DashboardNav() {
 
           <div className={styles.navInner}>
 
-            <Logo to={ready && isAuth ? '/dashboard/at-letter' : '/'} />
+            <Logo to={ready && isAuth ? DEFAULT_DASHBOARD_PATH : '/'} />
 
             <div className={styles.navTabs}>
 
               <NavLink
 
-                to="/dashboard/at-letter"
+                to={DEFAULT_DASHBOARD_PATH}
 
                 className={({ isActive }) =>
 
@@ -77,7 +78,7 @@ export default function DashboardNav() {
 
               <NavLink
 
-                to="/dashboard/overview"
+                to="/dashboard/analysis"
 
                 className={({ isActive }) =>
 
