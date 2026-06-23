@@ -22,6 +22,7 @@ interface Props {
 }
 
 function downloadStageLabel(stage: PdfDownloadStage | null): string {
+  if (stage === 'fetching') return 'Downloading PDF…';
   if (stage === 'generating') return 'Generating PDF…';
   if (stage === 'opening') return 'Opening PDF…';
   if (stage === 'saving') return 'Saving to Downloads…';
@@ -81,6 +82,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
       const fallbackName = 'Reconciliation_Report.pdf';
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
+        prebuilt: Boolean(statementId),
         onStage: setExportStage,
         fetchBlob: async () => {
           const { data, headers } = await fetchMonthlyCompactPdf();
@@ -111,7 +113,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
   const hint = isWeek
     ? 'PDF with Week 1, Week 2, … breakdowns for this statement month.'
     : statementId
-      ? 'Compact monthly report from your saved statement (fast — no re-upload).'
+      ? 'Same compact reconciliation PDF as local — saved when you analyzed this month.'
       : hasAll
         ? 'Compact monthly report from uploaded files (may take longer while statements are processed).'
         : 'Upload bank, POS, and ecommerce files to download.';

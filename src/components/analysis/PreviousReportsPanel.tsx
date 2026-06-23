@@ -111,6 +111,7 @@ export default function PreviousReportsPanel({
     try {
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
+        prebuilt: true,
         fetchBlob: async () => {
           const { data, headers } = await downloadMonthlyReportPdf(row.statement_id);
           const filename = filenameFromDisposition(

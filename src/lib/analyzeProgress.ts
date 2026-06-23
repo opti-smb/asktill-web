@@ -33,6 +33,10 @@ export interface AnalyzeProgressEvent {
   status?: number;
   /** Present on complete when the server saved the statement (preferred over inline result). */
   statement_id?: string | null;
+  /** camelCase alias some serializers emit */
+  statementId?: string | null;
+  /** True when analysis finished but DB save failed — client should recover via GET /api/reports. */
+  persist_failed?: boolean;
   result?: unknown;
 }
 

@@ -383,6 +383,16 @@ export function hasStoredPeriodConflict(result: UploadValidationResult | null): 
   return Boolean((result?.stored_period_warnings?.length ?? 0) > 0);
 }
 
+/** Validation response received for the current files (ignores ok flag — used for duplicate UX). */
+export function validationSettledForFiles(
+  result: UploadValidationResult | null,
+  fileKeysMatch: boolean,
+  checking: boolean,
+  validationError: boolean,
+): boolean {
+  return Boolean(result && fileKeysMatch && !checking && !validationError);
+}
+
 export type UploadSlotId = 'bank' | 'pos' | 'ecommerce';
 
 /** Fast month hint from filename while server validation runs (matches backend name rules). */
@@ -876,6 +886,95 @@ const analyze = (bank?: File, pos?: File, ecommerce?: File, force = false) =>
     params: force ? { force: true } : undefined,
   });
 
+function statementIdFromProgressEvent(event: AnalyzeProgressEvent): string | null {
+  const raw = event.statement_id ?? event.statementId;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  return null;
+}
+
+async function fetchSavedReportWithRetry(statementId: string): Promise<AnalyzeResult> {
+  warmupBackend();
+  await ensureAuthServiceReady(12_000);
+  const id = statementId.trim();
+  if (!id) {
+    throw new Error('No saved statement id.');
+  }
+  const request = () =>
+    mainApi.get<AnalyzeResult>(`/api/reports/${encodeURIComponent(id)}`, {
+      timeout: 120_000,
+    });
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const { data } = await request();
+      return data as AnalyzeResult;
+    } catch (err) {
+      const axiosErr = err as AxiosError;
+      const status = axiosErr?.response?.status;
+      const retryable =
+        status === 503
+        || status === 401
+        || status === 404
+        || axiosErr?.code === 'ECONNABORTED'
+        || axiosErr?.message === 'Network Error'
+        || !axiosErr?.response;
+      if (!retryable || attempt >= 3) {
+        throw err;
+      }
+      await ensureAuthServiceReady(attempt >= 1 ? 45_000 : 12_000);
+      warmupBackend();
+      await new Promise((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
+    }
+  }
+  throw new Error('Could not load saved report.');
+}
+
+async function recoverLatestSavedAnalyzeResult(): Promise<AnalyzeResult | null> {
+  try {
+    const { data: history } = await fetchReportHistory();
+    const latestId = history.reports?.[0]?.statement_id;
+    if (!latestId) return null;
+    return await fetchSavedReportWithRetry(latestId);
+  } catch {
+    return null;
+  }
+}
+
+async function recoverAnalyzeAfterStreamFailure(
+  files: UploadFiles,
+  onEvent: (event: AnalyzeProgressEvent) => void,
+  force: boolean,
+): Promise<AnalyzeResult> {
+  warmupBackend();
+  await ensureAuthServiceReady(45_000);
+
+  const fromHistory = await recoverLatestSavedAnalyzeResult();
+  if (fromHistory) {
+    onEvent({
+      stage: 'complete',
+      message: 'Opening your dashboard…',
+      statement_id: fromHistory.statement_id ?? undefined,
+    });
+    return fromHistory;
+  }
+
+  try {
+    return await analyzeViaClassicEndpoint(files, onEvent, force);
+  } catch (classicErr) {
+    const duplicate = extractStatementDuplicate(classicErr);
+    if (duplicate?.statementId) {
+      const loaded = await fetchSavedReportWithRetry(duplicate.statementId);
+      onEvent({
+        stage: 'complete',
+        message: 'Opening your dashboard…',
+        statement_id: duplicate.statementId,
+      });
+      return loaded;
+    }
+    throw classicErr;
+  }
+}
+
 async function analyzeViaStream(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
@@ -947,7 +1046,7 @@ async function analyzeViaStream(
   const parseSseEvent = (line: string): AnalyzeProgressEvent | null => {
     if (!line.startsWith('data: ')) return null;
     try {
-      return JSON.parse(line.slice(6).trimEnd()) as AnalyzeProgressEvent;
+      return JSON.parse(line.slice(6).trim()) as AnalyzeProgressEvent;
     } catch {
       return null;
     }
@@ -959,8 +1058,9 @@ async function analyzeViaStream(
     if (event.stage === 'complete') {
       if (event.result) {
         result = event.result as AnalyzeResult;
-      } else if (event.statement_id) {
-        pendingStatementId = event.statement_id;
+      } else {
+        const sid = statementIdFromProgressEvent(event);
+        if (sid) pendingStatementId = sid;
       }
       onEvent(event);
       return;
@@ -995,30 +1095,15 @@ async function analyzeViaStream(
   if (buffer.trim()) consumeLine(buffer.trim());
 
   if (!result && pendingStatementId) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const { data } = await fetchSavedReport(pendingStatementId);
-        result = data as AnalyzeResult;
-        break;
-      } catch {
-        if (attempt < 2) {
-          await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
-        }
-      }
+    try {
+      result = await fetchSavedReportWithRetry(pendingStatementId);
+    } catch {
+      /* fall through — history / classic recovery below */
     }
   }
 
   if (!result) {
-    try {
-      const { data: history } = await fetchReportHistory();
-      const latestId = history.reports?.[0]?.statement_id;
-      if (latestId) {
-        const { data } = await fetchSavedReport(latestId);
-        result = data as AnalyzeResult;
-      }
-    } catch {
-      /* ignore */
-    }
+    result = await recoverLatestSavedAnalyzeResult();
   }
 
   if (!result) {
@@ -1069,10 +1154,10 @@ export async function analyzeWithProgress(
     }
     const code = (err as { code?: string }).code;
     if (code === 'STREAM_UNAVAILABLE') {
-      return analyzeViaClassicEndpoint(files, onEvent, force);
+      return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
     }
     if (err instanceof Error && err.message === 'Analysis finished without a result.') {
-      return analyzeViaClassicEndpoint(files, onEvent, force);
+      return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
     }
     throw err;
   }
@@ -1121,10 +1206,9 @@ export const fetchReportHistory = async () => {
   }
 };
 
-export const fetchSavedReport = (statementId: string) =>
-  mainApi.get<AnalyzeResult>(`/api/reports/${encodeURIComponent(statementId)}`, {
-    timeout: 120_000,
-  });
+export const fetchSavedReport = async (statementId: string) => ({
+  data: await fetchSavedReportWithRetry(statementId),
+});
 
 async function blobErrorFromAxiosResponse(data: Blob, status: number): Promise<Error> {
   const err = new Error('Download failed.') as Error & {
@@ -1159,38 +1243,45 @@ async function blobLooksLikePdf(data: Blob): Promise<boolean> {
   );
 }
 
-/** Compact reconciliation PDF for a saved statement; falls back to stored legacy PDF. */
+/** Pre-built compact reconciliation PDF (same file saved at analyze — instant download). */
 export async function downloadMonthlyReportPdf(statementId: string) {
-  warmupBackend();
   const id = statementId.trim();
   if (!id) {
     throw new Error('No saved statement to download.');
   }
-  const compactPath = `/api/reports/${encodeURIComponent(id)}/compact`;
-  const legacyPath = `/api/reports/${encodeURIComponent(id)}/pdf`;
-  const fetchPdf = (path: string) =>
+  const path = `/api/reports/${encodeURIComponent(id)}/compact`;
+  const request = () =>
     mainApi.get(path, {
       responseType: 'blob',
-      timeout: 120_000,
+      timeout: 45_000,
       validateStatus: () => true,
     });
 
-  const tryLegacy = async () => {
-    const legacy = await fetchPdf(legacyPath);
-    if (legacy.status < 400 && await blobLooksLikePdf(legacy.data as Blob)) {
-      return { data: legacy.data as Blob, headers: legacy.headers };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt === 0) {
+      warmupBackend();
+      await ensureAuthServiceReady(12_000);
     }
-    throw await blobErrorFromAxiosResponse(legacy.data as Blob, legacy.status);
-  };
-
-  const res = await fetchPdf(compactPath);
-  if (res.status === 401) {
+    const res = await request();
+    if (res.status === 401) {
+      await ensureAuthServiceReady(45_000);
+      warmupBackend();
+      if (attempt < 2) {
+        await new Promise((resolve) => window.setTimeout(resolve, 800 * (attempt + 1)));
+        continue;
+      }
+      throw await blobErrorFromAxiosResponse(res.data as Blob, res.status);
+    }
+    if (res.status < 400 && await blobLooksLikePdf(res.data as Blob)) {
+      return { data: res.data as Blob, headers: res.headers };
+    }
+    if ((res.status === 404 || res.status >= 500) && attempt < 2) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1000 * (attempt + 1)));
+      continue;
+    }
     throw await blobErrorFromAxiosResponse(res.data as Blob, res.status);
   }
-  if (res.status < 400 && await blobLooksLikePdf(res.data as Blob)) {
-    return { data: res.data as Blob, headers: res.headers };
-  }
-  return tryLegacy();
+  throw new Error('Could not download reconciliation PDF.');
 }
 
 export const downloadSavedReportCompact = (statementId: string) =>
