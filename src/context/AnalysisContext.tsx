@@ -14,6 +14,7 @@ import {
   extractStatementDuplicate,
   extractUploadMismatches,
   getApiError,
+  recoverSavedAnalyzeFromHistory,
   type StatementDuplicateInfo,
   USER_LOGOUT_EVENT,
   USER_STATE_RESET_EVENT,
@@ -199,16 +200,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       setAnalyzeProgress(buildInitialAnalyzeProgress());
     };
 
-    try {
-      const data = await analyzeWithProgress(active, (event) => {
-        ensureProgress();
-        setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
-      }, options);
-
-      setFilesState(active);
+    const finishWithResult = (data: AnalyzeResult, activeFiles: UploadFiles) => {
+      setFilesState(activeFiles);
       setResult(data);
       markJustAnalyzed();
       setStatementDuplicate(null);
+      setError(null);
+      setUploadMismatch(null);
 
       if (isAuth && user?.userId) {
         const preview = buildAtLetterPreview(data, user, {
@@ -228,7 +226,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         void prefetchAtLetterHtml(data.statement_id);
       }
 
-      // Server is done — brief complete state, then navigate (do not block on animation).
       if (progressStarted) {
         setAnalyzeProgress((prev) =>
           prev
@@ -244,18 +241,35 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       return data;
+    };
+
+    try {
+      const data = await analyzeWithProgress(active, (event) => {
+        ensureProgress();
+        setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
+      }, options);
+
+      return finishWithResult(data, active);
     } catch (err) {
       clearPipelineWaiters();
-      if (progressStarted) {
-        setAnalyzeProgress(null);
-      }
+
       const duplicate = extractStatementDuplicate(err);
       if (duplicate) {
+        if (progressStarted) setAnalyzeProgress(null);
         setStatementDuplicate(duplicate);
         setUploadMismatch(null);
         setError(null);
         return null;
       }
+
+      if (progressStarted) {
+        const recovered = await recoverSavedAnalyzeFromHistory();
+        if (recovered) {
+          return finishWithResult(recovered, active);
+        }
+        setAnalyzeProgress(null);
+      }
+
       const mismatch = extractUploadMismatches(err);
       if (mismatch) {
         setUploadMismatch(mismatch);

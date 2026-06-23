@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   downloadMonthlyReportPdf,
+  ensureAuthServiceReady,
   fetchReportHistory,
   fetchSavedReport,
   getApiError,
@@ -65,7 +66,9 @@ export default function PreviousReportsPanel({
     setLoading(true);
     setError(null);
     warmupBackend();
-    fetchReportHistory()
+    void ensureAuthServiceReady(15_000).finally(() => {
+      if (cancelled) return;
+      fetchReportHistory()
       .then(({ data }) => {
         if (cancelled) return;
         const list = data.reports ?? [];
@@ -80,6 +83,7 @@ export default function PreviousReportsPanel({
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    });
     return () => { cancelled = true; };
   }, [active, isAuth, ready, onReportsLoaded]);
 
