@@ -947,6 +947,11 @@ async function recoverLatestSavedAnalyzeResult(): Promise<AnalyzeResult | null> 
   return null;
 }
 
+/** Load newest saved report from history — used when analyze stream ends without inline result. */
+export async function recoverSavedAnalyzeFromHistory(): Promise<AnalyzeResult | null> {
+  return recoverLatestSavedAnalyzeResult();
+}
+
 function captureStatementIdFromEvent(
   event: AnalyzeProgressEvent,
   pending: { id: string | null },
@@ -1205,8 +1210,14 @@ export const fetchReportHistory = async () => {
   try {
     return await request();
   } catch (err) {
-    const status = (err as AxiosError)?.response?.status;
-    const retryable = status === 503 || status === 401;
+    const axiosErr = err as AxiosError;
+    const status = axiosErr?.response?.status;
+    const retryable =
+      status === 503
+      || status === 401
+      || axiosErr?.code === 'ECONNABORTED'
+      || axiosErr?.message === 'Network Error'
+      || !axiosErr?.response;
     if (!retryable) throw err;
     await new Promise((resolve) => window.setTimeout(resolve, 2500));
     await ensureAuthServiceReady(45_000);

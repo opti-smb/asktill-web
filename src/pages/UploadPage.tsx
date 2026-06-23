@@ -498,6 +498,7 @@ export default function UploadPage() {
     clearUploadMismatch();
     setUploadPrompt(null);
 
+    const reportsBefore = savedReportCount ?? 0;
     const result = await runAnalyze({
       bank: bankFile,
       pos: posFile,
@@ -507,6 +508,24 @@ export default function UploadPage() {
       navigate(DEFAULT_DASHBOARD_PATH);
       return;
     }
+
+    if (isAuth) {
+      try {
+        warmupBackend();
+        await ensureAuthServiceReady(30_000);
+        const { data } = await fetchReportHistory();
+        const count = data.reports?.length ?? 0;
+        setSavedReportCount(count);
+        const latestId = data.reports?.[0]?.statement_id;
+        if (latestId && count > reportsBefore) {
+          await openSavedReport(latestId);
+          return;
+        }
+      } catch {
+        /* fall through — show analyze error below */
+      }
+    }
+
     if (uploadMismatch) {
       setUploadPrompt(
         'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
