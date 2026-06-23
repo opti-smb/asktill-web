@@ -111,12 +111,7 @@ export function useAtLetterPreview(): {
           if (data.user_id) markUserHasSavedLetter(data.user_id);
           return;
         }
-        // Server has no stored month — keep device cache if the user analyzed on this browser.
-        const cached = loadLandingAtLetterCache();
-        if (cached) {
-          setLandingSource('user');
-          return;
-        }
+        // Server has no stored month (wiped or never uploaded) — show Brookline sample.
         setLandingSource('sample');
         if (userId) {
           clearUserAtLetterState(userId);
