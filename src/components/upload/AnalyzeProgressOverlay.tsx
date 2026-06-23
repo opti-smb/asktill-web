@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function AnalyzeProgressOverlay({ progress }: Props) {
-  const { steps, activeIndex, complete } = progress;
+  const { steps, activeIndex, targetIndex, complete } = progress;
   const allDone = isPipelineDisplayComplete(progress);
 
   return (
@@ -26,7 +26,9 @@ export default function AnalyzeProgressOverlay({ progress }: Props) {
                 ? 'Opening your dashboard…'
                 : complete
                   ? 'Finishing up — almost there.'
-                  : 'Steps update as the server processes your files.'}
+                  : activeIndex === 0 && targetIndex === 0
+                    ? 'Uploading to the server — this can take longer on production than local dev.'
+                    : 'Steps update as the server processes your files.'}
             </p>
           </div>
         </div>

@@ -35,22 +35,32 @@ export interface AnalyzeProgressEvent {
 }
 
 const STAGE_TO_PIPELINE_INDEX: Record<string, number> = {
-  upload: 0,
   start: 0,
+  upload: 0,
   read: 1,
   extract: 1,
+  validate: 1,
   parse: 1,
   json: 2,
   structure: 2,
   roles: 2,
   amounts: 3,
+  breakdown: 3,
   reconcile: 4,
   views: 5,
   vocabulary: 5,
+  tabs: 5,
+  kpis: 5,
+  insights: 5,
+  finalize: 5,
   save: 5,
   done: 5,
   complete: 5,
 };
+
+/** Production Render cold starts + cross-region upload can exceed local dev times. */
+export const ANALYZE_CONNECT_TIMEOUT_MS = import.meta.env.PROD ? 120_000 : 45_000;
+export const ANALYZE_TIMEOUT_MS = ANALYZE_CONNECT_TIMEOUT_MS;
 
 export function pipelineIndexForStage(stage: string): number {
   return STAGE_TO_PIPELINE_INDEX[stage] ?? 0;
@@ -70,6 +80,9 @@ export function applyPipelineEvent(
   prev: AnalyzeProgressState,
   event: AnalyzeProgressEvent,
 ): AnalyzeProgressState {
+  if (event.stage === 'heartbeat') {
+    return prev;
+  }
   const last = prev.steps.length - 1;
   let target = Math.max(prev.targetIndex, pipelineIndexForStage(event.stage));
   const detail =
@@ -118,7 +131,17 @@ export function isPipelineDisplayComplete(prev: AnalyzeProgressState): boolean {
 
 export const PIPELINE_TICK_MS = 180;
 export const PIPELINE_DONE_HOLD_MS = 280;
-export const ANALYZE_TIMEOUT_MS = 45_000;
+/** Gentle step advance when the server is quiet (SSE buffering / cold start). */
+export const PIPELINE_ESTIMATE_MS = 2_800;
+export const PIPELINE_ESTIMATE_MAX_INDEX = 3;
+
+/** Advance one visual step while waiting for the next server event. */
+export function estimatePipelineWhileWaiting(prev: AnalyzeProgressState): AnalyzeProgressState | null {
+  if (prev.complete) return null;
+  if (prev.activeIndex >= PIPELINE_ESTIMATE_MAX_INDEX) return null;
+  if (prev.activeIndex < prev.targetIndex) return null;
+  return { ...prev, activeIndex: prev.activeIndex + 1 };
+}
 
 /** Fallback timeline when /api/analyze/stream is unavailable. */
 export function buildFallbackPipelineEvents(): AnalyzeProgressEvent[] {

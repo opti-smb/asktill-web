@@ -810,7 +810,9 @@ async function analyzeViaStream(
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
-      throw new Error('Analysis timed out after 45 seconds. Try again with smaller files.');
+      throw new Error(
+        `Analysis timed out after ${Math.round(ANALYZE_TIMEOUT_MS / 1000)} seconds. Try again with smaller files.`,
+      );
     }
     throw err;
   } finally {
