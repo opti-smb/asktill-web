@@ -31,6 +31,8 @@ export interface AnalyzeProgressEvent {
   detail?: string | null;
   files?: string[];
   status?: number;
+  /** Present on complete when the server saved the statement (preferred over inline result). */
+  statement_id?: string | null;
   result?: unknown;
 }
 
