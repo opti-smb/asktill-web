@@ -1124,9 +1124,14 @@ async function analyzeViaStream(
   window.clearTimeout(timeoutId);
 
   warmupBackend();
-  await ensureAuthServiceReady(45_000);
+  await ensureAuthServiceReady(15_000);
 
   if (!result && pending.id) {
+    onEvent({
+      stage: 'complete',
+      message: 'Opening your dashboard…',
+      statement_id: pending.id,
+    });
     try {
       result = await fetchSavedReportWithRetry(pending.id);
     } catch {

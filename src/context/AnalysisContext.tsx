@@ -234,17 +234,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       if (progressStarted) {
-        setAnalyzeProgress((prev) =>
-          prev
-            ? {
-                ...prev,
-                complete: true,
-                targetIndex: prev.steps.length - 1,
-                activeIndex: prev.steps.length,
-              }
-            : prev,
-        );
-        void waitForPipelineDisplay();
+        setAnalyzeProgress(null);
       }
 
       return data;

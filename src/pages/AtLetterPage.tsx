@@ -12,11 +12,11 @@ import styles from './AtLetterPage.module.css';
 
 const ROLLING_VIEW = 'rolling';
 
-function monthOnlyLabel(report: SavedReportSummaryApi): string {
-  const label = report.period_label?.trim();
-  if (!label) return 'Month only';
+function monthOnlyLabel(report: SavedReportSummaryApi | null | undefined): string {
+  const label = report?.period_label?.trim();
+  if (!label) return 'This month only';
   const short = label.match(
-    /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i,
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i,
   );
   if (short) {
     const token = short[1];
@@ -31,41 +31,43 @@ function monthOnlyLabel(report: SavedReportSummaryApi): string {
 
 export default function AtLetterPage() {
   const { result } = useAnalysis();
-  const { historyReady, savedCount, savedReports } = useReportSync();
+  const { historyReady, savedCount, primaryReport } = useReportSync();
   const { statementId: rollingStatementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   const [activeView, setActiveView] = useState<string>(ROLLING_VIEW);
 
+  const latestMonthReport = primaryReport ?? null;
+  const monthStatementId =
+    latestMonthReport?.statement_id ?? rollingStatementId ?? null;
+
   const monthOnly = activeView !== ROLLING_VIEW;
-  const activeStatementId = monthOnly ? activeView : rollingStatementId;
+  const activeStatementId = monthOnly ? monthStatementId : rollingStatementId;
 
   const { html, loading, error } = useAtLetterHtml(activeStatementId, { monthOnly });
 
-  const showViewFilters = savedCount >= 1;
+  const showViewFilters = savedCount >= 1 && Boolean(monthStatementId);
 
   useEffect(() => {
     if (activeView === ROLLING_VIEW) return;
-    if (!savedReports.some((row) => row.statement_id === activeView)) {
+    if (!monthStatementId) {
       setActiveView(ROLLING_VIEW);
     }
-  }, [savedReports, activeView]);
-
-  useEffect(() => {
-    if (savedCount < 1 && activeView !== ROLLING_VIEW) {
-      setActiveView(ROLLING_VIEW);
-    }
-  }, [savedCount, activeView]);
+  }, [monthStatementId, activeView]);
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
-      return savedCount >= 3
-        ? 'Rolling quarter view — comparing up to 3 months on file.'
-        : 'Rolling view — comparing all months on file.';
+      const monthsOnFile = Math.min(savedCount, 3);
+      if (monthsOnFile >= 3) {
+        return 'Quarter view — comparing your latest 3 months on file.';
+      }
+      if (monthsOnFile === 2) {
+        return 'Comparing your latest 2 months on file.';
+      }
+      return 'Upload more months to unlock a 3-month quarter comparison.';
     }
-    const report = savedReports.find((row) => row.statement_id === activeView);
-    const label = report?.period_label?.trim() || 'Selected month';
-    return `${label} only — no month-over-month comparison.`;
-  }, [monthOnly, savedCount, savedReports, activeView]);
+    const label = latestMonthReport?.period_label?.trim() || periodLabel?.trim() || 'Selected month';
+    return `${label} only — single-month letter, no rolling comparison.`;
+  }, [monthOnly, savedCount, latestMonthReport, periodLabel]);
 
   if (!hasLiveAnalysis) {
     return (
@@ -98,18 +100,17 @@ export default function AtLetterPage() {
                   className={`${styles.viewFilter} ${activeView === ROLLING_VIEW ? styles.viewFilterActive : ''}`}
                   onClick={() => setActiveView(ROLLING_VIEW)}
                 >
-                  All on file ({savedCount})
+                  Last 3 months
                 </button>
-                {savedReports.map((report) => (
-                  <button
-                    key={report.statement_id}
-                    type="button"
-                    className={`${styles.viewFilter} ${activeView === report.statement_id ? styles.viewFilterActive : ''}`}
-                    onClick={() => setActiveView(report.statement_id)}
-                  >
-                    {monthOnlyLabel(report)}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className={`${styles.viewFilter} ${activeView !== ROLLING_VIEW ? styles.viewFilterActive : ''}`}
+                  onClick={() => {
+                    if (monthStatementId) setActiveView(monthStatementId);
+                  }}
+                >
+                  {monthOnlyLabel(latestMonthReport)}
+                </button>
               </div>
             </div>
           ) : null}

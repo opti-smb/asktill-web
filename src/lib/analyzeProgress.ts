@@ -97,9 +97,20 @@ export function applyPipelineEvent(
     typeof event.detail === 'string' && event.detail.trim().length > 0
       ? event.detail.trim()
       : null;
-  const steps = prev.steps.map((step, index) =>
-    index === target && detail ? { ...step, detail } : step,
-  );
+  const steps = prev.steps.map((step, index) => {
+    const msg =
+      typeof event.message === 'string' && event.message.trim().length > 0
+        ? event.message.trim()
+        : null;
+    if (index === target) {
+      return {
+        ...step,
+        ...(detail ? { detail } : {}),
+        ...(msg ? { message: msg } : {}),
+      };
+    }
+    return step;
+  });
   const complete = prev.complete || event.stage === 'complete';
   if (event.stage === 'complete') {
     target = last;
