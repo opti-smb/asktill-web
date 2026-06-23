@@ -65,11 +65,6 @@ export function useAtLetterPreview(): {
     [isAuth, user?.userId, tick],
   );
 
-  const loggedOutCachedLetter = useMemo(
-    () => (isAuth ? null : loadLandingAtLetterCache()),
-    [isAuth, tick, landingSource],
-  );
-
   useEffect(() => {
     if (
       isAuth &&
@@ -88,6 +83,7 @@ export function useAtLetterPreview(): {
       setSavedReport(null);
       setDetailLoading(false);
       setError(null);
+      setLandingSource(loadLandingAtLetterCache() ? 'user' : 'sample');
       setTick((n) => n + 1);
     };
     window.addEventListener(LETTER_UPDATED_EVENT, onRefresh);
@@ -113,13 +109,19 @@ export function useAtLetterPreview(): {
         if (data.source === 'user') {
           setLandingSource('user');
           if (data.user_id) markUserHasSavedLetter(data.user_id);
+          return;
+        }
+        // Server has no stored month — keep device cache if the user analyzed on this browser.
+        const cached = loadLandingAtLetterCache();
+        if (cached) {
+          setLandingSource('user');
+          return;
+        }
+        setLandingSource('sample');
+        if (userId) {
+          clearUserAtLetterState(userId);
         } else {
-          setLandingSource('sample');
-          if (userId) {
-            clearUserAtLetterState(userId);
-          } else {
-            clearAllAtLetterDeviceCache();
-          }
+          clearAllAtLetterDeviceCache();
         }
       })
       .catch(() => {
@@ -203,10 +205,8 @@ export function useAtLetterPreview(): {
     }
 
     if (!isAuth) {
-      if (landingSource === 'sample') {
-        return SAMPLE_AT_LETTER;
-      }
-      if (loggedOutCachedLetter) return loggedOutCachedLetter;
+      const cached = loadLandingAtLetterCache();
+      if (cached) return cached;
       if (landingSource === 'user') {
         return buildLoggedOutSavedLetterPreview();
       }
@@ -264,7 +264,6 @@ export function useAtLetterPreview(): {
     primaryReport,
     cachedAuthLetter,
     landingSource,
-    loggedOutCachedLetter,
   ]);
 
   const letterWithMeta = useMemo((): AtLetterPreview => {
@@ -287,6 +286,6 @@ export function useAtLetterPreview(): {
     loading: !ready || (isAuth && !authCanShow && (detailLoading || !historyReady)),
     error,
     refresh: () => setTick((n) => n + 1),
-    isSample: !isAuth ? landingSource === 'sample' : letterWithMeta.mode === 'sample',
+    isSample: letterWithMeta.mode === 'sample',
   };
 }
