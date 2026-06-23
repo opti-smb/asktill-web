@@ -13,6 +13,7 @@ import {
 } from '../../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../../lib/downloadReport';
 import type { AnalyzeResult } from '../../lib/analyzeResponse';
+import { DEFAULT_DASHBOARD_PATH } from '../../lib/pendingPdfDownload';
 import postmanStyles from './PostmanPanels.module.css';
 
 function fmtMoney(value: number | null | undefined): string {
@@ -98,7 +99,7 @@ export default function PreviousReportsPanel({
     try {
       const { data } = await fetchSavedReport(row.statement_id);
       onLoadReport?.(data as AnalyzeResult);
-      navigate('/dashboard/at-letter');
+      navigate(DEFAULT_DASHBOARD_PATH);
     } catch (err) {
       setActionError(await getApiErrorAsync(err, 'Could not open saved report.'));
     } finally {

@@ -964,6 +964,8 @@ async function recoverAnalyzeAfterStreamFailure(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
   force: boolean,
+  *,
+  allowClassicRetry = false,
 ): Promise<AnalyzeResult> {
   warmupBackend();
   await ensureAuthServiceReady(45_000);
@@ -976,6 +978,10 @@ async function recoverAnalyzeAfterStreamFailure(
       statement_id: fromHistory.statement_id ?? undefined,
     });
     return fromHistory;
+  }
+
+  if (!allowClassicRetry) {
+    throw new Error('Analysis finished without a result.');
   }
 
   try {
@@ -1025,15 +1031,15 @@ async function analyzeViaStream(
       );
     }
     throw err;
-  } finally {
-    window.clearTimeout(timeoutId);
   }
 
   if (res.status === 404 || res.status === 405) {
+    window.clearTimeout(timeoutId);
     throw Object.assign(new Error('STREAM_UNAVAILABLE'), { code: 'STREAM_UNAVAILABLE' });
   }
 
   if (!res.ok) {
+    window.clearTimeout(timeoutId);
     let payload: { detail?: unknown; message?: string } | null = null;
     try {
       payload = (await res.json()) as { detail?: unknown; message?: string };
@@ -1054,6 +1060,7 @@ async function analyzeViaStream(
   }
 
   if (!res.body) {
+    window.clearTimeout(timeoutId);
     throw new Error('Analysis stream unavailable.');
   }
 
@@ -1062,6 +1069,7 @@ async function analyzeViaStream(
   let buffer = '';
   let result: AnalyzeResult | null = null;
   const pending = { id: null as string | null };
+  let persistFailed = false;
 
   const parseSseEvent = (line: string): AnalyzeProgressEvent | null => {
     if (!line.startsWith('data: ')) return null;
@@ -1077,6 +1085,7 @@ async function analyzeViaStream(
     if (!event) return;
     captureStatementIdFromEvent(event, pending);
     if (event.stage === 'complete') {
+      if (event.persist_failed) persistFailed = true;
       if (event.result) {
         result = event.result as AnalyzeResult;
       }
@@ -1111,6 +1120,7 @@ async function analyzeViaStream(
     }
   }
   if (buffer.trim()) consumeLine(buffer.trim());
+  window.clearTimeout(timeoutId);
 
   warmupBackend();
   await ensureAuthServiceReady(45_000);
@@ -1119,7 +1129,7 @@ async function analyzeViaStream(
     try {
       result = await fetchSavedReportWithRetry(pending.id);
     } catch {
-      /* fall through — history / classic recovery below */
+      /* fall through — history recovery below */
     }
   }
 
@@ -1128,7 +1138,11 @@ async function analyzeViaStream(
   }
 
   if (!result) {
-    throw new Error('Analysis finished without a result.');
+    throw new Error(
+      persistFailed
+        ? 'Analysis finished but saving failed. Open Previous reports or try again.'
+        : 'Analysis finished without a result.',
+    );
   }
   return result;
 }
@@ -1175,9 +1189,15 @@ export async function analyzeWithProgress(
     }
     const code = (err as { code?: string }).code;
     if (code === 'STREAM_UNAVAILABLE') {
-      return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
+      return recoverAnalyzeAfterStreamFailure(files, onEvent, force, { allowClassicRetry: true });
     }
     if (err instanceof Error && err.message === 'Analysis finished without a result.') {
+      return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
+    }
+    if (
+      err instanceof Error
+      && err.message === 'Analysis finished but saving failed. Open Previous reports or try again.'
+    ) {
       return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
     }
     throw err;
