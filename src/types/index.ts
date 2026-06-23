@@ -92,5 +92,7 @@ export interface FileUploadState {
   fileName?: string;
   detail?: string;
   warning?: string;
+  /** Distinguish server verify failures from wrong file type / month. */
+  issueKind?: 'slot' | 'verify';
   checking?: boolean;
 }

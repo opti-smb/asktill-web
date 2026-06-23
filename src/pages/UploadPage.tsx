@@ -13,6 +13,7 @@ import {
   downloadMonthlyReportPdf,
   fetchReportHistory,
   fetchSavedReport,
+  getApiError,
   getApiErrorAsync,
   isAlreadyStoredMessage,
   hasStoredPeriodConflict,
@@ -95,11 +96,14 @@ function uploadStateFromFile(
         ? `${size} · ${pendingPeriod} · checking…`
         : checking
           ? `${size} · checking file type & month…`
-          : size,
-    warning:
-      validationFailed && !slotWarning
-        ? 'Could not verify this file.'
-        : slotWarning,
+          : validationFailed && !slotWarning
+            ? `${size} · server could not verify yet`
+            : size,
+    issueKind: slotWarning ? 'slot' : validationFailed ? 'verify' : undefined,
+    warning: slotWarning
+      ?? (validationFailed
+        ? 'Server could not verify this file yet. Wait 30 seconds and select the file again.'
+        : undefined),
   };
 }
 
@@ -328,10 +332,12 @@ export default function UploadPage() {
           } else {
             clearStatementDuplicate();
           }
-        } catch {
+        } catch (err) {
           if (cancelled || validationRequestRef.current !== requestId) return;
           if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
-          setValidationError('Could not verify uploads. Check your connection and try again.');
+          setValidationError(
+            getApiError(err, 'Could not verify uploads. Wait 30 seconds and try again.'),
+          );
         } finally {
           if (!cancelled && validationRequestRef.current === requestId) {
             setSlotChecking({ bank: false, pos: false, ecommerce: false });

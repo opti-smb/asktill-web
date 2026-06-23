@@ -21,6 +21,7 @@ export default function FileDropZone({
 }: FileDropZoneProps) {
   const hasWarning = Boolean(uploadState.warning);
   const isChecking = Boolean(uploadState.checking);
+  const isVerifyFailure = uploadState.issueKind === 'verify';
   const cardClass = hasWarning
     ? styles.warn
     : isChecking
@@ -44,7 +45,11 @@ export default function FileDropZone({
         {uploadState.uploaded ? (
           <>
             <div className={hasWarning ? styles.dropTextWarn : styles.dropText}>
-              {hasWarning ? 'Wrong file' : isChecking ? 'Checking file type and month…' : '✓ Uploaded'}
+              {hasWarning
+                ? (isVerifyFailure ? 'Could not verify yet' : 'Wrong file')
+                : isChecking
+                  ? 'Checking file type and month…'
+                  : '✓ Uploaded'}
             </div>
             {!hasWarning && uploadState.fileName && (
               <div className={styles.fileName}>{uploadState.fileName}</div>
