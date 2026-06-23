@@ -65,6 +65,10 @@ export function clearAppSession() {
   window.dispatchEvent(new CustomEvent(USER_LOGOUT_EVENT));
 }
 
+function isSessionUnauthorized(err: AxiosError): boolean {
+  return err.response?.status === 401;
+}
+
 function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
   client.interceptors.response.use(
     (res) => res,
@@ -74,7 +78,14 @@ function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
         const isLogin = url.includes('/api/auth/login');
         const token = getToken();
         const isMe = url.includes('/api/auth/me');
-        if (!isLogin && token && (isMe || isTokenExpired(token))) {
+        const backendProtected =
+          isBackendApiRequest(err)
+          && (url.includes('/api/reports/') || url.includes('/api/analyze'));
+        if (
+          !isLogin
+          && token
+          && (isMe || isTokenExpired(token) || backendProtected)
+        ) {
           clearToken();
           window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
         }
@@ -169,6 +180,20 @@ function formatApiError(
         : 'Request timed out while the server was waking up. Wait 30 seconds and try again.';
     }
     return axiosErr?.message ?? fallback;
+  }
+  if (axiosErr.response.status === 401) {
+    return 'Your session expired or could not be verified. Please sign in again.';
+  }
+  if (axiosErr.response.status === 503) {
+    const detailText =
+      typeof d?.detail === 'string'
+        ? d.detail
+        : typeof d?.message === 'string'
+          ? d.message
+          : null;
+    if (detailText?.toLowerCase().includes('authentication service')) {
+      return 'Sign-in service is waking up. Wait 30 seconds and try again.';
+    }
   }
   if (axiosErr.response.status >= 500) {
     const detailText =
@@ -1049,8 +1074,31 @@ export const ask = (question: string, files: UploadFiles = {}) => {
   return mainApi.post('/api/ask', form);
 };
 
-export const fetchReportHistory = () =>
-  mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 120_000 });
+export const fetchReportHistory = async () => {
+  warmupBackend();
+  await ensureAuthServiceReady(8_000);
+  const request = () =>
+    mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 120_000 });
+
+  try {
+    return await request();
+  } catch (err) {
+    const status = (err as AxiosError)?.response?.status;
+    const retryable = status === 503 || status === 401;
+    if (!retryable) throw err;
+    await new Promise((resolve) => window.setTimeout(resolve, 2500));
+    await ensureAuthServiceReady(45_000);
+    warmupBackend();
+    try {
+      return await request();
+    } catch (retryErr) {
+      if (isSessionUnauthorized(retryErr as AxiosError)) {
+        throw retryErr;
+      }
+      throw err;
+    }
+  }
+};
 
 export const fetchSavedReport = (statementId: string) =>
   mainApi.get<AnalyzeResult>(`/api/reports/${encodeURIComponent(statementId)}`, {
