@@ -851,12 +851,26 @@ async function analyzeViaStream(
   const decoder = new TextDecoder();
   let buffer = '';
   let result: AnalyzeResult | null = null;
+  let pendingStatementId: string | null = null;
+
+  const parseSseEvent = (line: string): AnalyzeProgressEvent | null => {
+    if (!line.startsWith('data: ')) return null;
+    try {
+      return JSON.parse(line.slice(6).trimEnd()) as AnalyzeProgressEvent;
+    } catch {
+      return null;
+    }
+  };
 
   const consumeLine = (line: string) => {
-    if (!line.startsWith('data: ')) return;
-    const event = JSON.parse(line.slice(6)) as AnalyzeProgressEvent;
-    if (event.stage === 'complete' && event.result) {
-      result = event.result as AnalyzeResult;
+    const event = parseSseEvent(line);
+    if (!event) return;
+    if (event.stage === 'complete') {
+      if (event.result) {
+        result = event.result as AnalyzeResult;
+      } else if (event.statement_id) {
+        pendingStatementId = event.statement_id;
+      }
       onEvent(event);
       return;
     }
@@ -888,6 +902,11 @@ async function analyzeViaStream(
     }
   }
   if (buffer.trim()) consumeLine(buffer.trim());
+
+  if (!result && pendingStatementId) {
+    const { data } = await fetchSavedReport(pendingStatementId);
+    result = data as AnalyzeResult;
+  }
 
   if (!result) {
     throw new Error('Analysis finished without a result.');
@@ -935,6 +954,9 @@ export async function analyzeWithProgress(
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'STREAM_UNAVAILABLE') {
+      return analyzeViaClassicEndpoint(files, onEvent, force);
+    }
+    if (err instanceof Error && err.message === 'Analysis finished without a result.') {
       return analyzeViaClassicEndpoint(files, onEvent, force);
     }
     throw err;
