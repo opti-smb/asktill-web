@@ -27,6 +27,7 @@ import {
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
 import type { FileUploadState } from '../types';
+import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
 import styles from './UploadPage.module.css';
 
 type FormData = Record<string, FileList>;
@@ -176,7 +177,7 @@ export default function UploadPage() {
       try {
         const { data } = await fetchSavedReport(statementId);
         loadSavedReport(data);
-        navigate('/dashboard/at-letter');
+        navigate(DEFAULT_DASHBOARD_PATH);
       } catch (err) {
         setUploadPrompt(await getApiErrorAsync(err, 'Could not open saved report.'));
       } finally {
@@ -467,7 +468,7 @@ export default function UploadPage() {
       ecommerce: ecommerceFile,
     }, force ? { force: true } : undefined);
     if (result) {
-      navigate('/dashboard/at-letter');
+      navigate(DEFAULT_DASHBOARD_PATH);
       return;
     }
     if (uploadMismatch) {
@@ -483,7 +484,7 @@ export default function UploadPage() {
       <nav className={styles.nav}>
         <div className="wrap">
           <div className={styles.navInner}>
-            <Logo to="/dashboard/at-letter" />
+            <Logo to={DEFAULT_DASHBOARD_PATH} />
             <UserAccountMenu showName showProfile={false} />
           </div>
         </div>
