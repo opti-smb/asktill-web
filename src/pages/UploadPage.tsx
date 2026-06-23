@@ -176,7 +176,7 @@ export default function UploadPage() {
       try {
         const { data } = await fetchSavedReport(statementId);
         loadSavedReport(data);
-        navigate('/dashboard/overview');
+        navigate('/dashboard/at-letter');
       } catch (err) {
         setUploadPrompt(await getApiErrorAsync(err, 'Could not open saved report.'));
       } finally {
@@ -467,7 +467,7 @@ export default function UploadPage() {
       ecommerce: ecommerceFile,
     }, force ? { force: true } : undefined);
     if (result) {
-      navigate('/dashboard/overview');
+      navigate('/dashboard/at-letter');
       return;
     }
     if (uploadMismatch) {
@@ -483,7 +483,7 @@ export default function UploadPage() {
       <nav className={styles.nav}>
         <div className="wrap">
           <div className={styles.navInner}>
-            <Logo to="/dashboard/overview" />
+            <Logo to="/dashboard/at-letter" />
             <UserAccountMenu showName showProfile={false} />
           </div>
         </div>

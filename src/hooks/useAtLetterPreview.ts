@@ -11,31 +11,32 @@ import {
 } from '../lib/atLetterPreview';
 import {
   LETTER_UPDATED_EVENT,
+  loadAtLetterCache,
   loadLandingAtLetterCache,
   markUserHasSavedLetter,
   saveAtLetterCache,
   clearUserAtLetterState,
   clearAllAtLetterDeviceCache,
   savedLetterUserId,
+  userHasSavedLetterHint,
 } from '../lib/atLetterCache';
-import { REPORT_HISTORY_REFRESH_EVENT, useReportSync } from '../hooks/useReportSync';
+import { hasRecentAnalyzeSession, REPORT_HISTORY_REFRESH_EVENT, useReportSync } from '../hooks/useReportSync';
 import {
   fetchAtLetterLandingMeta,
-  fetchReportHistory,
   fetchSavedReport,
   getApiError,
   USER_LOGOUT_EVENT,
-  type SavedReportSummaryApi,
 } from '../lib/api';
 import {
   periodKeyFromLabel,
-  pickPrimarySavedReport,
   sessionAnalyzeIsLatest,
 } from '../lib/atLetterStatement';
 import { type AnalyzeResult } from '../lib/analyzeResponse';
 
-function welcomeLoading(user: ReturnType<typeof useAuth>['user'], message: string): AtLetterPreview {
-  return { ...buildEmptyAtLetterPreview(user), periodIntro: message };
+function initialLandingSource(): 'user' | 'sample' {
+  if (loadLandingAtLetterCache()) return 'user';
+  if (userHasSavedLetterHint()) return 'user';
+  return 'sample';
 }
 
 export function useAtLetterPreview(): {
@@ -47,19 +48,26 @@ export function useAtLetterPreview(): {
 } {
   const { user, isAuth, ready } = useAuth();
   const { result: sessionResult } = useAnalysis();
-  const { historyReady, savedCount } = useReportSync();
+  const { historyReady, savedCount, primaryReport } = useReportSync();
   const [savedReport, setSavedReport] = useState<AnalyzeResult | null>(null);
-  const [latestSummary, setLatestSummary] = useState<SavedReportSummaryApi | null>(null);
-  const [statementId, setStatementId] = useState<string | undefined>();
-  const [hasPdf, setHasPdf] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const [landingSource, setLandingSource] = useState<'user' | 'sample' | null>(null);
+  const [landingSource, setLandingSource] = useState<'user' | 'sample'>(initialLandingSource);
 
   const sessionPreview = useMemo(
     () => buildAtLetterPreview(sessionResult, user),
     [sessionResult, user],
+  );
+
+  const cachedAuthLetter = useMemo(
+    () => (isAuth && user?.userId ? loadAtLetterCache(user.userId) : null),
+    [isAuth, user?.userId, tick],
+  );
+
+  const loggedOutCachedLetter = useMemo(
+    () => (isAuth ? null : loadLandingAtLetterCache()),
+    [isAuth, tick, landingSource],
   );
 
   useEffect(() => {
@@ -68,22 +76,18 @@ export function useAtLetterPreview(): {
       user?.userId &&
       savedCount > 0 &&
       sessionPreview?.mode === 'live' &&
-      latestSummary
+      primaryReport
     ) {
       saveAtLetterCache(user.userId, sessionPreview);
     }
-  }, [isAuth, user?.userId, sessionPreview, latestSummary, savedCount]);
+  }, [isAuth, user?.userId, sessionPreview, primaryReport, savedCount]);
 
   useEffect(() => {
     const onRefresh = () => setTick((n) => n + 1);
     const onLogout = () => {
       setSavedReport(null);
-      setLatestSummary(null);
-      setStatementId(undefined);
-      setHasPdf(false);
-      setLoading(false);
+      setDetailLoading(false);
       setError(null);
-      // Keep landingSource — cached letter survives logout for the landing card.
       setTick((n) => n + 1);
     };
     window.addEventListener(LETTER_UPDATED_EVENT, onRefresh);
@@ -96,13 +100,7 @@ export function useAtLetterPreview(): {
     };
   }, []);
 
-  useEffect(() => {
-    if (isAuth && user?.userId) {
-      setTick((n) => n + 1);
-    }
-  }, [isAuth, user?.userId]);
-
-  // Logged-out landing: verify with public API, but keep local cache until server says sample.
+  // Logged-out landing: show sample/cache immediately; verify with API in background.
   useEffect(() => {
     if (!ready || isAuth) return;
 
@@ -117,7 +115,6 @@ export function useAtLetterPreview(): {
           if (data.user_id) markUserHasSavedLetter(data.user_id);
         } else {
           setLandingSource('sample');
-          // Server has no statements — drop any stale browser cache from before a wipe.
           if (userId) {
             clearUserAtLetterState(userId);
           } else {
@@ -127,7 +124,7 @@ export function useAtLetterPreview(): {
       })
       .catch(() => {
         if (cancelled) return;
-        setLandingSource(loadLandingAtLetterCache() ? 'user' : 'sample');
+        setLandingSource(loadLandingAtLetterCache() || userHasSavedLetterHint() ? 'user' : 'sample');
       });
 
     return () => {
@@ -135,46 +132,37 @@ export function useAtLetterPreview(): {
     };
   }, [ready, isAuth, tick]);
 
+  // Logged-in: reuse report sync — fetch full detail only when summary is not enough.
   useEffect(() => {
-    if (!ready || !isAuth) {
+    if (!ready || !isAuth || !primaryReport?.statement_id) {
       setSavedReport(null);
-      setLatestSummary(null);
-      setStatementId(undefined);
-      setHasPdf(false);
-      setLoading(false);
-      setError(null);
-      return;
+      setDetailLoading(false);
+      return undefined;
+    }
+
+    const sessionPeriodKey = periodKeyFromLabel(sessionResult?.analysis?.period_label);
+    const sessionIsLatest = sessionAnalyzeIsLatest({
+      sessionPeriodKey,
+      primaryReport,
+    });
+    if (sessionPreview?.mode === 'live' && sessionIsLatest) {
+      setSavedReport(null);
+      setDetailLoading(false);
+      return undefined;
     }
 
     let cancelled = false;
-    setLoading(true);
+    setDetailLoading(true);
     setError(null);
 
-    fetchReportHistory()
-      .then(async ({ data }) => {
+    fetchSavedReport(primaryReport.statement_id)
+      .then(({ data }) => {
         if (cancelled) return;
-        const reports = data.reports ?? [];
-        const latest = pickPrimarySavedReport(reports);
-        if (!latest) {
-          setSavedReport(null);
-          setLatestSummary(null);
-          setStatementId(undefined);
-          setHasPdf(false);
-          if (user?.userId) {
-            clearUserAtLetterState(user.userId);
-          }
-          return;
-        }
-        setLatestSummary(latest);
-        setStatementId(latest.statement_id);
-        setHasPdf(Boolean(latest.has_pdf));
-        const { data: detail } = await fetchSavedReport(latest.statement_id);
-        if (cancelled) return;
-        setSavedReport(detail);
+        setSavedReport(data);
         if (user?.userId) {
-          const preview = buildAtLetterPreview(detail, user, {
-            statementId: latest.statement_id,
-            hasPdf: Boolean(latest.has_pdf),
+          const preview = buildAtLetterPreview(data, user, {
+            statementId: primaryReport.statement_id,
+            hasPdf: Boolean(primaryReport.has_pdf),
           });
           if (preview?.mode === 'live') {
             saveAtLetterCache(user.userId, preview);
@@ -187,30 +175,34 @@ export function useAtLetterPreview(): {
         setSavedReport(null);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setDetailLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [ready, isAuth, tick, user?.userId]);
+  }, [
+    ready,
+    isAuth,
+    user?.userId,
+    primaryReport?.statement_id,
+    primaryReport?.period_label,
+    primaryReport?.has_pdf,
+    sessionResult?.statement_id,
+    sessionResult?.analysis?.period_label,
+    sessionPreview?.mode,
+    tick,
+  ]);
 
   const sessionPeriodKey = periodKeyFromLabel(sessionResult?.analysis?.period_label);
   const hasServerReports = historyReady && savedCount > 0;
-  const loggedOutCachedLetter = useMemo(
-    () => (isAuth ? null : loadLandingAtLetterCache()),
-    [isAuth, tick, landingSource],
-  );
 
   const letter = useMemo((): AtLetterPreview => {
     if (!ready) {
-      return welcomeLoading(isAuth ? user : null, 'Loading your letter…');
+      return isAuth ? buildEmptyAtLetterPreview(user) : SAMPLE_AT_LETTER;
     }
 
     if (!isAuth) {
-      if (landingSource === null) {
-        return welcomeLoading(null, 'Loading…');
-      }
       if (landingSource === 'sample') {
         return SAMPLE_AT_LETTER;
       }
@@ -221,30 +213,43 @@ export function useAtLetterPreview(): {
       return SAMPLE_AT_LETTER;
     }
 
-    if (!historyReady || loading) {
-      return welcomeLoading(user, 'Checking your saved reports…');
+    if (sessionPreview?.mode === 'live' && (hasRecentAnalyzeSession() || !historyReady)) {
+      return sessionPreview;
+    }
+
+    if (cachedAuthLetter && !historyReady) {
+      return cachedAuthLetter;
+    }
+
+    if (!historyReady) {
+      if (primaryReport) {
+        return buildAtLetterFromSummary(primaryReport, user);
+      }
+      if (cachedAuthLetter) return cachedAuthLetter;
+      if (sessionPreview?.mode === 'live') return sessionPreview;
+      return buildEmptyAtLetterPreview(user);
     }
 
     if (!hasServerReports) {
       return buildEmptyAtLetterPreview(user);
     }
 
-    if (!latestSummary && !savedReport) {
-      return welcomeLoading(user, 'Loading your letter…');
-    }
-
     const sessionIsLatest = sessionAnalyzeIsLatest({
       sessionPeriodKey,
-      primaryReport: latestSummary,
+      primaryReport,
     });
 
-    if (sessionPreview && sessionIsLatest && latestSummary) {
+    if (sessionPreview && sessionIsLatest && primaryReport) {
       return sessionPreview;
     }
 
-    const fromSaved = buildAtLetterPreview(savedReport, user, { statementId, hasPdf });
+    const fromSaved = buildAtLetterPreview(savedReport, user, {
+      statementId: primaryReport?.statement_id,
+      hasPdf: Boolean(primaryReport?.has_pdf),
+    });
     if (fromSaved) return fromSaved;
-    if (latestSummary) return buildAtLetterFromSummary(latestSummary, user);
+    if (primaryReport) return buildAtLetterFromSummary(primaryReport, user);
+    if (cachedAuthLetter) return cachedAuthLetter;
 
     return buildEmptyAtLetterPreview(user);
   }, [
@@ -252,32 +257,34 @@ export function useAtLetterPreview(): {
     isAuth,
     user,
     historyReady,
-    loading,
     hasServerReports,
-    savedCount,
     sessionPreview,
     sessionPeriodKey,
     savedReport,
-    latestSummary,
-    statementId,
-    hasPdf,
+    primaryReport,
+    cachedAuthLetter,
     landingSource,
     loggedOutCachedLetter,
   ]);
 
   const letterWithMeta = useMemo((): AtLetterPreview => {
+    const statementId = primaryReport?.statement_id ?? letter.statementId;
+    const hasPdf = Boolean(primaryReport?.has_pdf ?? letter.hasPdf);
     if (hasServerReports && statementId && !letter.statementId) {
       return { ...letter, statementId, hasPdf: hasPdf || true };
     }
     return letter;
-  }, [letter, statementId, hasPdf, hasServerReports]);
+  }, [letter, primaryReport, hasServerReports]);
 
-  const loggedOutLoading =
-    !isAuth && landingSource === null && !loggedOutCachedLetter;
+  const authCanShow =
+    Boolean(cachedAuthLetter)
+    || sessionPreview?.mode === 'live'
+    || Boolean(primaryReport)
+    || (historyReady && savedCount === 0);
 
   return {
     letter: letterWithMeta,
-    loading: !ready || (isAuth && !historyReady) || loggedOutLoading,
+    loading: !ready || (isAuth && !authCanShow && (detailLoading || !historyReady)),
     error,
     refresh: () => setTick((n) => n + 1),
     isSample: !isAuth ? landingSource === 'sample' : letterWithMeta.mode === 'sample',
