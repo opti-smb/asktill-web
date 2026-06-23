@@ -31,8 +31,10 @@ import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT 
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
+  estimatePipelineWhileWaiting,
   isPipelineDisplayComplete,
   PIPELINE_DONE_HOLD_MS,
+  PIPELINE_ESTIMATE_MS,
   PIPELINE_TICK_MS,
   shouldRunPipelineTick,
   tickPipelineForward,
@@ -131,6 +133,19 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(USER_STATE_RESET_EVENT, onReset);
     };
   }, [resetSession]);
+
+  useEffect(() => {
+    if (!analyzeProgress || analyzeProgress.complete) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      setAnalyzeProgress((prev) => {
+        if (!prev) return prev;
+        return estimatePipelineWhileWaiting(prev) ?? prev;
+      });
+    }, PIPELINE_ESTIMATE_MS);
+    return () => window.clearInterval(timer);
+  }, [analyzeProgress]);
 
   useEffect(() => {
     if (!analyzeProgress || !shouldRunPipelineTick(analyzeProgress)) {
