@@ -74,22 +74,35 @@ export async function savePdfBlob(
 }
 
 /**
- * AT Letter / report PDF: open save dialog immediately, then fetch and write.
- * Avoids browsers blocking download after long Playwright PDF generation (~15–20s).
+ * AT Letter / report PDF: generate first, then save.
+ * Fetching before the save dialog avoids Windows opening a zero-byte file while
+ * the server is still rendering (~15–20s on cold Render).
  */
-export type PdfDownloadStage = 'picker' | 'generating' | 'saving';
+export type PdfDownloadStage = 'generating' | 'saving';
 
 export async function downloadPdfWithSaveDialog(options: {
   suggestedFilename: string;
   fetchBlob: () => Promise<Blob>;
   onStage?: (stage: PdfDownloadStage) => void;
 }): Promise<void> {
-  options.onStage?.('picker');
-  const saveHandle = await pickPdfSaveHandle(options.suggestedFilename);
   options.onStage?.('generating');
   const blob = await options.fetchBlob();
   options.onStage?.('saving');
-  await savePdfBlob(blob, options.suggestedFilename, saveHandle);
+  const pdf = await ensurePdfBlob(blob);
+  if ('showSaveFilePicker' in window) {
+    try {
+      const saveHandle = await pickPdfSaveHandle(options.suggestedFilename);
+      if (saveHandle) {
+        const writable = await saveHandle.createWritable();
+        await writable.write(pdf);
+        await writable.close();
+        return;
+      }
+    } catch (err) {
+      if ((err as DOMException)?.name === 'AbortError') return;
+    }
+  }
+  saveBlobDownload(pdf, options.suggestedFilename);
 }
 
 export function filenameFromDisposition(header: string | undefined, fallback: string) {
