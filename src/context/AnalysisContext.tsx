@@ -49,7 +49,10 @@ interface AnalysisContextValue {
   uploadMismatch: UploadValidationResult | null;
   statementDuplicate: StatementDuplicateInfo | null;
   setFiles: (files: UploadFiles) => void;
-  runAnalyze: (files?: UploadFiles) => Promise<AnalyzeResult | null>;
+  runAnalyze: (
+    files?: UploadFiles,
+    options?: { force?: boolean },
+  ) => Promise<AnalyzeResult | null>;
   applyStatementDuplicate: (info: StatementDuplicateInfo | null) => void;
   clearError: () => void;
   clearUploadMismatch: () => void;
@@ -158,7 +161,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [analyzeProgress]);
 
-  const runAnalyze = useCallback(async (override?: UploadFiles) => {
+  const runAnalyze = useCallback(async (
+    override?: UploadFiles,
+    options?: { force?: boolean },
+  ) => {
     const active = override ?? files;
     if (!active.bank && !active.pos && !active.ecommerce) {
       setError(
@@ -176,7 +182,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     try {
       const data = await analyzeWithProgress(active, (event) => {
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
-      });
+      }, options);
 
       setFilesState(active);
       setResult(data);

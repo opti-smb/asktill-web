@@ -424,6 +424,10 @@ export function mergeUploadValidationResults(
     stored_period_warnings: (live.stored_period_warnings?.length ?? 0) > 0
       ? live.stored_period_warnings
       : (fromAnalyze.stored_period_warnings ?? []),
+    format_warnings: dedupeMismatchRows([
+      ...(live.format_warnings ?? []),
+      ...(fromAnalyze.format_warnings ?? []),
+    ]),
     detected_periods: { ...fromAnalyze.detected_periods, ...live.detected_periods },
   };
 }
@@ -775,14 +779,16 @@ function mainApiBaseUrl(): string {
   return import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? '');
 }
 
-const analyze = (bank?: File, pos?: File, ecommerce?: File) =>
+const analyze = (bank?: File, pos?: File, ecommerce?: File, force = false) =>
   mainApi.post('/api/analyze', analyzeFormData(bank, pos, ecommerce), {
     timeout: ANALYZE_TIMEOUT_MS,
+    params: force ? { force: true } : undefined,
   });
 
 async function analyzeViaStream(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
+  force = false,
 ): Promise<AnalyzeResult> {
   const form = analyzeFormData(files.bank, files.pos, files.ecommerce);
   const headers: Record<string, string> = {};
@@ -792,9 +798,11 @@ async function analyzeViaStream(
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
 
+  const streamUrl = `${mainApiBaseUrl()}/api/analyze/stream${force ? '?force=true' : ''}`;
+
   let res: Response;
   try {
-    res = await fetch(`${mainApiBaseUrl()}/api/analyze/stream`, {
+    res = await fetch(streamUrl, {
       method: 'POST',
       headers,
       body: form,
@@ -889,6 +897,7 @@ async function analyzeViaStream(
 async function analyzeViaClassicEndpoint(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
+  force = false,
 ): Promise<AnalyzeResult> {
   const timeline = buildFallbackPipelineEvents();
   let stepIndex = 0;
@@ -901,7 +910,7 @@ async function analyzeViaClassicEndpoint(
   }, PIPELINE_TICK_MS + 120);
 
   try {
-    const { data } = await analyze(files.bank, files.pos, files.ecommerce);
+    const { data } = await analyze(files.bank, files.pos, files.ecommerce, force);
     onEvent({ stage: 'views', message: 'Preparing your dashboard' });
     onEvent({ stage: 'complete', message: 'Opening your dashboard…' });
     return data as AnalyzeResult;
@@ -916,13 +925,15 @@ async function analyzeViaClassicEndpoint(
 export async function analyzeWithProgress(
   files: UploadFiles,
   onEvent: (event: AnalyzeProgressEvent) => void,
+  options?: { force?: boolean },
 ): Promise<AnalyzeResult> {
+  const force = Boolean(options?.force);
   try {
-    return await analyzeViaStream(files, onEvent);
+    return await analyzeViaStream(files, onEvent, force);
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'STREAM_UNAVAILABLE') {
-      return analyzeViaClassicEndpoint(files, onEvent);
+      return analyzeViaClassicEndpoint(files, onEvent, force);
     }
     throw err;
   }
