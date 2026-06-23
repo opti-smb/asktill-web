@@ -994,9 +994,12 @@ export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File
 };
 
 /** HTML preview of the full backend AT Letter template (?preview=1). */
-export const fetchAtLetterHtmlPreview = (statementId: string) =>
+export const fetchAtLetterHtmlPreview = (
+  statementId: string,
+  opts?: { monthOnly?: boolean },
+) =>
   mainApi.get<string>(`/api/reports/${encodeURIComponent(statementId)}/at-letter`, {
-    params: { preview: 1 },
+    params: { preview: 1, ...(opts?.monthOnly ? { monthOnly: 1 } : {}) },
     responseType: 'text',
     transformResponse: [(data) => data],
   });

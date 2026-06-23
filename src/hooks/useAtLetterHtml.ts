@@ -6,18 +6,23 @@ import { LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from './useReportSync';
 
 /** Load full backend AT Letter HTML (?preview=1) for inline display. */
-export function useAtLetterHtml(statementId: string | undefined): {
+export function useAtLetterHtml(
+  statementId: string | undefined,
+  opts?: { monthOnly?: boolean },
+): {
   html: string | null;
   loading: boolean;
   error: string | null;
   refresh: () => void;
 } {
+  const monthOnly = Boolean(opts?.monthOnly);
+
   const [html, setHtml] = useState<string | null>(() =>
-    statementId ? getCachedAtLetterHtml(statementId) : null,
+    statementId ? getCachedAtLetterHtml(statementId, monthOnly) : null,
   );
   const [loading, setLoading] = useState(() => {
     if (!statementId?.trim()) return false;
-    return !getCachedAtLetterHtml(statementId);
+    return !getCachedAtLetterHtml(statementId, monthOnly);
   });
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -41,7 +46,7 @@ export function useAtLetterHtml(statementId: string | undefined): {
     }
 
     let cancelled = false;
-    const cached = getCachedAtLetterHtml(statementId);
+    const cached = getCachedAtLetterHtml(statementId, monthOnly);
     if (cached) {
       setHtml(cached);
       setLoading(false);
@@ -51,7 +56,7 @@ export function useAtLetterHtml(statementId: string | undefined): {
       setError(null);
     }
 
-    prefetchAtLetterHtml(statementId)
+    prefetchAtLetterHtml(statementId, { monthOnly })
       .then((fresh) => {
         if (cancelled) return;
         if (fresh) {
@@ -76,7 +81,7 @@ export function useAtLetterHtml(statementId: string | undefined): {
     return () => {
       cancelled = true;
     };
-  }, [statementId, tick]);
+  }, [statementId, monthOnly, tick]);
 
   return {
     html,

@@ -32,3 +32,48 @@
   line-height: 1.4;
   margin: 0 0 8px;
 }
+
+.viewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--rule, #e2e8f0);
+  border-radius: 10px;
+}
+
+.viewTitle {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.viewFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.viewFilter {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--rule, #e2e8f0);
+  background: var(--bg);
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.viewFilterActive {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
