@@ -564,26 +564,29 @@ export const validateUploads = (files: UploadFiles) => {
   });
 };
 
-let uploadValidationWarmed = false;
-
-/** Validate uploads; warm backend once per session, retry only on network/timeout. */
+/** Validate uploads; warm auth/backend first, retry once on cold-start auth failures. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  if (!uploadValidationWarmed) {
-    uploadValidationWarmed = true;
-    warmupBackend();
-  }
+  warmupBackend();
+  await ensureAuthServiceReady(8_000);
+
+  const attempt = () => validateUploads(files);
+
   try {
-    return await validateUploads(files);
+    return await attempt();
   } catch (err) {
     const axiosErr = err as AxiosError;
+    const status = axiosErr?.response?.status;
     const retryable =
       axiosErr?.code === 'ECONNABORTED'
       || axiosErr?.message === 'Network Error'
-      || !axiosErr?.response;
+      || !axiosErr?.response
+      || status === 503
+      || status === 401;
     if (!retryable) throw err;
+    await ensureAuthServiceReady(45_000);
     warmupBackend();
-    await new Promise((resolve) => window.setTimeout(resolve, 1500));
-    return validateUploads(files);
+    await new Promise((resolve) => window.setTimeout(resolve, 2000));
+    return attempt();
   }
 }
 
