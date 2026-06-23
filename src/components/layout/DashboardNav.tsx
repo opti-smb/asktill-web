@@ -23,13 +23,13 @@ export default function DashboardNav() {
 
           <div className={styles.navInner}>
 
-            <Logo to={ready && isAuth ? '/dashboard/overview' : '/'} />
+            <Logo to={ready && isAuth ? '/dashboard/at-letter' : '/'} />
 
             <div className={styles.navTabs}>
 
               <NavLink
 
-                to="/dashboard/overview"
+                to="/dashboard/at-letter"
 
                 className={({ isActive }) =>
 
@@ -39,7 +39,7 @@ export default function DashboardNav() {
 
               >
 
-                Overview
+                AT Letter
 
               </NavLink>
 
@@ -77,7 +77,7 @@ export default function DashboardNav() {
 
               <NavLink
 
-                to="/dashboard/at-letter"
+                to="/dashboard/overview"
 
                 className={({ isActive }) =>
 
@@ -87,7 +87,7 @@ export default function DashboardNav() {
 
               >
 
-                AT Letter
+                Overview
 
               </NavLink>
 

@@ -49,7 +49,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="overview" replace />} />
+          <Route index element={<Navigate to="at-letter" replace />} />
           <Route path="overview" element={<AnalysisPage />} />
           <Route path="cashflow" element={<CashFlowPage />} />
           <Route path="reconciliation" element={<ReconPage />} />
