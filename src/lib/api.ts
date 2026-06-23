@@ -930,14 +930,29 @@ async function fetchSavedReportWithRetry(statementId: string): Promise<AnalyzeRe
 }
 
 async function recoverLatestSavedAnalyzeResult(): Promise<AnalyzeResult | null> {
-  try {
-    const { data: history } = await fetchReportHistory();
-    const latestId = history.reports?.[0]?.statement_id;
-    if (!latestId) return null;
-    return await fetchSavedReportWithRetry(latestId);
-  } catch {
-    return null;
+  warmupBackend();
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await ensureAuthServiceReady(attempt >= 2 ? 45_000 : 15_000);
+    try {
+      const { data: history } = await fetchReportHistory();
+      const latestId = history.reports?.[0]?.statement_id;
+      if (latestId) {
+        return await fetchSavedReportWithRetry(latestId);
+      }
+    } catch {
+      /* auth/history may be cold right after a long analyze stream */
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
   }
+  return null;
+}
+
+function captureStatementIdFromEvent(
+  event: AnalyzeProgressEvent,
+  pending: { id: string | null },
+): void {
+  const sid = statementIdFromProgressEvent(event);
+  if (sid) pending.id = sid;
 }
 
 async function recoverAnalyzeAfterStreamFailure(
@@ -1041,7 +1056,7 @@ async function analyzeViaStream(
   const decoder = new TextDecoder();
   let buffer = '';
   let result: AnalyzeResult | null = null;
-  let pendingStatementId: string | null = null;
+  const pending = { id: null as string | null };
 
   const parseSseEvent = (line: string): AnalyzeProgressEvent | null => {
     if (!line.startsWith('data: ')) return null;
@@ -1055,12 +1070,10 @@ async function analyzeViaStream(
   const consumeLine = (line: string) => {
     const event = parseSseEvent(line);
     if (!event) return;
+    captureStatementIdFromEvent(event, pending);
     if (event.stage === 'complete') {
       if (event.result) {
         result = event.result as AnalyzeResult;
-      } else {
-        const sid = statementIdFromProgressEvent(event);
-        if (sid) pendingStatementId = sid;
       }
       onEvent(event);
       return;
@@ -1094,9 +1107,12 @@ async function analyzeViaStream(
   }
   if (buffer.trim()) consumeLine(buffer.trim());
 
-  if (!result && pendingStatementId) {
+  warmupBackend();
+  await ensureAuthServiceReady(45_000);
+
+  if (!result && pending.id) {
     try {
-      result = await fetchSavedReportWithRetry(pendingStatementId);
+      result = await fetchSavedReportWithRetry(pending.id);
     } catch {
       /* fall through — history / classic recovery below */
     }
