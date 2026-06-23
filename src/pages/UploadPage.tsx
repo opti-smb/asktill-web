@@ -447,8 +447,8 @@ export default function UploadPage() {
     }
   }, [headerNotice, error, clearError]);
 
-  const onContinue = async () => {
-    if (loading || anySlotChecking || hasStoredConflict || uploadedCount < 1 || !validationReady) {
+  const onContinue = async (force = false) => {
+    if (loading || anySlotChecking || (!force && hasStoredConflict) || uploadedCount < 1 || !validationReady) {
       if (!validationReady && !anySlotChecking && uploadedCount >= 1 && hasBoxWarnings) {
         setUploadPrompt(
           'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
@@ -465,7 +465,7 @@ export default function UploadPage() {
       bank: bankFile,
       pos: posFile,
       ecommerce: ecommerceFile,
-    });
+    }, force ? { force: true } : undefined);
     if (result) {
       navigate('/dashboard/overview');
       return;
@@ -543,6 +543,14 @@ export default function UploadPage() {
                 <p className={styles.duplicateMessage}>{headerNotice}</p>
                 {savedStatementId ? (
                   <div className={styles.duplicateActions}>
+                    <button
+                      type="button"
+                      className={styles.btnDuplicateAction}
+                      disabled={duplicateBusy || loading || !validationReady}
+                      onClick={() => void onContinue(true)}
+                    >
+                      Replace and re-analyze
+                    </button>
                     <button
                       type="button"
                       className={styles.btnDuplicateAction}

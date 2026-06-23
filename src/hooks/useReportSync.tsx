@@ -13,6 +13,7 @@ import { fetchReportHistory, fetchSavedReport, USER_LOGOUT_EVENT, type SavedRepo
 import { clearUserAtLetterState, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import {
+  comparePeriodKeys,
   periodKeyFromLabel,
   pickPrimarySavedReport,
   resolveAtLetterStatementId,
@@ -160,16 +161,30 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           }
 
           const sessionAnalysis = getAnalyzeAnalysis(result);
+          const sessionKey = periodKeyFromLabel(sessionAnalysis?.period_label);
+          const primaryKey = periodKeyFromLabel(primary?.period_label);
+          const sessionIsOlderThanPrimary =
+            Boolean(primary && sessionKey && primaryKey)
+            && comparePeriodKeys(sessionKey, primaryKey) > 0;
           const statementId = resolveAtLetterStatementId({
             sessionStatementId: result?.statement_id,
-            sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
+            sessionPeriodKey: sessionKey,
             primaryReport: primary,
           });
           if (statementId) {
             void prefetchAtLetterHtml(statementId);
           }
 
-          if (!result?.analysis && primary && !analyzeLoading) {
+          const shouldHydrateFromServer =
+            primary
+            && !analyzeLoading
+            && (
+              !result?.analysis
+              || sessionIsOlderThanPrimary
+              || (result.statement_id && result.statement_id !== primary.statement_id)
+            );
+
+          if (shouldHydrateFromServer) {
             try {
               const { data: saved } = await fetchSavedReport(primary.statement_id);
               if (!cancelled) loadSavedReport(saved);
