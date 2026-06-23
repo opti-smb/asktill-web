@@ -15,6 +15,7 @@ import {
   markUserHasSavedLetter,
   saveAtLetterCache,
   clearUserAtLetterState,
+  clearAllAtLetterDeviceCache,
   savedLetterUserId,
 } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT, useReportSync } from '../hooks/useReportSync';
@@ -54,9 +55,7 @@ export function useAtLetterPreview(): {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const [landingSource, setLandingSource] = useState<'user' | 'sample' | null>(() =>
-    loadLandingAtLetterCache() ? 'user' : null,
-  );
+  const [landingSource, setLandingSource] = useState<'user' | 'sample' | null>(null);
 
   const sessionPreview = useMemo(
     () => buildAtLetterPreview(sessionResult, user),
@@ -110,10 +109,6 @@ export function useAtLetterPreview(): {
     const userId = savedLetterUserId();
     let cancelled = false;
 
-    if (loadLandingAtLetterCache()) {
-      setLandingSource('user');
-    }
-
     void fetchAtLetterLandingMeta(userId ? { userId } : undefined)
       .then(({ data }) => {
         if (cancelled) return;
@@ -122,7 +117,12 @@ export function useAtLetterPreview(): {
           if (data.user_id) markUserHasSavedLetter(data.user_id);
         } else {
           setLandingSource('sample');
-          if (userId) clearUserAtLetterState(userId);
+          // Server has no statements — drop any stale browser cache from before a wipe.
+          if (userId) {
+            clearUserAtLetterState(userId);
+          } else {
+            clearAllAtLetterDeviceCache();
+          }
         }
       })
       .catch(() => {
@@ -208,10 +208,13 @@ export function useAtLetterPreview(): {
     }
 
     if (!isAuth) {
-      if (loggedOutCachedLetter) return loggedOutCachedLetter;
       if (landingSource === null) {
         return welcomeLoading(null, 'Loading…');
       }
+      if (landingSource === 'sample') {
+        return SAMPLE_AT_LETTER;
+      }
+      if (loggedOutCachedLetter) return loggedOutCachedLetter;
       if (landingSource === 'user') {
         return buildLoggedOutSavedLetterPreview();
       }
