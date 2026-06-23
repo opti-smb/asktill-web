@@ -1079,6 +1079,17 @@ async function blobErrorFromAxiosResponse(data: Blob, status: number): Promise<E
   return err;
 }
 
+async function blobLooksLikePdf(data: Blob): Promise<boolean> {
+  const head = new Uint8Array(await data.slice(0, 4).arrayBuffer());
+  return (
+    head.length >= 4
+    && head[0] === 0x25
+    && head[1] === 0x50
+    && head[2] === 0x44
+    && head[3] === 0x46
+  );
+}
+
 /** Compact reconciliation PDF for a saved statement; falls back to stored legacy PDF. */
 export async function downloadMonthlyReportPdf(statementId: string) {
   warmupBackend();
@@ -1095,18 +1106,22 @@ export async function downloadMonthlyReportPdf(statementId: string) {
       validateStatus: () => true,
     });
 
-  let res = await fetchPdf(compactPath);
-  if (res.status === 404) {
+  const tryLegacy = async () => {
     const legacy = await fetchPdf(legacyPath);
-    if (legacy.status < 400) {
+    if (legacy.status < 400 && await blobLooksLikePdf(legacy.data as Blob)) {
       return { data: legacy.data as Blob, headers: legacy.headers };
     }
     throw await blobErrorFromAxiosResponse(legacy.data as Blob, legacy.status);
-  }
-  if (res.status >= 400) {
+  };
+
+  const res = await fetchPdf(compactPath);
+  if (res.status === 401) {
     throw await blobErrorFromAxiosResponse(res.data as Blob, res.status);
   }
-  return { data: res.data as Blob, headers: res.headers };
+  if (res.status < 400 && await blobLooksLikePdf(res.data as Blob)) {
+    return { data: res.data as Blob, headers: res.headers };
+  }
+  return tryLegacy();
 }
 
 export const downloadSavedReportCompact = (statementId: string) =>
