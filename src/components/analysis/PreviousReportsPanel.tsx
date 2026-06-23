@@ -83,7 +83,7 @@ export default function PreviousReportsPanel({
     try {
       const { data } = await fetchSavedReport(row.statement_id);
       onLoadReport?.(data as AnalyzeResult);
-      navigate('/dashboard/overview');
+      navigate('/dashboard/at-letter');
     } catch (err) {
       setActionError(await getApiErrorAsync(err, 'Could not open saved report.'));
     } finally {

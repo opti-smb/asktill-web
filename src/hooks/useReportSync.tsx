@@ -80,6 +80,7 @@ export function hasRecentAnalyzeSession(): boolean {
 export function useHasLiveDashboardAnalysis(result: AnalyzeResult | null | undefined): boolean {
   const { historyReady, savedCount } = useReportSync();
   if (!Boolean(result?.analysis)) return false;
+  if (hasRecentAnalyzeSession() || result?.statement_id) return true;
   if (!historyReady) return false;
   return savedCount > 0;
 }
@@ -164,7 +165,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     const isBackgroundRefresh = historyReadyRef.current && savedCountRef.current > 0;
-    if (!isBackgroundRefresh) {
+    const keepVisible = isBackgroundRefresh || hasRecentAnalyzeSession();
+    if (!keepVisible) {
       setHistoryReady(false);
     }
 

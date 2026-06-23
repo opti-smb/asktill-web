@@ -34,8 +34,8 @@ export default function AtLetterSection() {
   const leftCta =
     letter.mode === 'live' ? (
       isAuth ? (
-        <Link to="/dashboard/overview" className={styles.btnP}>
-          View full analysis →
+        <Link to="/dashboard/at-letter" className={styles.btnP}>
+          View your AT Letter →
         </Link>
       ) : (
         <Link to="/login" className={styles.btnP}>
