@@ -60,7 +60,7 @@ export default function LandingPage() {
 
           <nav className={styles.nav}>
 
-            <Logo to={ready && isAuth ? '/dashboard/overview' : '/'} />
+            <Logo to={ready && isAuth ? '/dashboard/at-letter' : '/'} />
 
             <div className={styles.navBtns}>
 
@@ -74,7 +74,7 @@ export default function LandingPage() {
 
                   </Link>
 
-                  <Link to="/dashboard/overview" className={v2.btnP}>
+                  <Link to="/dashboard/at-letter" className={v2.btnP}>
 
                     Dashboard
 
