@@ -297,10 +297,29 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
   const loadSavedReport = useCallback((saved: AnalyzeResult) => {
     setResult(saved);
+    markJustAnalyzed();
     setError(null);
     setStatementDuplicate(null);
     setUploadMismatch(null);
-  }, []);
+
+    if (isAuth && user?.userId) {
+      const preview = buildAtLetterPreview(saved, user, {
+        statementId: saved.statement_id ?? undefined,
+        hasPdf: Boolean(saved.statement_id || (saved.report?.channels?.length ?? 0) > 0),
+      });
+      if (preview?.mode === 'live') {
+        saveAtLetterCache(user.userId, preview);
+      } else if (saved.statement_id) {
+        markUserHasSavedLetter(user.userId);
+      }
+      window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+      window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+    }
+
+    if (saved.statement_id) {
+      void prefetchAtLetterHtml(saved.statement_id);
+    }
+  }, [isAuth, user]);
 
   const clearResult = useCallback(() => {
     setResult(null);

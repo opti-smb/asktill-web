@@ -64,9 +64,11 @@ const STAGE_TO_PIPELINE_INDEX: Record<string, number> = {
   complete: 5,
 };
 
-/** Production Render cold starts + cross-region upload can exceed local dev times. */
+/** Production Render cold starts + long analyze streams need a generous total deadline. */
 export const ANALYZE_CONNECT_TIMEOUT_MS = import.meta.env.PROD ? 120_000 : 45_000;
-export const ANALYZE_TIMEOUT_MS = ANALYZE_CONNECT_TIMEOUT_MS;
+export const ANALYZE_STREAM_TIMEOUT_MS = import.meta.env.PROD ? 300_000 : 120_000;
+/** @deprecated use ANALYZE_STREAM_TIMEOUT_MS for stream reads */
+export const ANALYZE_TIMEOUT_MS = ANALYZE_STREAM_TIMEOUT_MS;
 
 export function pipelineIndexForStage(stage: string): number {
   return STAGE_TO_PIPELINE_INDEX[stage] ?? 0;
