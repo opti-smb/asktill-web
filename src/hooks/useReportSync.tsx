@@ -10,7 +10,7 @@ import {
 
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchReportHistory, fetchSavedReport, USER_LOGOUT_EVENT, type SavedReportSummaryApi } from '../lib/api';
+import { fetchReportHistory, fetchSavedReport, USER_LOGOUT_EVENT, warmupBackend, type SavedReportSummaryApi } from '../lib/api';
 import { clearUserAtLetterState, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import {
@@ -170,6 +170,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       setHistoryReady(false);
     }
 
+    warmupBackend();
     fetchReportHistory()
       .then(async ({ data }) => {
         if (cancelled) return;

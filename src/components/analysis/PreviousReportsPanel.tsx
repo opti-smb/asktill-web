@@ -1,11 +1,12 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  downloadSavedReportCompact,
+  downloadMonthlyReportPdf,
   fetchReportHistory,
   fetchSavedReport,
   getApiError,
   getApiErrorAsync,
+  warmupBackend,
   type SavedReportSummaryApi,
 } from '../../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../../lib/downloadReport';
@@ -54,6 +55,7 @@ export default function PreviousReportsPanel({
     let cancelled = false;
     setLoading(true);
     setError(null);
+    warmupBackend();
     fetchReportHistory()
       .then(({ data }) => {
         if (cancelled) return;
@@ -101,7 +103,7 @@ export default function PreviousReportsPanel({
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
         fetchBlob: async () => {
-          const { data, headers } = await downloadSavedReportCompact(row.statement_id);
+          const { data, headers } = await downloadMonthlyReportPdf(row.statement_id);
           const filename = filenameFromDisposition(
             headers['content-disposition'] as string | undefined,
             fallbackName,

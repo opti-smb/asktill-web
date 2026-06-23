@@ -192,10 +192,16 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setError(null);
     setUploadMismatch(null);
 
-    setAnalyzeProgress(buildInitialAnalyzeProgress());
+    let progressStarted = false;
+    const ensureProgress = () => {
+      if (progressStarted) return;
+      progressStarted = true;
+      setAnalyzeProgress(buildInitialAnalyzeProgress());
+    };
 
     try {
       const data = await analyzeWithProgress(active, (event) => {
+        ensureProgress();
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
       }, options);
 
@@ -223,22 +229,26 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       // Server is done — brief complete state, then navigate (do not block on animation).
-      setAnalyzeProgress((prev) =>
-        prev
-          ? {
-              ...prev,
-              complete: true,
-              targetIndex: prev.steps.length - 1,
-              activeIndex: prev.steps.length,
-            }
-          : prev,
-      );
-      void waitForPipelineDisplay();
+      if (progressStarted) {
+        setAnalyzeProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                complete: true,
+                targetIndex: prev.steps.length - 1,
+                activeIndex: prev.steps.length,
+              }
+            : prev,
+        );
+        void waitForPipelineDisplay();
+      }
 
       return data;
     } catch (err) {
       clearPipelineWaiters();
-      setAnalyzeProgress(null);
+      if (progressStarted) {
+        setAnalyzeProgress(null);
+      }
       const duplicate = extractStatementDuplicate(err);
       if (duplicate) {
         setStatementDuplicate(duplicate);

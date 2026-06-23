@@ -9,7 +9,7 @@ import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import {
   duplicateInfoFromValidation,
-  downloadSavedReportCompact,
+  downloadMonthlyReportPdf,
   fetchReportHistory,
   fetchSavedReport,
   getApiErrorAsync,
@@ -19,8 +19,7 @@ import {
   USER_STATE_RESET_EVENT,
   batchValidationPasses,
   mergeUploadValidationResults,
-  primaryWarningForSlot,
-  validateUploads,
+  validateUploadsWithRetry,
   warmupServices,
   warningsBySlot,
   type UploadValidationResult,
@@ -104,7 +103,7 @@ function syncPinnedSlotWarnings(
       next[slot] = null;
       continue;
     }
-    const message = primaryWarningForSlot(validation, slot)?.trim();
+    const message = warningsBySlot(validation)[slot]?.trim();
     const prior = prev[slot]?.fileKey === key ? prev[slot] : null;
 
     if (message) {
@@ -195,7 +194,7 @@ export default function UploadPage() {
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
         fetchBlob: async () => {
-          const { data, headers } = await downloadSavedReportCompact(statementId);
+          const { data, headers } = await downloadMonthlyReportPdf(statementId);
           const filename = filenameFromDisposition(
             headers['content-disposition'] as string | undefined,
             fallbackName,
@@ -285,7 +284,7 @@ export default function UploadPage() {
         warmupServices();
         try {
           const files = uploadFilesRef.current;
-          const { data } = await validateUploads({
+          const { data } = await validateUploadsWithRetry({
             bank: files.bank,
             pos: files.pos,
             ecommerce: files.ecommerce,

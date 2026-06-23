@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   downloadCompactReconciliation,
-  downloadSavedReportCompact,
+  downloadMonthlyReportPdf,
   downloadWeekReports,
   getApiErrorAsync,
   type UploadFiles,
@@ -40,7 +40,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
 
   async function fetchMonthlyCompactPdf() {
     if (statementId) {
-      return downloadSavedReportCompact(statementId);
+      return downloadMonthlyReportPdf(statementId);
     }
     if (hasAll) {
       return downloadCompactReconciliation(files.bank, files.pos, files.ecommerce);
