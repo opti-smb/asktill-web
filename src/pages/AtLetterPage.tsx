@@ -41,7 +41,7 @@ export default function AtLetterPage() {
 
   const { html, loading, error } = useAtLetterHtml(activeStatementId, { monthOnly });
 
-  const showViewFilters = savedCount >= 2;
+  const showViewFilters = savedCount >= 1;
 
   useEffect(() => {
     if (activeView === ROLLING_VIEW) return;
@@ -51,7 +51,7 @@ export default function AtLetterPage() {
   }, [savedReports, activeView]);
 
   useEffect(() => {
-    if (savedCount < 2 && activeView !== ROLLING_VIEW) {
+    if (savedCount < 1 && activeView !== ROLLING_VIEW) {
       setActiveView(ROLLING_VIEW);
     }
   }, [savedCount, activeView]);
