@@ -7,6 +7,7 @@ import FileDropZone from '../components/upload/FileDropZone';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
+import { useAuth } from '../context/AuthContext';
 import {
   duplicateInfoFromValidation,
   downloadMonthlyReportPdf,
@@ -140,6 +141,7 @@ export default function UploadPage() {
     loadSavedReport,
     clearResult,
   } = useAnalysis();
+  const { isAuth, ready: authReady } = useAuth();
   const [showPreviousReports, setShowPreviousReports] = useState(false);
   const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
   const [duplicateBusy, setDuplicateBusy] = useState(false);
@@ -159,6 +161,10 @@ export default function UploadPage() {
   const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
 
   useEffect(() => {
+    if (!authReady || !isAuth) {
+      setSavedReportCount(isAuth ? null : 0);
+      return undefined;
+    }
     let cancelled = false;
     fetchReportHistory()
       .then(({ data }) => {
@@ -168,7 +174,7 @@ export default function UploadPage() {
         if (!cancelled) setSavedReportCount(null);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [authReady, isAuth]);
 
   const openSavedReport = useCallback(
     async (statementId: string) => {

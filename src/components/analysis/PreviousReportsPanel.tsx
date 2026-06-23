@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   downloadMonthlyReportPdf,
   fetchReportHistory,
@@ -44,6 +45,7 @@ export default function PreviousReportsPanel({
   variant = 'default',
 }: Props) {
   const navigate = useNavigate();
+  const { isAuth, ready } = useAuth();
   const [reports, setReports] = useState<SavedReportSummaryApi[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,14 @@ export default function PreviousReportsPanel({
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !ready) return;
+    if (!isAuth) {
+      setReports([]);
+      setError('Please sign in to view saved reports.');
+      setLoading(false);
+      onReportsLoaded?.(0);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -72,7 +81,7 @@ export default function PreviousReportsPanel({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [active, onReportsLoaded]);
+  }, [active, isAuth, ready, onReportsLoaded]);
 
   const previous = useMemo(() => {
     if (!excludePeriodKey) return reports;
