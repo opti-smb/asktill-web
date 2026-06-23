@@ -22,8 +22,7 @@ interface Props {
 }
 
 function downloadStageLabel(stage: PdfDownloadStage | null): string {
-  if (stage === 'picker') return 'Choose save location…';
-  if (stage === 'generating') return 'Generating PDF…';
+  if (stage === 'generating') return 'Generating PDF… (do not open the file yet)';
   if (stage === 'saving') return 'Saving file…';
   return 'Preparing download…';
 }
