@@ -222,7 +222,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         void prefetchAtLetterHtml(data.statement_id);
       }
 
-      // Server is done — show all steps complete, brief hold, then dashboard.
+      // Server is done — brief complete state, then navigate (do not block on animation).
       setAnalyzeProgress((prev) =>
         prev
           ? {
@@ -233,7 +233,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
             }
           : prev,
       );
-      await waitForPipelineDisplay();
+      void waitForPipelineDisplay();
 
       return data;
     } catch (err) {
