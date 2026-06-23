@@ -54,7 +54,7 @@ export function openPdfBlobInNewTab(data: Blob): boolean {
  * Skips showSaveFilePicker — on Windows that creates an empty file at the chosen path
  * while Playwright renders (~15–20s), which causes "We can't open this file".
  */
-export type PdfDownloadStage = 'generating' | 'saving' | 'opening';
+export type PdfDownloadStage = 'fetching' | 'generating' | 'saving' | 'opening';
 
 export async function downloadPdfWithSaveDialog(options: {
   suggestedFilename: string;
@@ -62,8 +62,10 @@ export async function downloadPdfWithSaveDialog(options: {
   onStage?: (stage: PdfDownloadStage) => void;
   /** When true (default), open the PDF in a new tab after generation. */
   openAfterDownload?: boolean;
+  /** Saved report PDF already on server — show "Downloading" instead of "Generating". */
+  prebuilt?: boolean;
 }): Promise<void> {
-  options.onStage?.('generating');
+  options.onStage?.(options.prebuilt ? 'fetching' : 'generating');
   const blob = await options.fetchBlob();
   options.onStage?.('saving');
   const pdf = await ensurePdfBlob(blob);

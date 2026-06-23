@@ -18,6 +18,7 @@ import {
   isAlreadyStoredMessage,
   hasStoredPeriodConflict,
   storedPeriodMessage,
+  validationSettledForFiles,
   USER_STATE_RESET_EVENT,
   batchValidationPasses,
   mergeUploadValidationResults,
@@ -202,6 +203,7 @@ export default function UploadPage() {
       try {
         const { data } = await fetchSavedReport(statementId);
         loadSavedReport(data);
+        clearStatementDuplicate();
         navigate(DEFAULT_DASHBOARD_PATH);
       } catch (err) {
         setUploadPrompt(await getApiErrorAsync(err, 'Could not open saved report.'));
@@ -209,7 +211,7 @@ export default function UploadPage() {
         setDuplicateBusy(false);
       }
     },
-    [loadSavedReport, navigate],
+    [loadSavedReport, navigate, clearStatementDuplicate],
   );
 
   const downloadSavedPdf = useCallback(async (statementId: string, periodLabel?: string | null) => {
@@ -219,6 +221,7 @@ export default function UploadPage() {
     try {
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
+        prebuilt: true,
         fetchBlob: async () => {
           const { data, headers } = await downloadMonthlyReportPdf(statementId);
           const filename = filenameFromDisposition(
@@ -245,10 +248,6 @@ export default function UploadPage() {
     validatedFileKeysRef.current = '';
     validationRequestRef.current += 1;
   }, [resetForm]);
-
-  useEffect(() => {
-    warmupServices();
-  }, []);
 
   useEffect(() => {
     const onReset = () => resetUploadPage();
@@ -427,10 +426,10 @@ export default function UploadPage() {
   );
 
   const headerNotice = useMemo(() => {
-    if (!validationMatchesFiles || anySlotChecking) return null;
     if (statementDuplicate?.message) {
       return statementDuplicate.message;
     }
+    if (!validationMatchesFiles || anySlotChecking) return null;
     const fromValidation = storedPeriodMessage(mergedValidation);
     if (fromValidation) return fromValidation;
     if (error && isAlreadyStoredMessage(error)) return error;
@@ -450,10 +449,18 @@ export default function UploadPage() {
     [statementDuplicate, mergedValidation],
   );
 
+  const validationSettled = validationSettledForFiles(
+    validation,
+    validatedFileKeysRef.current === currentFileKeys,
+    anySlotChecking,
+    Boolean(validationError),
+  );
   const hasStoredConflict =
-    validationMatchesFiles &&
-    !anySlotChecking &&
+    validationSettled &&
     (Boolean(statementDuplicate) || hasStoredPeriodConflict(mergedValidation));
+  const canOpenSavedReport =
+    Boolean(savedStatementId)
+    && (hasStoredConflict || Boolean(statementDuplicate));
   const validationReady =
     validation != null &&
     batchValidationPasses(validation) &&
@@ -475,14 +482,17 @@ export default function UploadPage() {
   }, [headerNotice, error, clearError]);
 
   const onContinue = async (force = false) => {
-    if (loading || anySlotChecking || (!force && hasStoredConflict) || uploadedCount < 1 || !validationReady) {
-      if (!validationReady && !anySlotChecking && uploadedCount >= 1 && hasBoxWarnings) {
+    if (loading || anySlotChecking || uploadedCount < 1) return;
+    if (!force && hasStoredConflict) return;
+    if (!force && !validationReady) {
+      if (uploadedCount >= 1 && hasBoxWarnings) {
         setUploadPrompt(
           'Fix the highlighted upload issues (wrong file type, month mismatch, or duplicate month) before continuing.',
         );
       }
       return;
     }
+    if (force && !validationSettled) return;
 
     clearError();
     clearUploadMismatch();
@@ -573,14 +583,6 @@ export default function UploadPage() {
                     <button
                       type="button"
                       className={styles.btnDuplicateAction}
-                      disabled={duplicateBusy || loading || !validationReady}
-                      onClick={() => void onContinue(true)}
-                    >
-                      Replace and re-analyze
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.btnDuplicateAction}
                       disabled={duplicateBusy}
                       onClick={() => void openSavedReport(savedStatementId)}
                     >
@@ -593,6 +595,14 @@ export default function UploadPage() {
                       onClick={() => void downloadSavedPdf(savedStatementId, savedPeriodLabel)}
                     >
                       Download PDF
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnDuplicateAction}
+                      disabled={duplicateBusy || loading}
+                      onClick={() => void onContinue(true)}
+                    >
+                      Replace and re-analyze
                     </button>
                   </div>
                 ) : (
@@ -686,15 +696,27 @@ export default function UploadPage() {
           )}
 
           <div className={styles.ctaWrap}>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              disabled={!canSubmitAnalyze}
-              onClick={() => void onContinue()}
-            >
-              {loading ? 'Analyzing…' : 'Continue to dashboard'}
-              <span>→</span>
-            </button>
+            {canOpenSavedReport ? (
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                disabled={duplicateBusy || loading}
+                onClick={() => void openSavedReport(savedStatementId!)}
+              >
+                Open saved dashboard
+                <span>→</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                disabled={!canSubmitAnalyze}
+                onClick={() => void onContinue()}
+              >
+                {loading ? 'Analyzing…' : 'Continue to dashboard'}
+                <span>→</span>
+              </button>
+            )}
             <div className={styles.micro}>
               {uploadedCount} of 3 sources uploaded
               {loading
@@ -703,17 +725,17 @@ export default function UploadPage() {
                   ? ' · add at least one file to continue'
                   : anySlotChecking
                     ? ' · checking uploads'
-                    : uploadedCount < 3
-                      ? ' · add all 3 sources for full reconciliation'
-                      : hasStoredConflict && hasBoxWarnings
-                        ? ' · fix highlighted boxes — this month is already on file'
-                        : hasStoredConflict
-                          ? ' · this month is already on file'
+                    : canOpenSavedReport
+                      ? ' · this month is already on file — open your saved dashboard'
+                      : uploadedCount < 3
+                        ? ' · add all 3 sources for full reconciliation'
+                        : hasStoredConflict && hasBoxWarnings
+                          ? ' · fix highlighted boxes — this month is already on file'
                           : hasBoxWarnings
                             ? ' · fix the highlighted upload boxes'
                             : validationReady
-                            ? ' · ready to analyze'
-                            : ' · waiting for upload checks'}
+                              ? ' · ready to analyze'
+                              : ' · waiting for upload checks'}
             </div>
           </div>
 
