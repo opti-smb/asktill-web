@@ -9,7 +9,7 @@ import {
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
 import { loadAtLetterCache } from '../lib/atLetterCache';
-import { useReportSync } from '../hooks/useReportSync';
+import { hasRecentAnalyzeSession, useReportSync } from '../hooks/useReportSync';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 
 /** Resolves the saved statement id for backend AT Letter HTML. */
@@ -43,6 +43,7 @@ export function useAtLetterTemplate(): {
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
       primaryReport: historyReady ? primaryReport : null,
       historyReady,
+      preferSession: hasRecentAnalyzeSession(),
     });
     if (resolved) return resolved;
     if (sessionStatementId) return sessionStatementId;
@@ -79,8 +80,14 @@ export function useAtLetterTemplate(): {
     const historyLabel = primaryReport?.period_label;
     const sessionKey = periodKeyFromLabel(sessionLabel);
     const historyKey = periodKeyFromLabel(historyLabel);
+    if (hasRecentAnalyzeSession() && sessionLabel) {
+      return sessionLabel;
+    }
     if (historyReady && historyLabel && primaryReport) {
       if (sessionLabel && sessionKey && historyKey && comparePeriodKeys(sessionKey, historyKey) < 0) {
+        return sessionLabel;
+      }
+      if (sessionLabel && sessionKey && historyKey && sessionKey === historyKey) {
         return sessionLabel;
       }
       return historyLabel;

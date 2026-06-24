@@ -13,29 +13,30 @@ interface Props {
 }
 
 function subtitleForProgress(progress: AnalyzeProgressState, allDone: boolean): string {
+  const { displayIndex, targetIndex, complete } = progress;
   if (allDone) {
     return 'Your numbers are ready — taking you to the dashboard.';
   }
-  if (progress.complete) {
+  if (complete) {
     return 'Finishing up — almost there.';
   }
-  if (progress.targetIndex >= DASHBOARD_SUB_STEP_START) {
+  if (targetIndex >= DASHBOARD_SUB_STEP_START) {
     return 'Building your dashboard — status updates as each part completes.';
   }
-  if (progress.targetIndex === 0 && !progress.complete) {
+  if (displayIndex === 0 && targetIndex === 0) {
     return 'Uploading to the server — this can take longer on production than local dev.';
   }
   return 'Steps update live as the server processes your files.';
 }
 
 export default function AnalyzeProgressOverlay({ progress }: Props) {
-  const { steps, targetIndex, complete } = progress;
+  const { steps, displayIndex, targetIndex } = progress;
   const allDone = isPipelineDisplayComplete(progress);
-  const inDashboardPhase = targetIndex >= DASHBOARD_SUB_STEP_START;
+  const inDashboardPhase = displayIndex >= DASHBOARD_SUB_STEP_START || targetIndex >= DASHBOARD_SUB_STEP_START;
 
   const mainSteps = steps.slice(0, MAIN_PIPELINE_STEP_COUNT);
 
-  const dashboardDone = complete || targetIndex > DASHBOARD_SUB_STEP_END;
+  const dashboardDone = allDone || displayIndex > DASHBOARD_SUB_STEP_END;
   const dashboardActive = inDashboardPhase && !dashboardDone;
   const dashboardDetail = dashboardActive ? dashboardLiveDetail(progress) : null;
 
@@ -56,9 +57,9 @@ export default function AnalyzeProgressOverlay({ progress }: Props) {
 
         <ul className={styles.log}>
           {mainSteps.map((step, index) => {
-            const done = complete || index < targetIndex;
-            const active = !complete && index === targetIndex;
-            const pending = !complete && index > targetIndex;
+            const done = allDone || index < displayIndex;
+            const active = !allDone && index === displayIndex;
+            const pending = !allDone && index > displayIndex;
             const showDetail = Boolean(step.detail) && (done || active);
             return (
               <li
