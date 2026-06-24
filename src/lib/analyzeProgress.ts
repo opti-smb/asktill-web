@@ -4,14 +4,29 @@ export interface AnalyzeProgressStep {
   detail: string | null;
 }
 
+/** Main pipeline rows always visible during analyze. */
+export const MAIN_PIPELINE_STEP_COUNT = 5;
+
+/** Sub-steps under "Preparing your dashboard" (indices 5–12). */
+export const DASHBOARD_SUB_STEP_START = 5;
+export const DASHBOARD_SUB_STEP_END = 12;
+
 /** Fixed pipeline — shown upfront; ticks advance one step at a time. */
 export const ANALYZE_PIPELINE_STEPS: readonly AnalyzeProgressStep[] = [
   { id: 'upload', message: 'Uploading your statements', detail: null },
-  { id: 'extract', message: 'Extracting data from files', detail: null },
-  { id: 'json', message: 'Converting to structured JSON', detail: null },
+  { id: 'extract', message: 'Extracting data from your files', detail: null },
+  { id: 'json', message: 'Structuring transactions and totals', detail: null },
   { id: 'amounts', message: 'Calculating sales, fees, and bank totals', detail: null },
   { id: 'reconcile', message: 'Matching payouts to bank deposits', detail: null },
-  { id: 'finish', message: 'Preparing your dashboard', detail: null },
+  { id: 'validate', message: 'Reviewing your statement quality', detail: null },
+  { id: 'breakdown', message: 'Breaking down sales by channel', detail: null },
+  { id: 'insights', message: 'Finding highlights in your month', detail: null },
+  { id: 'tabs', message: 'Building your reconciliation view', detail: null },
+  { id: 'kpis', message: 'Calculating cash flow and KPIs', detail: null },
+  { id: 'finalize', message: 'Polishing report sections', detail: null },
+  { id: 'letter', message: 'Drafting your AT Letter', detail: null },
+  { id: 'save', message: 'Saving to your account', detail: null },
+  { id: 'done', message: 'Opening your dashboard…', detail: null },
 ] as const;
 
 export interface AnalyzeProgressState {
@@ -45,23 +60,24 @@ const STAGE_TO_PIPELINE_INDEX: Record<string, number> = {
   upload: 0,
   read: 1,
   extract: 1,
-  validate: 1,
   parse: 1,
   json: 2,
   structure: 2,
   roles: 2,
   amounts: 3,
-  breakdown: 3,
   reconcile: 4,
+  validate: 5,
   views: 5,
   vocabulary: 5,
-  tabs: 5,
-  kpis: 5,
-  insights: 5,
-  finalize: 5,
-  save: 5,
-  done: 5,
-  complete: 5,
+  breakdown: 6,
+  insights: 7,
+  tabs: 8,
+  kpis: 9,
+  finalize: 10,
+  letter: 11,
+  save: 12,
+  done: 13,
+  complete: 13,
 };
 
 /** Production Render cold starts + long analyze streams need a generous total deadline. */
@@ -148,11 +164,24 @@ export function isPipelineDisplayComplete(prev: AnalyzeProgressState): boolean {
   return prev.complete && prev.activeIndex >= prev.steps.length;
 }
 
+/** Live sub-status while the dashboard build phase runs (shown under "Preparing your dashboard"). */
+export function dashboardLiveDetail(progress: AnalyzeProgressState): string | null {
+  const liveIndex = Math.min(
+    Math.max(progress.activeIndex, progress.targetIndex),
+    DASHBOARD_SUB_STEP_END,
+  );
+  if (liveIndex < DASHBOARD_SUB_STEP_START) return null;
+  const step = progress.steps[liveIndex];
+  if (!step) return null;
+  return step.detail?.trim() || step.message;
+}
+
 export const PIPELINE_TICK_MS = 180;
 export const PIPELINE_DONE_HOLD_MS = 280;
 /** Gentle step advance when the server is quiet (SSE buffering / cold start). */
 export const PIPELINE_ESTIMATE_MS = 2_800;
-export const PIPELINE_ESTIMATE_MAX_INDEX = 5;
+/** Only auto-advance through reconcile — dashboard steps wait for real server events. */
+export const PIPELINE_ESTIMATE_MAX_INDEX = 4;
 
 /** Advance one visual step while waiting for the next server event. */
 export function estimatePipelineWhileWaiting(prev: AnalyzeProgressState): AnalyzeProgressState | null {
@@ -170,7 +199,15 @@ export function buildFallbackPipelineEvents(): AnalyzeProgressEvent[] {
     { stage: 'json' },
     { stage: 'amounts' },
     { stage: 'reconcile' },
-    { stage: 'views' },
+    { stage: 'validate' },
+    { stage: 'breakdown' },
+    { stage: 'insights' },
+    { stage: 'tabs' },
+    { stage: 'kpis' },
+    { stage: 'finalize' },
+    { stage: 'letter' },
+    { stage: 'save' },
+    { stage: 'done' },
   ];
 }
 

@@ -95,4 +95,9 @@ export interface FileUploadState {
   /** Distinguish server verify failures from wrong file type / month. */
   issueKind?: 'slot' | 'verify';
   checking?: boolean;
+  /** Visual state for the upload card — presentation only. */
+  status?: 'checking' | 'verified' | 'warning' | 'verify-error';
+  sizeLabel?: string;
+  periodLabel?: string | null;
+  statusLine?: string;
 }

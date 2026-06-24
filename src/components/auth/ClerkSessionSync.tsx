@@ -8,7 +8,7 @@ import { clearClerkSession, isClerkEnabled, shouldRetainClerkSession } from '../
 /** Drop stale Clerk sessions when the app JWT is gone (login uses Google/OTP only transiently). */
 export default function ClerkSessionSync() {
   const clerk = useClerk();
-  const { isAuth, ready } = useAuth();
+  const { isAuth, ready, sessionExpired } = useAuth();
   const { pathname } = useLocation();
   const clearing = useRef(false);
 
@@ -18,17 +18,18 @@ export default function ClerkSessionSync() {
     if (!clerk.session?.id || clearing.current) return;
 
     clearing.current = true;
-    void clearClerkSession(clerk).finally(() => {
+    // Never let Clerk signOut redirect — app handles navigation (SessionExpiredOverlay / logout).
+    void clearClerkSession(clerk, { stayOnPage: true }).finally(() => {
       clearing.current = false;
     });
-  }, [clerk, clerk.loaded, clerk.session?.id, isAuth, pathname, ready]);
+  }, [clerk, clerk.loaded, clerk.session?.id, isAuth, pathname, ready, sessionExpired]);
 
   useEffect(() => {
     if (!isClerkEnabled()) return;
 
     const onLogout = () => {
       if (clerk.loaded && clerk.session?.id) {
-        void clearClerkSession(clerk);
+        void clearClerkSession(clerk, { stayOnPage: true });
       }
     };
 

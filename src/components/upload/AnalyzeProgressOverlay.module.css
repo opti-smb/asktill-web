@@ -152,6 +152,11 @@
   color: var(--body);
 }
 
+.detailDone {
+  color: var(--pos);
+  opacity: 0.85;
+}
+
 .footnote {
   margin: 18px 0 0;
   padding-top: 14px;
@@ -159,4 +164,19 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--muted);
+}
+
+.subLog {
+  list-style: none;
+  margin: 0 0 4px 0;
+  padding: 0 0 0 18px;
+  border-left: 2px solid var(--rule);
+}
+
+.subRow {
+  font-size: 12px;
+}
+
+.subRow .message {
+  font-weight: 500;
 }

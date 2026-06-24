@@ -47,6 +47,20 @@ export interface AuthUser {
 export const SESSION_EXPIRED_EVENT = 'asktill:session-expired';
 export const USER_LOGOUT_EVENT = 'asktill:user-logout';
 export const USER_STATE_RESET_EVENT = 'asktill:user-state-reset';
+
+let sessionExpiryDispatchPending = false;
+
+export function resetSessionExpiryDispatchGuard(): void {
+  sessionExpiryDispatchPending = false;
+}
+
+function dispatchSessionExpiredOnce(): void {
+  if (sessionExpiryDispatchPending) return;
+  sessionExpiryDispatchPending = true;
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+}
+
+export { dispatchSessionExpiredOnce };
 export const CHAT_STORAGE_KEY = 'asktill_chat_messages';
 
 /** Clear in-memory user data (analysis, chat, upload) without removing JWT. */
@@ -87,8 +101,7 @@ function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
           && token
           && (isMe || isTokenExpired(token) || backendProtected)
         ) {
-          clearToken();
-          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+          dispatchSessionExpiredOnce();
         }
       }
       return Promise.reject(err);
@@ -1123,9 +1136,6 @@ async function analyzeViaStream(
   if (buffer.trim()) consumeLine(buffer.trim());
   window.clearTimeout(timeoutId);
 
-  warmupBackend();
-  await ensureAuthServiceReady(15_000);
-
   if (!result && pending.id) {
     onEvent({
       stage: 'complete',
@@ -1170,7 +1180,7 @@ async function analyzeViaClassicEndpoint(
 
   try {
     const { data } = await analyze(files.bank, files.pos, files.ecommerce, force);
-    onEvent({ stage: 'views', message: 'Preparing your dashboard' });
+    onEvent({ stage: 'done', message: 'All set — opening your dashboard…' });
     onEvent({ stage: 'complete', message: 'Opening your dashboard…' });
     return data as AnalyzeResult;
   } finally {
@@ -1215,8 +1225,11 @@ export const fetchWeekReports = (bank?: File, pos?: File, ecommerce?: File) => {
   if (bank) form.append('bank', bank, bank.name);
   if (pos) form.append('pos', pos, pos.name);
   if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
-  return mainApi.post<WeekReportsViewApi>('/api/reports/weeks', form);
+  return mainApi.post<WeekReportsViewApi>('/api/reports/weeks', form, { timeout: 120_000 });
 };
+
+export const fetchSavedWeekReports = (statementId: string) =>
+  mainApi.get<WeekReportsViewApi>(`/api/reports/${statementId}/weeks`, { timeout: 120_000 });
 
 export const ask = (question: string, files: UploadFiles = {}) => {
   const form = new FormData();
@@ -1374,6 +1387,7 @@ export const fetchAtLetterHtmlPreview = (
     params: { preview: 1, ...(opts?.monthOnly ? { monthOnly: 1 } : {}) },
     responseType: 'text',
     transformResponse: [(data) => data],
+    timeout: 120_000,
   });
 
 export interface AtLetterLandingMeta {

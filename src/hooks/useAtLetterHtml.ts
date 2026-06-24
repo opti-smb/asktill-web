@@ -52,6 +52,7 @@ export function useAtLetterHtml(
       setLoading(false);
       setError(null);
     } else {
+      setHtml(null);
       setLoading(true);
       setError(null);
     }

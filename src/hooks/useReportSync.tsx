@@ -11,7 +11,12 @@ import {
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
 import { fetchReportHistory, fetchSavedReport, USER_LOGOUT_EVENT, warmupBackend, type SavedReportSummaryApi } from '../lib/api';
-import { clearUserAtLetterState, clearAllAtLetterDeviceCache, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
+import {
+  clearUserAtLetterState,
+  clearAllAtLetterDeviceCache,
+  LETTER_UPDATED_EVENT,
+  loadAtLetterCache,
+} from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import {
   comparePeriodKeys,
@@ -134,17 +139,29 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!ready || !isAuth || !user?.userId) return;
+    if (result?.statement_id || hasRecentAnalyzeSession()) return;
+    const cachedId = loadAtLetterCache(user.userId)?.statementId?.trim();
+    if (cachedId) {
+      void prefetchAtLetterHtml(cachedId, { monthOnly: true });
+      void prefetchAtLetterHtml(cachedId, { monthOnly: false });
+    }
+  }, [ready, isAuth, user?.userId, result?.statement_id]);
+
+  useEffect(() => {
     if (!ready || !isAuth) return;
     const sessionAnalysis = getAnalyzeAnalysis(result);
     const statementId = resolveAtLetterStatementId({
       sessionStatementId: result?.statement_id,
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
       primaryReport,
+      historyReady,
     });
     if (statementId) {
-      void prefetchAtLetterHtml(statementId);
+      void prefetchAtLetterHtml(statementId, { monthOnly: true });
+      void prefetchAtLetterHtml(statementId, { monthOnly: false });
     }
-  }, [ready, isAuth, result?.statement_id, result?.analysis, primaryReport]);
+  }, [ready, isAuth, result?.statement_id, result?.analysis, primaryReport, historyReady]);
 
   useEffect(() => {
     if (!ready) {
@@ -187,26 +204,28 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
         setHistoryReady(true);
 
         if (reports.length > 0) {
-          try {
-            sessionStorage.removeItem(JUST_ANALYZED_KEY);
-          } catch {
-            /* ignore */
-          }
-
           const sessionResult = resultRef.current;
           const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
           const sessionKey = periodKeyFromLabel(sessionAnalysis?.period_label);
           const primaryKey = periodKeyFromLabel(primary?.period_label);
-          const sessionIsOlderThanPrimary =
-            Boolean(primary && sessionKey && primaryKey)
+          const sessionStatementId = sessionResult?.statement_id?.trim();
+          const primaryIsNewerThanSession =
+            Boolean(sessionKey && primaryKey)
             && comparePeriodKeys(sessionKey, primaryKey) > 0;
+          const primaryIsNewerOrSame =
+            !sessionKey || !primaryKey || comparePeriodKeys(sessionKey, primaryKey) >= 0;
+          const statementIdsDiffer =
+            Boolean(sessionStatementId && primary?.statement_id)
+            && sessionStatementId !== primary?.statement_id;
           const statementId = resolveAtLetterStatementId({
             sessionStatementId: sessionResult?.statement_id,
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
+            historyReady: true,
           });
           if (statementId) {
-            void prefetchAtLetterHtml(statementId);
+            void prefetchAtLetterHtml(statementId, { monthOnly: true });
+            void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
           const shouldHydrateFromServer =
@@ -214,8 +233,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             && !analyzeLoadingRef.current
             && (
               !sessionResult?.analysis
-              || sessionIsOlderThanPrimary
-              || (sessionResult.statement_id && sessionResult.statement_id !== primary.statement_id)
+              || primaryIsNewerThanSession
+              || (statementIdsDiffer && primaryIsNewerOrSame)
             );
 
           if (
@@ -228,6 +247,14 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
               if (!cancelled) loadSavedReport(saved);
             } catch {
               /* overview can still open saved report manually */
+            }
+          }
+
+          if (!shouldHydrateFromServer) {
+            try {
+              sessionStorage.removeItem(JUST_ANALYZED_KEY);
+            } catch {
+              /* ignore */
             }
           }
           return;

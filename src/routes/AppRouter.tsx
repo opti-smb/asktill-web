@@ -13,6 +13,7 @@ import CashFlowPage from '../pages/CashFlowPage';
 import ReconPage from '../pages/ReconPage';
 import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
+import SourcesPage from '../pages/SourcesPage';
 import ProfilePage from '../pages/ProfilePage';
 import DashboardNav from '../components/layout/DashboardNav';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
@@ -57,6 +58,7 @@ function AppRoutes() {
           <Route path="reconciliation" element={<ReconPage />} />
           <Route path="at-letter" element={<AtLetterPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="sources" element={<SourcesPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
     </Routes>

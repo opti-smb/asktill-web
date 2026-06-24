@@ -85,26 +85,65 @@ function uploadStateFromFile(
   const filenamePeriod = periodLabelFromFilename(file.name);
   const size = `${Math.round(file.size / 1024)} KB`;
   const slotWarning = slotWarnings[slot]?.trim() || undefined;
-  const confirmedPeriod = !checking && !slotWarning ? period : undefined;
-  const pendingPeriod = checking && !slotWarning ? filenamePeriod : undefined;
+
+  if (slotWarning) {
+    return {
+      uploaded: true,
+      checking: false,
+      status: 'warning',
+      fileName: file.name,
+      sizeLabel: size,
+      periodLabel: period ?? filenamePeriod ?? null,
+      statusLine: 'Wrong file or month',
+      issueKind: 'slot',
+      warning: slotWarning,
+      detail: `${size}${period ?? filenamePeriod ? ` · ${period ?? filenamePeriod}` : ''}`,
+    };
+  }
+
+  if (checking) {
+    return {
+      uploaded: true,
+      checking: true,
+      status: 'checking',
+      fileName: file.name,
+      sizeLabel: size,
+      periodLabel: filenamePeriod,
+      statusLine: filenamePeriod
+        ? `Likely ${filenamePeriod} — confirming file type & month…`
+        : 'Reading file type and statement month…',
+      detail: filenamePeriod
+        ? `${size} · ${filenamePeriod} · verifying…`
+        : `${size} · verifying file type & month…`,
+    };
+  }
+
+  if (validationFailed) {
+    return {
+      uploaded: true,
+      checking: false,
+      status: 'verify-error',
+      fileName: file.name,
+      sizeLabel: size,
+      periodLabel: filenamePeriod,
+      statusLine: 'Server could not verify yet',
+      issueKind: 'verify',
+      warning:
+        'Server could not verify this file yet. Wait 30 seconds and select the file again.',
+      detail: `${size} · server could not verify yet`,
+    };
+  }
+
+  const confirmedPeriod = period ?? filenamePeriod ?? null;
   return {
     uploaded: true,
-    checking: checking && !slotWarning,
+    checking: false,
+    status: 'verified',
     fileName: file.name,
-    detail: confirmedPeriod
-      ? `${size} · ${confirmedPeriod}`
-      : pendingPeriod
-        ? `${size} · ${pendingPeriod} · checking…`
-        : checking
-          ? `${size} · checking file type & month…`
-          : validationFailed && !slotWarning
-            ? `${size} · server could not verify yet`
-            : size,
-    issueKind: slotWarning ? 'slot' : validationFailed ? 'verify' : undefined,
-    warning: slotWarning
-      ?? (validationFailed
-        ? 'Server could not verify this file yet. Wait 30 seconds and select the file again.'
-        : undefined),
+    sizeLabel: size,
+    periodLabel: confirmedPeriod,
+    statusLine: confirmedPeriod ? `Ready · ${confirmedPeriod}` : 'Ready to analyze',
+    detail: confirmedPeriod ? `${size} · ${confirmedPeriod}` : size,
   };
 }
 
@@ -140,7 +179,7 @@ function fileKey(file: File | undefined): string {
   return file ? `${file.name}:${file.size}:${file.lastModified}` : '';
 }
 
-export default function UploadPage() {
+export default function UploadPage({ embedded = false }: { embedded?: boolean }) {
   const { register, watch, reset: resetForm } = useForm<FormData>();
   const navigate = useNavigate();
   const {
@@ -155,7 +194,6 @@ export default function UploadPage() {
     clearUploadMismatch,
     clearStatementDuplicate,
     loadSavedReport,
-    clearResult,
     lastStreamStatementId,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
@@ -273,14 +311,13 @@ export default function UploadPage() {
   useEffect(() => {
     clearUploadMismatch();
     clearStatementDuplicate();
-    clearResult();
     if (uploadedCount > 0) setUploadPrompt(null);
     setPinnedSlotWarnings((prev) => ({
       bank: prev.bank?.fileKey === bankKey ? prev.bank : null,
       pos: prev.pos?.fileKey === posKey ? prev.pos : null,
       ecommerce: prev.ecommerce?.fileKey === ecommerceKey ? prev.ecommerce : null,
     }));
-  }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate, clearResult]);
+  }, [bankKey, posKey, ecommerceKey, uploadedCount, clearUploadMismatch, clearStatementDuplicate]);
 
   const anySlotChecking = slotChecking.bank || slotChecking.pos || slotChecking.ecommerce;
 
@@ -545,8 +582,9 @@ export default function UploadPage() {
   };
 
   return (
-    <div className={styles.pageBg}>
+    <div className={`${styles.pageBg} ${embedded ? styles.pageBgEmbedded : ''}`}>
       {analyzeProgress && <AnalyzeProgressOverlay progress={analyzeProgress} />}
+      {!embedded ? (
       <nav className={styles.nav}>
         <div className="wrap">
           <div className={styles.navInner}>
@@ -555,6 +593,7 @@ export default function UploadPage() {
           </div>
         </div>
       </nav>
+      ) : null}
 
       <div className={styles.stepper}>
         <div className="wrap">

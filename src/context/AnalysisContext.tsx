@@ -207,37 +207,50 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       setAnalyzeProgress(buildInitialAnalyzeProgress());
     };
 
-    const finishWithResult = (data: AnalyzeResult, activeFiles: UploadFiles) => {
+    const finishWithResult = async (data: AnalyzeResult, activeFiles: UploadFiles) => {
+      let resolved = data;
+      const sid = data.statement_id?.trim();
+      if (sid) {
+        try {
+          resolved = await fetchSavedReportWithRetry(sid);
+        } catch {
+          /* keep inline SSE payload when fetch fails */
+        }
+      }
+
       setFilesState(activeFiles);
-      setResult(data);
+      setResult(resolved);
       markJustAnalyzed();
       setStatementDuplicate(null);
       setError(null);
       setUploadMismatch(null);
 
       if (isAuth && user?.userId) {
-        const preview = buildAtLetterPreview(data, user, {
-          statementId: data.statement_id ?? undefined,
-          hasPdf: Boolean(data.statement_id || (data.report?.channels?.length ?? 0) > 0),
+        const preview = buildAtLetterPreview(resolved, user, {
+          statementId: resolved.statement_id ?? undefined,
+          hasPdf: Boolean(resolved.statement_id || (resolved.report?.channels?.length ?? 0) > 0),
         });
         if (preview?.mode === 'live') {
           saveAtLetterCache(user.userId, preview);
-        } else if (data.statement_id) {
+        } else if (resolved.statement_id) {
           markUserHasSavedLetter(user.userId);
         }
         window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
         window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
       }
 
-      if (data.statement_id) {
-        void prefetchAtLetterHtml(data.statement_id);
+      if (resolved.statement_id) {
+        await Promise.all([
+          prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true }),
+          prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false }),
+        ]);
       }
 
       if (progressStarted) {
         setAnalyzeProgress(null);
       }
 
-      return data;
+      return resolved;
     };
 
     try {
@@ -251,7 +264,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
       }, options);
 
-      return finishWithResult(data, active);
+      return await finishWithResult(data, active);
     } catch (err) {
       clearPipelineWaiters();
 
@@ -269,14 +282,14 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         if (sid) {
           try {
             const loaded = await fetchSavedReportWithRetry(sid);
-            return finishWithResult(loaded, active);
+            return await finishWithResult(loaded, active);
           } catch {
             /* fall through — history recovery below */
           }
         }
         const recovered = await recoverSavedAnalyzeFromHistory();
         if (recovered) {
-          return finishWithResult(recovered, active);
+          return await finishWithResult(recovered, active);
         }
         setAnalyzeProgress(null);
       }
@@ -328,7 +341,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     }
 
     if (saved.statement_id) {
-      void prefetchAtLetterHtml(saved.statement_id);
+      void prefetchAtLetterHtml(saved.statement_id, { monthOnly: true });
+      void prefetchAtLetterHtml(saved.statement_id, { monthOnly: false });
     }
   }, [isAuth, user]);
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SectionHeader from '../components/layout/SectionHeader';
 import PeriodPicker from '../components/layout/PeriodPicker';
 import ChannelReconciliationView from '../components/analysis/ChannelReconciliationView';
@@ -8,7 +8,7 @@ import WeekReportPanel from '../components/analysis/WeekReportPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
-import { fetchWeekReports, getApiError } from '../lib/api';
+import { fetchSavedWeekReports, fetchWeekReports, getApiError } from '../lib/api';
 import { getAnalyzeAnalysis, type WeekReportsViewApi } from '../lib/analyzeResponse';
 import { periodKeyFromLabel, resolveAtLetterStatementId } from '../lib/atLetterStatement';
 import type { Period } from '../types';
@@ -31,8 +31,9 @@ export default function ReportsPage() {
         sessionStatementId: result?.statement_id,
         sessionPeriodKey: periodKeyFromLabel(analysis?.period_label),
         primaryReport,
+        historyReady,
       }) ?? result?.statement_id ?? null,
-    [result?.statement_id, analysis?.period_label, primaryReport],
+    [result?.statement_id, analysis?.period_label, primaryReport, historyReady],
   );
   const documents = result?.documents ?? [];
   const fallbackBusinessName = useMemo(() => {
@@ -47,51 +48,78 @@ export default function ReportsPage() {
   const [weekReports, setWeekReports] = useState<WeekReportsViewApi | null>(null);
   const [weekLoading, setWeekLoading] = useState(false);
   const [weekError, setWeekError] = useState<string | null>(null);
+  const weekLoadSeq = useRef(0);
+  const filesRef = useRef(files);
+  filesRef.current = files;
 
   useEffect(() => {
     setWeekReports(null);
     setWeekError(null);
-  }, [result]);
+    setWeekLoading(false);
+    weekLoadSeq.current += 1;
+  }, [result?.statement_id]);
+
+  const analysisWeekCount = analysis?.week_reports?.weeks?.length ?? 0;
 
   useEffect(() => {
     if (period !== 'Week' || !result) {
+      setWeekLoading(false);
       return;
     }
 
     const fromAnalysis = analysis?.week_reports;
-    if (fromAnalysis && fromAnalysis.weeks?.length) {
-      setWeekReports(fromAnalysis);
-      return;
-    }
-
-    if (!hasUploadFiles(files)) {
+    if (analysisWeekCount > 0) {
       setWeekReports(fromAnalysis ?? null);
+      setWeekLoading(false);
+      setWeekError(null);
       return;
     }
 
-    let cancelled = false;
+    const seq = ++weekLoadSeq.current;
     setWeekLoading(true);
     setWeekError(null);
 
-    fetchWeekReports(files.bank, files.pos, files.ecommerce)
-      .then(({ data }) => {
-        if (cancelled) return;
+    const load = async () => {
+      try {
+        if (result.statement_id) {
+          const { data } = await fetchSavedWeekReports(result.statement_id);
+          if (seq !== weekLoadSeq.current) return;
+          setWeekReports(data);
+          if (data.weeks?.length) {
+            mergeWeekReports(data);
+          }
+          return;
+        }
+
+        const uploadFiles = filesRef.current;
+        if (!hasUploadFiles(uploadFiles)) {
+          setWeekReports(fromAnalysis ?? null);
+          return;
+        }
+
+        const { data } = await fetchWeekReports(
+          uploadFiles.bank,
+          uploadFiles.pos,
+          uploadFiles.ecommerce,
+        );
+        if (seq !== weekLoadSeq.current) return;
         setWeekReports(data);
-        mergeWeekReports(data);
-      })
-      .catch((err) => {
-        if (cancelled) return;
+        if (data.weeks?.length) {
+          mergeWeekReports(data);
+        }
+      } catch (err) {
+        if (seq !== weekLoadSeq.current) return;
         setWeekError(getApiError(err, 'Could not load weekly report.'));
         setWeekReports(fromAnalysis ?? null);
-      })
-      .finally(() => {
-        if (!cancelled) setWeekLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
+      } finally {
+        if (seq === weekLoadSeq.current) {
+          setWeekLoading(false);
+        }
+      }
     };
-  }, [period, result, analysis?.week_reports, files, mergeWeekReports]);
+
+    void load();
+  }, [period, result, result?.statement_id, analysisWeekCount, mergeWeekReports, analysis?.week_reports]);
 
   const activeWeekReports = weekReports ?? analysis?.week_reports ?? null;
   const currentPeriodKey = useMemo(() => {

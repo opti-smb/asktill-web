@@ -8,6 +8,13 @@
   background: var(--bg-soft);
 }
 
+.pageBgEmbedded {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
 .nav {
   padding: 8px 0;
   border-bottom: 1px solid var(--rule);
