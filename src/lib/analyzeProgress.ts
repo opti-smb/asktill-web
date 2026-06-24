@@ -31,10 +31,12 @@ export const ANALYZE_PIPELINE_STEPS: readonly AnalyzeProgressStep[] = [
 
 export interface AnalyzeProgressState {
   steps: AnalyzeProgressStep[];
-  /** @deprecated use targetIndex — kept for compatibility */
+  /** @deprecated use displayIndex — kept for compatibility */
   activeIndex: number;
-  /** Furthest pipeline stage the server has confirmed (0-based). Steps before this show ✓. */
+  /** Furthest pipeline stage the server has confirmed (0-based). */
   targetIndex: number;
+  /** Visual step pointer — advances one row at a time toward targetIndex. */
+  displayIndex: number;
   /** Server sent complete — overlay dismisses after a short hold. */
   complete: boolean;
 }
@@ -76,7 +78,7 @@ const STAGE_TO_PIPELINE_INDEX: Record<string, number> = {
   finalize: 10,
   letter: 11,
   save: 12,
-  done: 13,
+  done: 12,
   complete: 13,
 };
 
@@ -92,10 +94,16 @@ export function pipelineIndexForStage(stage: string): number {
 }
 
 export function buildInitialAnalyzeProgress(): AnalyzeProgressState {
+  const steps = ANALYZE_PIPELINE_STEPS.map((step, index) =>
+    index === 0
+      ? { ...step, detail: 'Sending files to server…' }
+      : { ...step },
+  );
   return {
-    steps: ANALYZE_PIPELINE_STEPS.map((s) => ({ ...s })),
+    steps,
     activeIndex: 0,
     targetIndex: 0,
+    displayIndex: 0,
     complete: false,
   };
 }
@@ -132,16 +140,36 @@ export function applyPipelineEvent(
   if (event.stage === 'complete') {
     target = last;
   }
+  let displayIndex = prev.displayIndex;
+  if (complete) {
+    displayIndex = target;
+  }
   return {
     steps,
-    activeIndex: target,
+    activeIndex: displayIndex,
     targetIndex: target,
+    displayIndex,
     complete,
   };
 }
 
+/** Advance the visible step by one row toward the server-confirmed target. */
+export function tickPipelineDisplay(prev: AnalyzeProgressState): AnalyzeProgressState | null {
+  if (prev.displayIndex >= prev.targetIndex) return null;
+  const next = prev.displayIndex + 1;
+  return {
+    ...prev,
+    activeIndex: next,
+    displayIndex: next,
+  };
+}
+
+export function shouldTickPipelineDisplay(prev: AnalyzeProgressState): boolean {
+  return prev.displayIndex < prev.targetIndex;
+}
+
 export function isPipelineDisplayComplete(prev: AnalyzeProgressState): boolean {
-  return prev.complete;
+  return prev.complete && prev.displayIndex >= prev.targetIndex;
 }
 
 /** Live sub-status while the dashboard build phase runs (shown under "Preparing your dashboard"). */
@@ -153,6 +181,9 @@ export function dashboardLiveDetail(progress: AnalyzeProgressState): string | nu
   return step.detail?.trim() || step.message;
 }
 
+/** Ms between visual step ticks while the server is ahead (SSE batching). */
+export const PIPELINE_DISPLAY_TICK_MS = 320;
+export const PIPELINE_DISPLAY_TICK_COMPLETE_MS = 100;
 export const PIPELINE_DONE_HOLD_MS = 400;
 
 /** Fallback timeline when /api/analyze/stream is unavailable. */

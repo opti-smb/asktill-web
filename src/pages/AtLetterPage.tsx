@@ -32,34 +32,31 @@ function monthOnlyLabel(report: SavedReportSummaryApi | null | undefined): strin
 export default function AtLetterPage() {
   const { result } = useAnalysis();
   const { historyReady, savedCount, primaryReport } = useReportSync();
-  const { statementId: rollingStatementId, periodLabel, footerMeta } = useAtLetterTemplate();
+  const { statementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   /** null = default to latest month only; user picks rolling quarter explicitly. */
   const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
 
   const latestMonthReport = primaryReport ?? null;
-  const monthStatementId =
-    latestMonthReport?.statement_id ?? rollingStatementId ?? null;
+  const letterStatementId = statementId ?? undefined;
 
-  const activeView = viewMode ?? (monthStatementId ?? ROLLING_VIEW);
+  const activeView = viewMode ?? (letterStatementId ?? ROLLING_VIEW);
   const monthOnly = activeView !== ROLLING_VIEW;
-  const activeStatementId = monthOnly ? monthStatementId : rollingStatementId;
-  const letterStatementId = activeStatementId ?? undefined;
 
   const { html, loading, error } = useAtLetterHtml(letterStatementId, { monthOnly });
 
-  const showViewFilters = savedCount >= 1 && Boolean(monthStatementId);
+  const showViewFilters = savedCount >= 1 && Boolean(letterStatementId);
 
   useEffect(() => {
     setViewMode(null);
-  }, [result?.statement_id, primaryReport?.statement_id]);
+  }, [result?.statement_id, primaryReport?.statement_id, letterStatementId]);
 
   useEffect(() => {
     if (viewMode !== 'month') return;
-    if (!monthStatementId) {
+    if (!letterStatementId) {
       setViewMode(null);
     }
-  }, [monthStatementId, viewMode]);
+  }, [letterStatementId, viewMode]);
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
@@ -113,7 +110,7 @@ export default function AtLetterPage() {
                   type="button"
                   className={`${styles.viewFilter} ${activeView !== ROLLING_VIEW ? styles.viewFilterActive : ''}`}
                   onClick={() => {
-                    if (monthStatementId) setViewMode('month');
+                    if (letterStatementId) setViewMode('month');
                   }}
                 >
                   {monthOnlyLabel(latestMonthReport)}

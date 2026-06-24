@@ -57,14 +57,15 @@ export function pickPrimarySavedReport(
 
 /**
  * Pick the statement id for AT Letter — anchor on newest saved month once history is loaded.
- * In-memory analyze wins only when its period is strictly newer than saved history
- * (analyze finished before history refresh).
+ * Fresh analyze wins during grace, when its period is newer, or when the same month was re-uploaded.
  */
 export function resolveAtLetterStatementId(options: {
   sessionStatementId?: string | null;
   sessionPeriodKey?: string | null;
   primaryReport?: SavedReportSummaryApi | null;
   historyReady?: boolean;
+  /** True right after analyze — keep the in-flight statement id until history catches up. */
+  preferSession?: boolean;
 }): string | undefined {
   const sessionId = options.sessionStatementId?.trim();
   const sessionKey = options.sessionPeriodKey?.trim() || null;
@@ -73,14 +74,19 @@ export function resolveAtLetterStatementId(options: {
   const historyKey = history?.period_key?.trim() || null;
   const historyReady = options.historyReady !== false;
 
+  if (sessionId && options.preferSession) {
+    return sessionId;
+  }
+
   if (historyId && historyReady) {
-    if (
-      sessionId
-      && sessionKey
-      && historyKey
-      && comparePeriodKeys(sessionKey, historyKey) < 0
-    ) {
-      return sessionId;
+    if (sessionId) {
+      if (sessionKey && historyKey) {
+        const periodCmp = comparePeriodKeys(sessionKey, historyKey);
+        if (periodCmp < 0) return sessionId;
+        if (periodCmp === 0 && sessionId !== historyId) return sessionId;
+      } else if (!historyKey || !sessionKey) {
+        return sessionId;
+      }
     }
     return historyId;
   }

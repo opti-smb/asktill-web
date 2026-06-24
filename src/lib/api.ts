@@ -11,7 +11,7 @@ import {
   type AnalyzeProgressEvent,
 } from './analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
-import { periodKeyFromLabel } from './atLetterStatement';
+import { periodKeyFromLabel, pickPrimarySavedReport } from './atLetterStatement';
 
 export { formatAskResponseForChat } from './analyzeResponse';
 
@@ -952,7 +952,8 @@ async function recoverLatestSavedAnalyzeResult(): Promise<AnalyzeResult | null> 
     await ensureAuthServiceReady(attempt >= 2 ? 45_000 : 15_000);
     try {
       const { data: history } = await fetchReportHistory();
-      const latestId = history.reports?.[0]?.statement_id;
+      const primary = pickPrimarySavedReport(history.reports ?? []);
+      const latestId = primary?.statement_id;
       if (latestId) {
         return await fetchSavedReportWithRetry(latestId);
       }
@@ -1022,6 +1023,13 @@ async function analyzeViaStream(
   onEvent: (event: AnalyzeProgressEvent) => void,
   force = false,
 ): Promise<AnalyzeResult> {
+  const fileCount = [files.bank, files.pos, files.ecommerce].filter(Boolean).length;
+  onEvent({
+    stage: 'upload',
+    message: 'Uploading your statements',
+    detail: `Sending ${fileCount} file${fileCount === 1 ? '' : 's'} to server…`,
+  });
+
   const form = analyzeFormData(files.bank, files.pos, files.ecommerce);
   const headers: Record<string, string> = {};
   const token = getToken();
@@ -1071,6 +1079,12 @@ async function analyzeViaStream(
   }
 
   startReadTimeout();
+
+  onEvent({
+    stage: 'upload',
+    message: 'Uploading your statements',
+    detail: 'Server received your files — analyzing…',
+  });
 
   if (res.status === 404 || res.status === 405) {
     clearStreamTimeout();

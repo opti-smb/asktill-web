@@ -156,6 +156,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
       primaryReport,
       historyReady,
+      preferSession: hasRecentAnalyzeSession(),
     });
     if (statementId) {
       void prefetchAtLetterHtml(statementId, { monthOnly: true });
@@ -209,6 +210,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const sessionKey = periodKeyFromLabel(sessionAnalysis?.period_label);
           const primaryKey = periodKeyFromLabel(primary?.period_label);
           const sessionStatementId = sessionResult?.statement_id?.trim();
+          const inAnalyzeGrace = hasRecentAnalyzeSession();
           const primaryIsNewerThanSession =
             Boolean(sessionKey && primaryKey)
             && comparePeriodKeys(sessionKey, primaryKey) > 0;
@@ -222,10 +224,27 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
+            preferSession: inAnalyzeGrace,
           });
           if (statementId) {
             void prefetchAtLetterHtml(statementId, { monthOnly: true });
             void prefetchAtLetterHtml(statementId, { monthOnly: false });
+          }
+
+          if (inAnalyzeGrace && sessionStatementId) {
+            if (sessionResult?.analysis) {
+              return;
+            }
+            if (hydratedStatementIdRef.current !== sessionStatementId) {
+              hydratedStatementIdRef.current = sessionStatementId;
+              try {
+                const { data: saved } = await fetchSavedReport(sessionStatementId);
+                if (!cancelled) loadSavedReport(saved);
+              } catch {
+                /* keep partial session payload */
+              }
+            }
+            return;
           }
 
           const shouldHydrateFromServer =

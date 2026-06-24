@@ -29,13 +29,17 @@ import {
   markUserHasSavedLetter,
   saveAtLetterCache,
 } from '../lib/atLetterCache';
-import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
+import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
   isPipelineDisplayComplete,
+  PIPELINE_DISPLAY_TICK_COMPLETE_MS,
+  PIPELINE_DISPLAY_TICK_MS,
   PIPELINE_DONE_HOLD_MS,
+  shouldTickPipelineDisplay,
+  tickPipelineDisplay,
   type AnalyzeProgressState,
 } from '../lib/analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from '../lib/analyzeResponse';
@@ -96,11 +100,21 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const waitForPipelineDisplay = useCallback(() => {
     return new Promise<void>((resolve) => {
       clearPipelineWaiters();
-      if (analyzeProgressRef.current?.complete) {
+      if (analyzeProgressRef.current && isPipelineDisplayComplete(analyzeProgressRef.current)) {
         pipelineSafetyRef.current = window.setTimeout(() => {
           setAnalyzeProgress(null);
           resolve();
         }, PIPELINE_DONE_HOLD_MS);
+        return;
+      }
+      if (analyzeProgressRef.current?.complete) {
+        pipelineFinishRef.current = resolve;
+        pipelineSafetyRef.current = window.setTimeout(() => {
+          pipelineFinishRef.current = null;
+          pipelineSafetyRef.current = null;
+          setAnalyzeProgress(null);
+          resolve();
+        }, PIPELINE_DONE_HOLD_MS + 4000);
         return;
       }
       pipelineFinishRef.current = resolve;
@@ -146,6 +160,22 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(USER_STATE_RESET_EVENT, onReset);
     };
   }, [resetSession]);
+
+  useEffect(() => {
+    if (!analyzeProgress || !shouldTickPipelineDisplay(analyzeProgress)) {
+      return undefined;
+    }
+    const delay = analyzeProgress.complete
+      ? PIPELINE_DISPLAY_TICK_COMPLETE_MS
+      : PIPELINE_DISPLAY_TICK_MS;
+    const timer = window.setTimeout(() => {
+      setAnalyzeProgress((prev) => {
+        if (!prev) return prev;
+        return tickPipelineDisplay(prev) ?? prev;
+      });
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [analyzeProgress]);
 
   useEffect(() => {
     if (!analyzeProgress || !isPipelineDisplayComplete(analyzeProgress)) {
@@ -217,6 +247,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       if (resolved.statement_id) {
+        clearAtLetterHtmlCache();
         void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false });
         void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true });
       }
