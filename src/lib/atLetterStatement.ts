@@ -66,6 +66,8 @@ export function resolveAtLetterStatementId(options: {
   historyReady?: boolean;
   /** True right after analyze — keep the in-flight statement id until history catches up. */
   preferSession?: boolean;
+  /** User explicitly opened this statement (duplicate banner, previous reports, etc.). */
+  activeViewId?: string | null;
 }): string | undefined {
   const sessionId = options.sessionStatementId?.trim();
   const sessionKey = options.sessionPeriodKey?.trim() || null;
@@ -73,8 +75,9 @@ export function resolveAtLetterStatementId(options: {
   const historyId = history?.statement_id?.trim();
   const historyKey = history?.period_key?.trim() || null;
   const historyReady = options.historyReady !== false;
+  const activeViewId = options.activeViewId?.trim();
 
-  if (sessionId && options.preferSession) {
+  if (sessionId && (options.preferSession || activeViewId === sessionId)) {
     return sessionId;
   }
 

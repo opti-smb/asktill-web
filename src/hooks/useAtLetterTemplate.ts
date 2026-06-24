@@ -8,6 +8,7 @@ import {
   periodKeyFromLabel,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
+import { getActiveStatementViewId } from '../lib/activeStatementView';
 import { loadAtLetterCache } from '../lib/atLetterCache';
 import { hasRecentAnalyzeSession, useReportSync } from '../hooks/useReportSync';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
@@ -38,12 +39,14 @@ export function useAtLetterTemplate(): {
     if (isAuth && historyReady && savedCount === 0) {
       return undefined;
     }
+    const activeViewId = getActiveStatementViewId();
     const resolved = resolveAtLetterStatementId({
       sessionStatementId,
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
       primaryReport: historyReady ? primaryReport : null,
       historyReady,
-      preferSession: hasRecentAnalyzeSession(),
+      preferSession: hasRecentAnalyzeSession() || activeViewId === sessionStatementId,
+      activeViewId,
     });
     if (resolved) return resolved;
     if (sessionStatementId) return sessionStatementId;
@@ -80,6 +83,10 @@ export function useAtLetterTemplate(): {
     const historyLabel = primaryReport?.period_label;
     const sessionKey = periodKeyFromLabel(sessionLabel);
     const historyKey = periodKeyFromLabel(historyLabel);
+    const activeViewId = getActiveStatementViewId();
+    if (activeViewId && sessionStatementId === activeViewId && sessionLabel) {
+      return sessionLabel;
+    }
     if (hasRecentAnalyzeSession() && sessionLabel) {
       return sessionLabel;
     }

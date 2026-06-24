@@ -18,6 +18,7 @@ import {
   loadAtLetterCache,
 } from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
+import { getActiveStatementViewId } from '../lib/activeStatementView';
 import {
   comparePeriodKeys,
   periodKeyFromLabel,
@@ -157,6 +158,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       primaryReport,
       historyReady,
       preferSession: hasRecentAnalyzeSession(),
+      activeViewId: getActiveStatementViewId(),
     });
     if (statementId) {
       void prefetchAtLetterHtml(statementId, { monthOnly: true });
@@ -219,19 +221,24 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const statementIdsDiffer =
             Boolean(sessionStatementId && primary?.statement_id)
             && sessionStatementId !== primary?.statement_id;
+          const activeViewId = getActiveStatementViewId()?.trim();
+          const pinnedView =
+            Boolean(activeViewId && sessionStatementId === activeViewId && sessionResult?.analysis);
+
           const statementId = resolveAtLetterStatementId({
             sessionStatementId: sessionResult?.statement_id,
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
-            preferSession: inAnalyzeGrace,
+            preferSession: inAnalyzeGrace || pinnedView,
+            activeViewId,
           });
           if (statementId) {
             void prefetchAtLetterHtml(statementId, { monthOnly: true });
             void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
-          if (inAnalyzeGrace && sessionStatementId) {
+          if ((inAnalyzeGrace || pinnedView) && sessionStatementId) {
             if (sessionResult?.analysis) {
               return;
             }
@@ -250,6 +257,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const shouldHydrateFromServer =
             primary
             && !analyzeLoadingRef.current
+            && !pinnedView
             && (
               !sessionResult?.analysis
               || primaryIsNewerThanSession
@@ -266,14 +274,6 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
               if (!cancelled) loadSavedReport(saved);
             } catch {
               /* overview can still open saved report manually */
-            }
-          }
-
-          if (!shouldHydrateFromServer) {
-            try {
-              sessionStorage.removeItem(JUST_ANALYZED_KEY);
-            } catch {
-              /* ignore */
             }
           }
           return;

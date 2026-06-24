@@ -79,6 +79,7 @@ const STAGE_TO_PIPELINE_INDEX: Record<string, number> = {
   letter: 11,
   save: 12,
   done: 12,
+  result: 12,
   complete: 13,
 };
 
@@ -117,6 +118,15 @@ export function applyPipelineEvent(
     return prev;
   }
   const last = prev.steps.length - 1;
+  if (event.stage === 'result' || event.stage === 'complete') {
+    return {
+      ...prev,
+      activeIndex: last,
+      targetIndex: last,
+      displayIndex: last,
+      complete: true,
+    };
+  }
   let target = Math.max(prev.targetIndex, pipelineIndexForStage(event.stage));
   const detail =
     typeof event.detail === 'string' && event.detail.trim().length > 0
@@ -140,15 +150,11 @@ export function applyPipelineEvent(
   if (event.stage === 'complete') {
     target = last;
   }
-  let displayIndex = prev.displayIndex;
-  if (complete) {
-    displayIndex = target;
-  }
   return {
     steps,
-    activeIndex: displayIndex,
+    activeIndex: prev.displayIndex,
     targetIndex: target,
-    displayIndex,
+    displayIndex: prev.displayIndex,
     complete,
   };
 }
@@ -182,9 +188,9 @@ export function dashboardLiveDetail(progress: AnalyzeProgressState): string | nu
 }
 
 /** Ms between visual step ticks while the server is ahead (SSE batching). */
-export const PIPELINE_DISPLAY_TICK_MS = 320;
-export const PIPELINE_DISPLAY_TICK_COMPLETE_MS = 100;
-export const PIPELINE_DONE_HOLD_MS = 400;
+export const PIPELINE_DISPLAY_TICK_MS = import.meta.env.PROD ? 120 : 320;
+export const PIPELINE_DISPLAY_TICK_COMPLETE_MS = 40;
+export const PIPELINE_DONE_HOLD_MS = 200;
 
 /** Fallback timeline when /api/analyze/stream is unavailable. */
 export function buildFallbackPipelineEvents(): AnalyzeProgressEvent[] {

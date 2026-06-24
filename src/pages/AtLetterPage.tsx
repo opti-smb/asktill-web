@@ -7,13 +7,12 @@ import { useAnalysis } from '../context/AnalysisContext';
 import { useAtLetterHtml } from '../hooks/useAtLetterHtml';
 import { useAtLetterTemplate } from '../hooks/useAtLetterTemplate';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
-import type { SavedReportSummaryApi } from '../lib/api';
 import styles from './AtLetterPage.module.css';
 
 const ROLLING_VIEW = 'rolling';
 
-function monthOnlyLabel(report: SavedReportSummaryApi | null | undefined): string {
-  const label = report?.period_label?.trim();
+function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): string {
+  const label = periodLabel?.trim();
   if (!label) return 'This month only';
   const short = label.match(
     /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i,
@@ -31,13 +30,12 @@ function monthOnlyLabel(report: SavedReportSummaryApi | null | undefined): strin
 
 export default function AtLetterPage() {
   const { result } = useAnalysis();
-  const { historyReady, savedCount, primaryReport } = useReportSync();
+  const { historyReady, savedCount } = useReportSync();
   const { statementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   /** null = default to latest month only; user picks rolling quarter explicitly. */
   const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
 
-  const latestMonthReport = primaryReport ?? null;
   const letterStatementId = statementId ?? undefined;
 
   const activeView = viewMode ?? (letterStatementId ?? ROLLING_VIEW);
@@ -49,7 +47,7 @@ export default function AtLetterPage() {
 
   useEffect(() => {
     setViewMode(null);
-  }, [result?.statement_id, primaryReport?.statement_id, letterStatementId]);
+  }, [result?.statement_id, letterStatementId]);
 
   useEffect(() => {
     if (viewMode !== 'month') return;
@@ -69,9 +67,9 @@ export default function AtLetterPage() {
       }
       return 'Upload more months to unlock a 3-month quarter comparison.';
     }
-    const label = latestMonthReport?.period_label?.trim() || periodLabel?.trim() || 'Selected month';
+    const label = periodLabel?.trim() || 'Selected month';
     return `${label} only — single-month letter, no rolling comparison.`;
-  }, [monthOnly, savedCount, latestMonthReport, periodLabel]);
+  }, [monthOnly, savedCount, periodLabel]);
 
   if (!hasLiveAnalysis) {
     return (
@@ -113,7 +111,7 @@ export default function AtLetterPage() {
                     if (letterStatementId) setViewMode('month');
                   }}
                 >
-                  {monthOnlyLabel(latestMonthReport)}
+                  {monthOnlyLabelFromPeriod(periodLabel)}
                 </button>
               </div>
             </div>

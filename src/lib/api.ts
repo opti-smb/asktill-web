@@ -1138,6 +1138,13 @@ async function analyzeViaStream(
     if (!event) return;
     bumpStreamTimeout();
     captureStatementIdFromEvent(event, pending);
+    if (event.stage === 'result') {
+      if (event.result) {
+        result = event.result as AnalyzeResult;
+      }
+      onEvent(event);
+      return;
+    }
     if (event.stage === 'complete') {
       if (event.persist_failed) persistFailed = true;
       if (event.result) {
@@ -1212,6 +1219,10 @@ async function analyzeViaStream(
     } catch {
       /* fall through — history recovery below */
     }
+  }
+
+  if (!result && pending.id) {
+    result = { statement_id: pending.id } as AnalyzeResult;
   }
 
   if (!result) {
