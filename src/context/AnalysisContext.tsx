@@ -34,13 +34,8 @@ import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT 
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
-  estimatePipelineWhileWaiting,
   isPipelineDisplayComplete,
   PIPELINE_DONE_HOLD_MS,
-  PIPELINE_ESTIMATE_MS,
-  PIPELINE_TICK_MS,
-  shouldRunPipelineTick,
-  tickPipelineForward,
   type AnalyzeProgressState,
 } from '../lib/analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from '../lib/analyzeResponse';
@@ -81,8 +76,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [statementDuplicate, setStatementDuplicate] = useState<StatementDuplicateInfo | null>(null);
   const pipelineFinishRef = useRef<(() => void) | null>(null);
   const pipelineSafetyRef = useRef<number | null>(null);
+  const analyzeProgressRef = useRef<AnalyzeProgressState | null>(null);
   const lastStreamStatementIdRef = useRef<string | null>(null);
   const [lastStreamStatementId, setLastStreamStatementId] = useState<string | null>(null);
+
+  useEffect(() => {
+    analyzeProgressRef.current = analyzeProgress;
+  }, [analyzeProgress]);
 
   const clearPipelineWaiters = useCallback(() => {
     if (pipelineSafetyRef.current != null) {
@@ -96,6 +96,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const waitForPipelineDisplay = useCallback(() => {
     return new Promise<void>((resolve) => {
       clearPipelineWaiters();
+      if (analyzeProgressRef.current?.complete) {
+        pipelineSafetyRef.current = window.setTimeout(() => {
+          setAnalyzeProgress(null);
+          resolve();
+        }, PIPELINE_DONE_HOLD_MS);
+        return;
+      }
       pipelineFinishRef.current = resolve;
       pipelineSafetyRef.current = window.setTimeout(() => {
         pipelineFinishRef.current = null;
@@ -141,32 +148,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   }, [resetSession]);
 
   useEffect(() => {
-    if (!analyzeProgress || analyzeProgress.complete) {
-      return undefined;
-    }
-    const timer = window.setInterval(() => {
-      setAnalyzeProgress((prev) => {
-        if (!prev) return prev;
-        return estimatePipelineWhileWaiting(prev) ?? prev;
-      });
-    }, PIPELINE_ESTIMATE_MS);
-    return () => window.clearInterval(timer);
-  }, [analyzeProgress]);
-
-  useEffect(() => {
-    if (!analyzeProgress || !shouldRunPipelineTick(analyzeProgress)) {
-      return undefined;
-    }
-    const timer = window.setTimeout(() => {
-      setAnalyzeProgress((prev) => {
-        if (!prev) return prev;
-        return tickPipelineForward(prev) ?? prev;
-      });
-    }, PIPELINE_TICK_MS);
-    return () => window.clearTimeout(timer);
-  }, [analyzeProgress]);
-
-  useEffect(() => {
     if (!analyzeProgress || !isPipelineDisplayComplete(analyzeProgress)) {
       return undefined;
     }
@@ -200,12 +181,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     lastStreamStatementIdRef.current = null;
     setLastStreamStatementId(null);
 
-    let progressStarted = false;
-    const ensureProgress = () => {
-      if (progressStarted) return;
-      progressStarted = true;
-      setAnalyzeProgress(buildInitialAnalyzeProgress());
-    };
+    setAnalyzeProgress(buildInitialAnalyzeProgress());
 
     const finishWithResult = async (data: AnalyzeResult, activeFiles: UploadFiles) => {
       let resolved = data;
@@ -242,11 +218,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
       if (resolved.statement_id) {
         void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false });
-        await prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true });
-      }
-
-      if (progressStarted) {
-        setAnalyzeProgress(null);
+        void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true });
       }
 
       return resolved;
@@ -254,7 +226,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
     try {
       const data = await analyzeWithProgress(active, (event) => {
-        ensureProgress();
         const sid = statementIdFromProgressEvent(event);
         if (sid) {
           lastStreamStatementIdRef.current = sid;
@@ -263,35 +234,36 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
       }, options);
 
+      await waitForPipelineDisplay();
       return await finishWithResult(data, active);
     } catch (err) {
       clearPipelineWaiters();
 
       const duplicate = extractStatementDuplicate(err);
       if (duplicate) {
-        if (progressStarted) setAnalyzeProgress(null);
+        setAnalyzeProgress(null);
         setStatementDuplicate(duplicate);
         setUploadMismatch(null);
         setError(null);
         return null;
       }
 
-      if (progressStarted) {
-        const sid = lastStreamStatementIdRef.current;
-        if (sid) {
-          try {
-            const loaded = await fetchSavedReportWithRetry(sid);
-            return await finishWithResult(loaded, active);
-          } catch {
-            /* fall through — history recovery below */
-          }
+      const sid = lastStreamStatementIdRef.current;
+      if (sid) {
+        try {
+          const loaded = await fetchSavedReportWithRetry(sid);
+          await waitForPipelineDisplay();
+          return await finishWithResult(loaded, active);
+        } catch {
+          /* fall through — history recovery below */
         }
-        const recovered = await recoverSavedAnalyzeFromHistory();
-        if (recovered) {
-          return await finishWithResult(recovered, active);
-        }
-        setAnalyzeProgress(null);
       }
+      const recovered = await recoverSavedAnalyzeFromHistory();
+      if (recovered) {
+        await waitForPipelineDisplay();
+        return await finishWithResult(recovered, active);
+      }
+      setAnalyzeProgress(null);
 
       const mismatch = extractUploadMismatches(err);
       if (mismatch) {
