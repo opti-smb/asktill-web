@@ -210,7 +210,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     const finishWithResult = async (data: AnalyzeResult, activeFiles: UploadFiles) => {
       let resolved = data;
       const sid = data.statement_id?.trim();
-      if (sid) {
+      const hasPayload = Boolean(data.analysis && data.report);
+      if (sid && !hasPayload) {
         try {
           resolved = await fetchSavedReportWithRetry(sid);
         } catch {
@@ -240,7 +241,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       if (resolved.statement_id) {
-        await Promise.all([
+        void Promise.all([
           prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true }),
           prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false }),
         ]);

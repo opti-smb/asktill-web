@@ -1026,7 +1026,11 @@ async function analyzeViaStream(
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+  let timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+  const bumpStreamTimeout = () => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+  };
 
   const streamUrl = `${mainApiBaseUrl()}/api/analyze/stream${force ? '?force=true' : ''}`;
 
@@ -1097,6 +1101,7 @@ async function analyzeViaStream(
   const consumeLine = (line: string) => {
     const event = parseSseEvent(line);
     if (!event) return;
+    bumpStreamTimeout();
     captureStatementIdFromEvent(event, pending);
     if (event.stage === 'complete') {
       if (event.persist_failed) persistFailed = true;
@@ -1122,19 +1127,37 @@ async function analyzeViaStream(
     onEvent(event);
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split('\n');
-    buffer = parts.pop() ?? '';
-    for (const line of parts) {
-      const trimmed = line.trim();
-      if (trimmed) consumeLine(trimmed);
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bumpStreamTimeout();
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n');
+      buffer = parts.pop() ?? '';
+      for (const line of parts) {
+        const trimmed = line.trim();
+        if (trimmed) consumeLine(trimmed);
+      }
     }
+    if (buffer.trim()) consumeLine(buffer.trim());
+  } catch (readErr) {
+    const readMessage = readErr instanceof Error ? readErr.message : String(readErr);
+    const aborted =
+      (readErr instanceof Error && readErr.name === 'AbortError')
+      || /BodyStreamBuffer was aborted|aborted|network error/i.test(readMessage);
+    if (!aborted) {
+      throw readErr;
+    }
+    if (!pending.id && !result) {
+      throw new Error(
+        `Analysis connection closed before finishing${readMessage ? `: ${readMessage}` : ''}. `
+        + 'The server may still have saved your report — check Previous reports or try again.',
+      );
+    }
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-  if (buffer.trim()) consumeLine(buffer.trim());
-  window.clearTimeout(timeoutId);
 
   if (!result && pending.id) {
     onEvent({
@@ -1204,17 +1227,19 @@ export async function analyzeWithProgress(
       throw err;
     }
     const code = (err as { code?: string }).code;
-    if (code === 'STREAM_UNAVAILABLE') {
-      return recoverAnalyzeAfterStreamFailure(files, onEvent, force, true);
-    }
-    if (err instanceof Error && err.message === 'Analysis finished without a result.') {
-      return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
-    }
     if (
       err instanceof Error
-      && err.message === 'Analysis finished but saving failed. Open Previous reports or try again.'
+      && (
+        err.message === 'Analysis finished without a result.'
+        || err.message === 'Analysis finished but saving failed. Open Previous reports or try again.'
+        || /Analysis connection closed before finishing/i.test(err.message)
+        || /BodyStreamBuffer was aborted/i.test(err.message)
+      )
     ) {
       return recoverAnalyzeAfterStreamFailure(files, onEvent, force);
+    }
+    if (code === 'STREAM_UNAVAILABLE') {
+      return recoverAnalyzeAfterStreamFailure(files, onEvent, force, true);
     }
     throw err;
   }
