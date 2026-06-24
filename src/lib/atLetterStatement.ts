@@ -56,31 +56,36 @@ export function pickPrimarySavedReport(
 }
 
 /**
- * Pick the statement id for AT Letter download — always the newest calendar month on file.
- * Session analyze wins only when it is the same or a newer period than saved history.
+ * Pick the statement id for AT Letter — anchor on newest saved month once history is loaded.
+ * In-memory analyze wins only when its period is strictly newer than saved history
+ * (analyze finished before history refresh).
  */
 export function resolveAtLetterStatementId(options: {
   sessionStatementId?: string | null;
   sessionPeriodKey?: string | null;
   primaryReport?: SavedReportSummaryApi | null;
-  cachedStatementId?: string | null;
-  cachedPeriodKey?: string | null;
+  historyReady?: boolean;
 }): string | undefined {
   const sessionId = options.sessionStatementId?.trim();
   const sessionKey = options.sessionPeriodKey?.trim() || null;
   const history = options.primaryReport;
   const historyId = history?.statement_id?.trim();
   const historyKey = history?.period_key?.trim() || null;
+  const historyReady = options.historyReady !== false;
 
-  if (sessionId && historyId && sessionKey && historyKey) {
-    if (comparePeriodKeys(sessionKey, historyKey) <= 0) return sessionId;
+  if (historyId && historyReady) {
+    if (
+      sessionId
+      && sessionKey
+      && historyKey
+      && comparePeriodKeys(sessionKey, historyKey) < 0
+    ) {
+      return sessionId;
+    }
     return historyId;
   }
-  if (sessionId && historyId) {
-    if (!sessionKey || !historyKey) return sessionId;
-    if (comparePeriodKeys(sessionKey, historyKey) <= 0) return sessionId;
-    return historyId;
-  }
+
+  if (sessionId) return sessionId;
   if (historyId) return historyId;
   return undefined;
 }

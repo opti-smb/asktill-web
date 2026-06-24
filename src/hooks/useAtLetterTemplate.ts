@@ -8,6 +8,7 @@ import {
   periodKeyFromLabel,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
+import { loadAtLetterCache } from '../lib/atLetterCache';
 import { useReportSync } from '../hooks/useReportSync';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 
@@ -28,15 +29,25 @@ export function useAtLetterTemplate(): {
   const sessionStatementId = sessionResult?.statement_id ?? undefined;
   const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
 
+  const cachedStatementId = useMemo(() => {
+    if (!user?.userId) return undefined;
+    return loadAtLetterCache(user.userId)?.statementId?.trim() || undefined;
+  }, [user?.userId]);
+
   const statementId = useMemo(() => {
     if (isAuth && historyReady && savedCount === 0) {
       return undefined;
     }
-    return resolveAtLetterStatementId({
+    const resolved = resolveAtLetterStatementId({
       sessionStatementId,
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
-      primaryReport,
+      primaryReport: historyReady ? primaryReport : null,
+      historyReady,
     });
+    if (resolved) return resolved;
+    if (sessionStatementId) return sessionStatementId;
+    if (!historyReady && cachedStatementId) return cachedStatementId;
+    return undefined;
   }, [
     isAuth,
     historyReady,
@@ -44,6 +55,7 @@ export function useAtLetterTemplate(): {
     sessionStatementId,
     sessionAnalysis?.period_label,
     primaryReport,
+    cachedStatementId,
   ]);
 
   const isSample = ready && !isAuth;
@@ -64,14 +76,20 @@ export function useAtLetterTemplate(): {
 
   const periodLabel = useMemo(() => {
     const sessionLabel = sessionAnalysis?.period_label;
-    const historyLabel = activeReport?.period_label;
+    const historyLabel = primaryReport?.period_label;
     const sessionKey = periodKeyFromLabel(sessionLabel);
     const historyKey = periodKeyFromLabel(historyLabel);
+    if (historyReady && historyLabel && primaryReport) {
+      if (sessionLabel && sessionKey && historyKey && comparePeriodKeys(sessionKey, historyKey) < 0) {
+        return sessionLabel;
+      }
+      return historyLabel;
+    }
     if (sessionLabel && historyLabel && sessionKey && historyKey) {
       return comparePeriodKeys(sessionKey, historyKey) <= 0 ? sessionLabel : historyLabel;
     }
     return historyLabel ?? sessionLabel ?? null;
-  }, [sessionAnalysis?.period_label, activeReport?.period_label]);
+  }, [sessionAnalysis?.period_label, primaryReport, historyReady]);
 
   const footerMeta = useMemo(() => {
     if (activeReport && statementId === activeReport.statement_id) {

@@ -11,6 +11,44 @@ interface FileDropZoneProps {
   register: UseFormRegister<Record<string, FileList>>;
 }
 
+function cardClassForState(uploadState: FileUploadState): string {
+  const status = uploadState.status
+    ?? (uploadState.warning
+      ? 'warning'
+      : uploadState.checking
+        ? 'checking'
+        : uploadState.uploaded
+          ? 'verified'
+          : undefined);
+  switch (status) {
+    case 'warning':
+      return styles.warn;
+    case 'verify-error':
+      return styles.verifyError;
+    case 'checking':
+      return styles.checking;
+    case 'verified':
+      return styles.verified;
+    default:
+      return '';
+  }
+}
+
+function badgeClassForState(uploadState: FileUploadState): string {
+  const status = uploadState.status
+    ?? (uploadState.warning ? 'warning' : uploadState.checking ? 'checking' : 'verified');
+  switch (status) {
+    case 'warning':
+      return styles.badgeWarn;
+    case 'verify-error':
+      return styles.badgeVerify;
+    case 'checking':
+      return styles.badgeChecking;
+    default:
+      return styles.badgeVerified;
+  }
+}
+
 export default function FileDropZone({
   name,
   label,
@@ -19,16 +57,16 @@ export default function FileDropZone({
   icon,
   register,
 }: FileDropZoneProps) {
-  const hasWarning = Boolean(uploadState.warning);
-  const isChecking = Boolean(uploadState.checking);
-  const isVerifyFailure = uploadState.issueKind === 'verify';
-  const cardClass = hasWarning
-    ? styles.warn
-    : isChecking
-      ? styles.checking
-      : uploadState.uploaded
-        ? styles.done
-        : '';
+  const status = uploadState.status
+    ?? (uploadState.warning
+      ? 'warning'
+      : uploadState.checking
+        ? 'checking'
+        : uploadState.uploaded
+          ? 'verified'
+          : undefined);
+  const cardClass = cardClassForState(uploadState);
+  const isChecking = status === 'checking';
 
   return (
     <div className={`${styles.uploadCard} ${cardClass}`}>
@@ -38,35 +76,47 @@ export default function FileDropZone({
       <label className={styles.dropZone}>
         <input
           type="file"
-          accept=".pdf,.csv,.xlsx"
+          accept=".pdf,.csv,.xlsx,.xls,.tsv"
           style={{ display: 'none' }}
           {...register(name as keyof Record<string, FileList>)}
         />
         {uploadState.uploaded ? (
-          <>
-            <div className={hasWarning ? styles.dropTextWarn : styles.dropText}>
-              {hasWarning
-                ? (isVerifyFailure ? 'Could not verify yet' : 'Wrong file')
-                : isChecking
-                  ? 'Checking file type and month…'
-                  : '✓ Uploaded'}
-            </div>
-            {!hasWarning && uploadState.fileName && (
+          <div className={styles.uploadBody}>
+            {uploadState.statusLine ? (
+              <span className={`${styles.statusBadge} ${badgeClassForState(uploadState)}`}>
+                {isChecking ? (
+                  <span className={styles.badgeSpinner} aria-hidden />
+                ) : null}
+                {uploadState.statusLine}
+              </span>
+            ) : null}
+            {uploadState.fileName ? (
               <div className={styles.fileName}>{uploadState.fileName}</div>
-            )}
-            {uploadState.detail && !hasWarning && (
-              <div className={styles.dropMeta} style={{ marginTop: 6 }}>
-                {uploadState.detail}
-              </div>
-            )}
-            {hasWarning && uploadState.warning && (
+            ) : null}
+            <div className={styles.metaRow}>
+              {uploadState.sizeLabel ? (
+                <span className={styles.metaChip}>{uploadState.sizeLabel}</span>
+              ) : null}
+              {uploadState.periodLabel && status !== 'checking' ? (
+                <span className={styles.metaChipPeriod}>{uploadState.periodLabel}</span>
+              ) : null}
+              {uploadState.periodLabel && isChecking ? (
+                <span className={styles.metaChipPending}>{uploadState.periodLabel}?</span>
+              ) : null}
+            </div>
+            {isChecking ? (
+              <p className={styles.checkingHint}>
+                Opening file, mapping to templates, and checking the statement month…
+              </p>
+            ) : null}
+            {uploadState.warning ? (
               <div className={styles.warning}>{uploadState.warning}</div>
-            )}
-          </>
+            ) : null}
+          </div>
         ) : (
           <>
             <div className={styles.dropText}>Drop file here, or click to browse</div>
-            <div className={styles.dropMeta}>CSV or XLSX · 10 MB max</div>
+            <div className={styles.dropMeta}>PDF, CSV, or XLSX · 10 MB max</div>
           </>
         )}
       </label>

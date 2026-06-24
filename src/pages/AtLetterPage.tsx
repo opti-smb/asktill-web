@@ -34,12 +34,14 @@ export default function AtLetterPage() {
   const { historyReady, savedCount, primaryReport } = useReportSync();
   const { statementId: rollingStatementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
-  const [activeView, setActiveView] = useState<string>(ROLLING_VIEW);
+  /** null = default to latest month only; user picks rolling quarter explicitly. */
+  const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
 
   const latestMonthReport = primaryReport ?? null;
   const monthStatementId =
     latestMonthReport?.statement_id ?? rollingStatementId ?? null;
 
+  const activeView = viewMode ?? (monthStatementId ?? ROLLING_VIEW);
   const monthOnly = activeView !== ROLLING_VIEW;
   const activeStatementId = monthOnly ? monthStatementId : rollingStatementId;
   const letterStatementId = activeStatementId ?? undefined;
@@ -49,11 +51,15 @@ export default function AtLetterPage() {
   const showViewFilters = savedCount >= 1 && Boolean(monthStatementId);
 
   useEffect(() => {
-    if (activeView === ROLLING_VIEW) return;
+    setViewMode(null);
+  }, [result?.statement_id, primaryReport?.statement_id]);
+
+  useEffect(() => {
+    if (viewMode !== 'month') return;
     if (!monthStatementId) {
-      setActiveView(ROLLING_VIEW);
+      setViewMode(null);
     }
-  }, [monthStatementId, activeView]);
+  }, [monthStatementId, viewMode]);
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
@@ -79,8 +85,8 @@ export default function AtLetterPage() {
   }
 
   const periodMeta = periodLabel?.trim() || 'AT LETTER';
-  const showLetter = Boolean(html);
-  const showLoading = !showLetter && (loading || !letterStatementId);
+  const showLoading = loading || !letterStatementId;
+  const showLetter = Boolean(html) && !showLoading;
 
   return (
     <>
@@ -99,7 +105,7 @@ export default function AtLetterPage() {
                 <button
                   type="button"
                   className={`${styles.viewFilter} ${activeView === ROLLING_VIEW ? styles.viewFilterActive : ''}`}
-                  onClick={() => setActiveView(ROLLING_VIEW)}
+                  onClick={() => setViewMode('rolling')}
                 >
                   Last 3 months
                 </button>
@@ -107,7 +113,7 @@ export default function AtLetterPage() {
                   type="button"
                   className={`${styles.viewFilter} ${activeView !== ROLLING_VIEW ? styles.viewFilterActive : ''}`}
                   onClick={() => {
-                    if (monthStatementId) setActiveView(monthStatementId);
+                    if (monthStatementId) setViewMode('month');
                   }}
                 >
                   {monthOnlyLabel(latestMonthReport)}

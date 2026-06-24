@@ -19,10 +19,12 @@ import {
   logoutApi,
   normalizeUser,
   resetUserScopedState,
+  resetSessionExpiryDispatchGuard,
   SESSION_EXPIRED_EVENT,
   setToken,
   type AuthUser,
   warmupServices,
+  dispatchSessionExpiredOnce,
 } from '../lib/api';
 import { clearUserAtLetterOnLogout, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
@@ -34,6 +36,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuth: boolean;
   ready: boolean;
+  sessionExpired: boolean;
   login: (email: string, password: string) => Promise<void>;
   establishSessionFromResponse: (data: unknown, fallbackEmail?: string) => void;
   loginWithClerkSession: (sessionId: string) => Promise<void>;
@@ -46,7 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTok] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const expiryTimerRef = useRef<number | null>(null);
+  const expiringRef = useRef(false);
 
   const clearExpiryTimer = useCallback(() => {
     if (expiryTimerRef.current != null) {
@@ -59,23 +64,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (accessToken: string) => {
       clearExpiryTimer();
       if (isTokenExpired(accessToken)) {
-        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        dispatchSessionExpiredOnce();
         return;
       }
       const expiry = getTokenExpiryMs(accessToken);
       if (expiry == null) {
         expiryTimerRef.current = window.setTimeout(() => {
-          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+          dispatchSessionExpiredOnce();
         }, SESSION_TTL_MS);
         return;
       }
       const delay = expiry - Date.now();
       if (delay <= 0) {
-        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        dispatchSessionExpiredOnce();
         return;
       }
       expiryTimerRef.current = window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        dispatchSessionExpiredOnce();
       }, delay);
     },
     [clearExpiryTimer],
@@ -85,21 +90,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     warmupServices();
   }, []);
 
-  const clearSession = useCallback(async () => {
-    const stored = getToken();
-    const hadToken = Boolean(stored);
-    const logoutUserId = user?.userId || (stored ? getTokenSubject(stored) : null);
-    if (logoutUserId) {
-      clearUserAtLetterOnLogout(logoutUserId);
-    }
-    clearAppSession();
-    setTok(null);
-    setUser(null);
-    window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
-    if (hadToken) {
-      await logoutApi();
-    }
-  }, [user?.userId]);
+  const clearSession = useCallback(
+    async (options?: { expired?: boolean }) => {
+      const stored = getToken();
+      const hadToken = Boolean(stored);
+      const logoutUserId = user?.userId || (stored ? getTokenSubject(stored) : null);
+      if (logoutUserId) {
+        clearUserAtLetterOnLogout(logoutUserId);
+      }
+      clearAppSession();
+      setTok(null);
+      setUser(null);
+      setSessionExpired(options?.expired === true);
+      window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+      if (hadToken) {
+        await logoutApi();
+      }
+    },
+    [user?.userId],
+  );
+
+  const expireSession = useCallback(async () => {
+    if (expiringRef.current) return;
+    expiringRef.current = true;
+    clearExpiryTimer();
+    setSessionExpired(true);
+    await clearSession({ expired: true });
+  }, [clearExpiryTimer, clearSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setTok(null);
           setUser(null);
+          setSessionExpired(true);
           setReady(true);
         }
         return;
@@ -143,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) {
             setTok(null);
             setUser(null);
+            setSessionExpired(true);
           }
         } else if (!cancelled) {
           const userId = getTokenSubject(stored);
@@ -168,18 +187,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onExpired = () => {
-      void clearSession();
+      void expireSession();
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
-  }, [clearSession]);
+  }, [expireSession]);
 
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
       const stored = getToken();
       if (stored && isTokenExpired(stored)) {
-        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        dispatchSessionExpiredOnce();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -189,6 +208,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyAuthResponse = useCallback((data: unknown, fallbackEmail?: string) => {
     const accessToken = extractAccessToken(data);
     if (!accessToken) throw new Error('No token in response');
+    expiringRef.current = false;
+    resetSessionExpiryDispatchGuard();
+    setSessionExpired(false);
     setToken(accessToken);
     setTok(accessToken);
     scheduleSessionExpiry(accessToken);
@@ -237,7 +259,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     clearExpiryTimer();
-    await clearSession();
+    expiringRef.current = false;
+    resetSessionExpiryDispatchGuard();
+    await clearSession({ expired: false });
   }, [clearExpiryTimer, clearSession]);
 
   const isAuth =
@@ -245,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, isAuth, ready, login, establishSessionFromResponse, loginWithClerkSession, logout }}
+      value={{ token, user, isAuth, ready, sessionExpired, login, establishSessionFromResponse, loginWithClerkSession, logout }}
     >
       {children}
     </AuthContext.Provider>
