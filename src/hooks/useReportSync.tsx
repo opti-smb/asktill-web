@@ -82,13 +82,13 @@ export function hasRecentAnalyzeSession(): boolean {
   return consumeJustAnalyzedGrace();
 }
 
-/** True only when the server has saved reports and session matches. */
+/** True when dashboard tabs can render live analysis (not welcome/empty). */
 export function useHasLiveDashboardAnalysis(result: AnalyzeResult | null | undefined): boolean {
   const { historyReady, savedCount } = useReportSync();
-  if (!Boolean(result?.analysis)) return false;
-  if (hasRecentAnalyzeSession() || result?.statement_id) return true;
-  if (!historyReady) return false;
-  return savedCount > 0;
+  if (Boolean(result?.analysis)) return true;
+  if (hasRecentAnalyzeSession() && result?.statement_id) return true;
+  if (!historyReady) return Boolean(result?.statement_id);
+  return savedCount > 0 && Boolean(result?.statement_id);
 }
 
 export function useReportSync(): ReportSyncContextValue {
@@ -223,7 +223,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             && sessionStatementId !== primary?.statement_id;
           const activeViewId = getActiveStatementViewId()?.trim();
           const pinnedView =
-            Boolean(activeViewId && sessionStatementId === activeViewId && sessionResult?.analysis);
+            Boolean(activeViewId && sessionStatementId === activeViewId);
 
           const statementId = resolveAtLetterStatementId({
             sessionStatementId: sessionResult?.statement_id,
@@ -276,6 +276,15 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
               /* overview can still open saved report manually */
             }
           }
+          return;
+        }
+
+        const sessionResult = resultRef.current;
+        const keepSession =
+          hasRecentAnalyzeSession()
+          || Boolean(getAnalyzeAnalysis(sessionResult))
+          || Boolean(sessionResult?.statement_id?.trim());
+        if (keepSession) {
           return;
         }
 
