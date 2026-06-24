@@ -52,8 +52,9 @@ export async function prefetchAtLetterHtml(
         /* cache may not be ready yet after analyze — retry */
       }
       if (attempt + 1 < maxAttempts) {
+        const delayMs = monthOnly ? 600 * (attempt + 1) : 1500 * (attempt + 1);
         await new Promise((resolve) => {
-          window.setTimeout(resolve, 1500 * (attempt + 1));
+          window.setTimeout(resolve, delayMs);
         });
       }
     }

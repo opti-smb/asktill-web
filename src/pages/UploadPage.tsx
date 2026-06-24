@@ -30,6 +30,8 @@ import {
   type UploadValidationResult,
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
+import { pickPrimarySavedReport } from '../lib/atLetterStatement';
+import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import type { FileUploadState } from '../types';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
 import styles from './UploadPage.module.css';
@@ -488,6 +490,13 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     [statementDuplicate, mergedValidation],
   );
 
+  useEffect(() => {
+    if (!savedStatementId?.trim()) return;
+    void prefetchAtLetterHtml(savedStatementId, { monthOnly: true });
+    void prefetchAtLetterHtml(savedStatementId, { monthOnly: false });
+    void fetchSavedReport(savedStatementId).catch(() => undefined);
+  }, [savedStatementId]);
+
   const validationSettled = validationSettledForFiles(
     validation,
     validatedFileKeysRef.current === currentFileKeys,
@@ -551,6 +560,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     const streamId = lastStreamStatementId?.trim();
     if (streamId) {
       try {
+        const { ensureAuthServiceReady } = await import('../lib/api');
+        await ensureAuthServiceReady(45_000);
         await openSavedReport(streamId);
         return;
       } catch {
@@ -565,7 +576,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         const { data } = await fetchReportHistory();
         const count = data.reports?.length ?? 0;
         setSavedReportCount(count);
-        const latestId = data.reports?.[0]?.statement_id;
+        const primary = pickPrimarySavedReport(data.reports ?? []);
+        const latestId = primary?.statement_id;
         if (latestId && (count > reportsBefore || force || streamId)) {
           await openSavedReport(streamId ?? latestId);
           return;

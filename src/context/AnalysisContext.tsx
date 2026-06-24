@@ -11,6 +11,7 @@ import {
 import { useAuth } from './AuthContext';
 import {
   analyzeWithProgress,
+  ensureAuthServiceReady,
   extractStatementDuplicate,
   extractUploadMismatches,
   fetchSavedReportWithRetry,
@@ -29,6 +30,10 @@ import {
   markUserHasSavedLetter,
   saveAtLetterCache,
 } from '../lib/atLetterCache';
+import {
+  clearActiveStatementView,
+  pinActiveStatementView,
+} from '../lib/activeStatementView';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import {
@@ -140,6 +145,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   );
 
   const resetSession = useCallback(() => {
+    clearActiveStatementView();
     clearJustAnalyzedGrace();
     clearPipelineWaiters();
     setFilesState({});
@@ -208,6 +214,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     setUploadMismatch(null);
+    clearAtLetterHtmlCache();
+    clearActiveStatementView();
     lastStreamStatementIdRef.current = null;
     setLastStreamStatementId(null);
 
@@ -221,12 +229,19 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         try {
           resolved = await fetchSavedReportWithRetry(sid);
         } catch {
-          /* keep inline SSE payload when fetch fails */
+          try {
+            await ensureAuthServiceReady(45_000);
+            resolved = await fetchSavedReportWithRetry(sid);
+          } catch {
+            /* keep statement_id so dashboard can recover via history sync */
+            resolved = { ...data, statement_id: sid };
+          }
         }
       }
 
       setFilesState(activeFiles);
       setResult(resolved);
+      pinActiveStatementView(resolved.statement_id);
       markJustAnalyzed();
       setStatementDuplicate(null);
       setError(null);
@@ -247,9 +262,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       if (resolved.statement_id) {
-        clearAtLetterHtmlCache();
         void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false });
-        void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true });
       }
 
       return resolved;
@@ -261,6 +274,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         if (sid) {
           lastStreamStatementIdRef.current = sid;
           setLastStreamStatementId(sid);
+          if (event.stage === 'done' || event.stage === 'result') {
+            void prefetchAtLetterHtml(sid, { monthOnly: true });
+          }
         }
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
       }, options);
@@ -323,10 +339,12 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
   const loadSavedReport = useCallback((saved: AnalyzeResult) => {
     setResult(saved);
+    pinActiveStatementView(saved.statement_id);
     markJustAnalyzed();
     setError(null);
     setStatementDuplicate(null);
     setUploadMismatch(null);
+    clearAtLetterHtmlCache();
 
     if (isAuth && user?.userId) {
       const preview = buildAtLetterPreview(saved, user, {
