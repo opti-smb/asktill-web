@@ -38,13 +38,27 @@ export async function prefetchAtLetterHtml(
   const pending = inflight.get(key);
   if (pending) return pending;
 
-  const task = fetchAtLetterHtmlPreview(id, { monthOnly })
-    .then(({ data }) => {
-      const html = typeof data === 'string' ? data : String(data ?? '');
-      if (html) htmlByKey.set(key, html);
-      return html || null;
-    })
-    .catch(() => null)
+  const task = (async () => {
+    const maxAttempts = monthOnly ? 6 : 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const { data } = await fetchAtLetterHtmlPreview(id, { monthOnly });
+        const html = typeof data === 'string' ? data : String(data ?? '');
+        if (html) {
+          htmlByKey.set(key, html);
+          return html;
+        }
+      } catch {
+        /* cache may not be ready yet after analyze — retry */
+      }
+      if (attempt + 1 < maxAttempts) {
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 1500 * (attempt + 1));
+        });
+      }
+    }
+    return null;
+  })()
     .finally(() => {
       inflight.delete(key);
     });

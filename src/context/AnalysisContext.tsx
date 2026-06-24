@@ -241,10 +241,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       }
 
       if (resolved.statement_id) {
-        void Promise.all([
-          prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true }),
-          prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false }),
-        ]);
+        void prefetchAtLetterHtml(resolved.statement_id, { monthOnly: false });
+        await prefetchAtLetterHtml(resolved.statement_id, { monthOnly: true });
       }
 
       if (progressStarted) {
