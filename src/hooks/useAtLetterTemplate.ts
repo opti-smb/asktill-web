@@ -29,6 +29,7 @@ export function useAtLetterTemplate(): {
 
   const sessionStatementId = sessionResult?.statement_id ?? undefined;
   const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
+  const inAnalyzeGrace = hasRecentAnalyzeSession();
 
   const cachedStatementId = useMemo(() => {
     if (!user?.userId) return undefined;
@@ -36,7 +37,8 @@ export function useAtLetterTemplate(): {
   }, [user?.userId]);
 
   const statementId = useMemo(() => {
-    if (isAuth && historyReady && savedCount === 0) {
+    const inGrace = hasRecentAnalyzeSession();
+    if (isAuth && historyReady && savedCount === 0 && !inGrace && !sessionStatementId) {
       return undefined;
     }
     const activeViewId = getActiveStatementViewId();
@@ -64,7 +66,11 @@ export function useAtLetterTemplate(): {
 
   const isSample = ready && !isAuth;
   const needsSignIn = false;
-  const hasLiveLetter = ready && isAuth && savedCount > 0 && Boolean(statementId);
+  const hasLiveLetter =
+    ready
+    && isAuth
+    && Boolean(statementId)
+    && (savedCount > 0 || inAnalyzeGrace || Boolean(sessionAnalysis));
   const mode: 'sample' | 'live' | 'empty' = isSample
     ? 'sample'
     : hasLiveLetter

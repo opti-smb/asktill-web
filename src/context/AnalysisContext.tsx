@@ -48,6 +48,7 @@ import {
   type AnalyzeProgressState,
 } from '../lib/analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from '../lib/analyzeResponse';
+import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 
 interface AnalysisContextValue {
   files: UploadFiles;
@@ -70,6 +71,7 @@ interface AnalysisContextValue {
   loadSavedReport: (saved: AnalyzeResult) => void;
   clearResult: () => void;
   lastStreamStatementId: string | null;
+  getLastStreamStatementId: () => string | null;
 }
 
 const AnalysisContext = createContext<AnalysisContextValue | null>(null);
@@ -199,6 +201,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [analyzeProgress]);
 
+  const getLastStreamStatementId = useCallback(
+    () => lastStreamStatementIdRef.current?.trim() || null,
+    [],
+  );
+
   const runAnalyze = useCallback(async (
     override?: UploadFiles,
     options?: { force?: boolean },
@@ -224,7 +231,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     const finishWithResult = async (data: AnalyzeResult, activeFiles: UploadFiles) => {
       let resolved = data;
       const sid = data.statement_id?.trim();
-      const hasPayload = Boolean(data.analysis && data.report);
+      const hasPayload = Boolean(getAnalyzeAnalysis(data));
       if (sid && !hasPayload) {
         try {
           resolved = await fetchSavedReportWithRetry(sid);
@@ -389,6 +396,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       loadSavedReport,
       clearResult,
       lastStreamStatementId,
+      getLastStreamStatementId,
     }),
     [
       files,
@@ -408,6 +416,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       loadSavedReport,
       clearResult,
       lastStreamStatementId,
+      getLastStreamStatementId,
     ]
   );
 

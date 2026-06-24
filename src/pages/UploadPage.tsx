@@ -31,6 +31,7 @@ import {
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
 import { pickPrimarySavedReport } from '../lib/atLetterStatement';
+import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import type { FileUploadState } from '../types';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
@@ -197,6 +198,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     clearStatementDuplicate,
     loadSavedReport,
     lastStreamStatementId,
+    getLastStreamStatementId,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
   const [showPreviousReports, setShowPreviousReports] = useState(false);
@@ -552,12 +554,12 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       pos: posFile,
       ecommerce: ecommerceFile,
     }, force ? { force: true } : undefined);
-    if (result) {
+    if (getAnalyzeAnalysis(result)) {
       navigate(DEFAULT_DASHBOARD_PATH);
       return;
     }
 
-    const streamId = lastStreamStatementId?.trim();
+    const streamId = getLastStreamStatementId() ?? lastStreamStatementId?.trim();
     if (streamId) {
       try {
         const { ensureAuthServiceReady } = await import('../lib/api');
@@ -578,7 +580,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         setSavedReportCount(count);
         const primary = pickPrimarySavedReport(data.reports ?? []);
         const latestId = primary?.statement_id;
-        if (latestId && (count > reportsBefore || force || streamId)) {
+        if (latestId && (streamId || count > reportsBefore || force)) {
           await openSavedReport(streamId ?? latestId);
           return;
         }
