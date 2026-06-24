@@ -11,6 +11,7 @@ import {
   type AnalyzeProgressEvent,
 } from './analyzeProgress';
 import type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
+import { getAnalyzeAnalysis } from './analyzeResponse';
 import { periodKeyFromLabel, pickPrimarySavedReport } from './atLetterStatement';
 
 export { formatAskResponseForChat } from './analyzeResponse';
@@ -1123,6 +1124,7 @@ async function analyzeViaStream(
   let result: AnalyzeResult | null = null;
   const pending = { id: null as string | null };
   let persistFailed = false;
+  let streamDone = false;
 
   const parseSseEvent = (line: string): AnalyzeProgressEvent | null => {
     if (!line.startsWith('data: ')) return null;
@@ -1143,6 +1145,9 @@ async function analyzeViaStream(
         result = event.result as AnalyzeResult;
       }
       onEvent(event);
+      if (result && getAnalyzeAnalysis(result)) {
+        streamDone = true;
+      }
       return;
     }
     if (event.stage === 'complete') {
@@ -1151,6 +1156,9 @@ async function analyzeViaStream(
         result = event.result as AnalyzeResult;
       }
       onEvent(event);
+      if (result && getAnalyzeAnalysis(result)) {
+        streamDone = true;
+      }
       return;
     }
     if (event.stage === 'error') {
@@ -1171,6 +1179,14 @@ async function analyzeViaStream(
 
   try {
     while (true) {
+      if (streamDone) {
+        try {
+          await reader.cancel();
+        } catch {
+          /* stream already closed */
+        }
+        break;
+      }
       const { done, value } = await reader.read();
       if (done) break;
       bumpStreamTimeout();
@@ -1180,9 +1196,11 @@ async function analyzeViaStream(
       for (const line of parts) {
         const trimmed = line.trim();
         if (trimmed) consumeLine(trimmed);
+        if (streamDone) break;
       }
+      if (streamDone) break;
     }
-    if (buffer.trim()) consumeLine(buffer.trim());
+    if (!streamDone && buffer.trim()) consumeLine(buffer.trim());
   } catch (readErr) {
     const readMessage = readErr instanceof Error ? readErr.message : String(readErr);
     const aborted =

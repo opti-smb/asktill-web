@@ -228,6 +228,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
     setAnalyzeProgress(buildInitialAnalyzeProgress());
 
+    let inlineResult: AnalyzeResult | null = null;
+
     const finishWithResult = async (data: AnalyzeResult, activeFiles: UploadFiles) => {
       let resolved = data;
       const sid = data.statement_id?.trim();
@@ -285,8 +287,21 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
             void prefetchAtLetterHtml(sid, { monthOnly: true });
           }
         }
+        if (event.stage === 'result' && event.result) {
+          const payload = event.result as AnalyzeResult;
+          if (getAnalyzeAnalysis(payload)) {
+            inlineResult = payload;
+            setAnalyzeProgress(null);
+            return;
+          }
+        }
         setAnalyzeProgress((prev) => (prev ? applyPipelineEvent(prev, event) : prev));
       }, options);
+
+      if (inlineResult && getAnalyzeAnalysis(inlineResult)) {
+        clearPipelineWaiters();
+        return await finishWithResult(inlineResult, active);
+      }
 
       await waitForPipelineDisplay();
       return await finishWithResult(data, active);

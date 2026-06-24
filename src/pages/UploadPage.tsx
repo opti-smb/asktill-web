@@ -554,7 +554,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       pos: posFile,
       ecommerce: ecommerceFile,
     }, force ? { force: true } : undefined);
-    if (getAnalyzeAnalysis(result)) {
+    if (result && (getAnalyzeAnalysis(result) || result.statement_id)) {
       navigate(DEFAULT_DASHBOARD_PATH);
       return;
     }
