@@ -341,6 +341,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       ecommerce: Boolean(ecommerceKey),
     });
     setValidationError(null);
+    warmupBackend();
 
     const timer = window.setTimeout(() => {
       void (async () => {

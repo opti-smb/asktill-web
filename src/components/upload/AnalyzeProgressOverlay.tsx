@@ -22,20 +22,20 @@ function subtitleForProgress(progress: AnalyzeProgressState, allDone: boolean): 
   if (progress.targetIndex >= DASHBOARD_SUB_STEP_START) {
     return 'Building your dashboard — status updates as each part completes.';
   }
-  if (progress.activeIndex === 0 && progress.targetIndex === 0) {
+  if (progress.targetIndex === 0 && !progress.complete) {
     return 'Uploading to the server — this can take longer on production than local dev.';
   }
   return 'Steps update live as the server processes your files.';
 }
 
 export default function AnalyzeProgressOverlay({ progress }: Props) {
-  const { steps, activeIndex, targetIndex, complete } = progress;
+  const { steps, targetIndex, complete } = progress;
   const allDone = isPipelineDisplayComplete(progress);
-  const inDashboardPhase = targetIndex >= DASHBOARD_SUB_STEP_START || activeIndex >= DASHBOARD_SUB_STEP_START;
+  const inDashboardPhase = targetIndex >= DASHBOARD_SUB_STEP_START;
 
   const mainSteps = steps.slice(0, MAIN_PIPELINE_STEP_COUNT);
 
-  const dashboardDone = complete || activeIndex > DASHBOARD_SUB_STEP_END;
+  const dashboardDone = complete || targetIndex > DASHBOARD_SUB_STEP_END;
   const dashboardActive = inDashboardPhase && !dashboardDone;
   const dashboardDetail = dashboardActive ? dashboardLiveDetail(progress) : null;
 
@@ -56,9 +56,9 @@ export default function AnalyzeProgressOverlay({ progress }: Props) {
 
         <ul className={styles.log}>
           {mainSteps.map((step, index) => {
-            const done = index < activeIndex;
-            const active = index === activeIndex && activeIndex < MAIN_PIPELINE_STEP_COUNT;
-            const pending = index > activeIndex;
+            const done = complete || index < targetIndex;
+            const active = !complete && index === targetIndex;
+            const pending = !complete && index > targetIndex;
             const showDetail = Boolean(step.detail) && (done || active);
             return (
               <li

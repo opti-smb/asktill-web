@@ -3,6 +3,8 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { isTokenExpired } from './jwt';
 
 import {
+  ANALYZE_CONNECT_TIMEOUT_MS,
+  ANALYZE_STREAM_TIMEOUT_MS,
   ANALYZE_TIMEOUT_MS,
   buildFallbackPipelineEvents,
   CLASSIC_PIPELINE_STEP_MS,
@@ -1026,11 +1028,26 @@ async function analyzeViaStream(
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
-  let timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
-  const bumpStreamTimeout = () => {
-    window.clearTimeout(timeoutId);
-    timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+  let timeoutId: number | null = null;
+  const clearStreamTimeout = () => {
+    if (timeoutId != null) {
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
   };
+  const startConnectTimeout = () => {
+    clearStreamTimeout();
+    timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_CONNECT_TIMEOUT_MS);
+  };
+  const startReadTimeout = () => {
+    clearStreamTimeout();
+    timeoutId = window.setTimeout(() => controller.abort(), ANALYZE_STREAM_TIMEOUT_MS);
+  };
+  const bumpStreamTimeout = () => {
+    startReadTimeout();
+  };
+
+  startConnectTimeout();
 
   const streamUrl = `${mainApiBaseUrl()}/api/analyze/stream${force ? '?force=true' : ''}`;
 
@@ -1043,21 +1060,25 @@ async function analyzeViaStream(
       signal: controller.signal,
     });
   } catch (err) {
+    clearStreamTimeout();
     if ((err as Error).name === 'AbortError') {
       throw new Error(
-        `Analysis timed out after ${Math.round(ANALYZE_TIMEOUT_MS / 1000)} seconds. Try again with smaller files.`,
+        `Analysis timed out waiting for the server (${Math.round(ANALYZE_CONNECT_TIMEOUT_MS / 1000)}s). `
+        + 'Try again — large PDF uploads can take longer on production.',
       );
     }
     throw err;
   }
 
+  startReadTimeout();
+
   if (res.status === 404 || res.status === 405) {
-    window.clearTimeout(timeoutId);
+    clearStreamTimeout();
     throw Object.assign(new Error('STREAM_UNAVAILABLE'), { code: 'STREAM_UNAVAILABLE' });
   }
 
   if (!res.ok) {
-    window.clearTimeout(timeoutId);
+    clearStreamTimeout();
     let payload: { detail?: unknown; message?: string } | null = null;
     try {
       payload = (await res.json()) as { detail?: unknown; message?: string };
@@ -1078,7 +1099,7 @@ async function analyzeViaStream(
   }
 
   if (!res.body) {
-    window.clearTimeout(timeoutId);
+    clearStreamTimeout();
     throw new Error('Analysis stream unavailable.');
   }
 
@@ -1150,13 +1171,20 @@ async function analyzeViaStream(
       throw readErr;
     }
     if (!pending.id && !result) {
+      try {
+        result = await recoverLatestSavedAnalyzeResult();
+      } catch {
+        result = null;
+      }
+    }
+    if (!pending.id && !result) {
       throw new Error(
         `Analysis connection closed before finishing${readMessage ? `: ${readMessage}` : ''}. `
         + 'The server may still have saved your report — check Previous reports or try again.',
       );
     }
   } finally {
-    window.clearTimeout(timeoutId);
+    clearStreamTimeout();
   }
 
   if (!result && pending.id) {
@@ -1233,6 +1261,7 @@ export async function analyzeWithProgress(
         err.message === 'Analysis finished without a result.'
         || err.message === 'Analysis finished but saving failed. Open Previous reports or try again.'
         || /Analysis connection closed before finishing/i.test(err.message)
+        || /Analysis timed out/i.test(err.message)
         || /BodyStreamBuffer was aborted/i.test(err.message)
       )
     ) {
