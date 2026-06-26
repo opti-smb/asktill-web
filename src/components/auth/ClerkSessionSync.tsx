@@ -4,6 +4,7 @@ import { useClerk } from '@clerk/clerk-react';
 import { useAuth } from '../../context/AuthContext';
 import { USER_LOGOUT_EVENT } from '../../lib/api';
 import { clearClerkSession, isClerkEnabled, shouldRetainClerkSession } from '../../lib/clerk';
+import { isSessionExpiredPersisted } from '../../lib/session';
 
 /** Drop stale Clerk sessions when the app JWT is gone (login uses Google/OTP only transiently). */
 export default function ClerkSessionSync() {
@@ -14,6 +15,7 @@ export default function ClerkSessionSync() {
 
   useEffect(() => {
     if (!isClerkEnabled() || !ready || !clerk.loaded) return;
+    if (sessionExpired || isSessionExpiredPersisted()) return;
     if (isAuth || shouldRetainClerkSession(pathname)) return;
     if (!clerk.session?.id || clearing.current) return;
 
@@ -28,6 +30,7 @@ export default function ClerkSessionSync() {
     if (!isClerkEnabled()) return;
 
     const onLogout = () => {
+      if (isSessionExpiredPersisted()) return;
       if (clerk.loaded && clerk.session?.id) {
         void clearClerkSession(clerk, { stayOnPage: true });
       }
