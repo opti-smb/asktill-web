@@ -29,7 +29,7 @@ import {
 import { clearUserAtLetterOnLogout, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
-import { SESSION_TTL_MS } from '../lib/session';
+import { SESSION_TTL_MS, clearSessionExpiredPersisted, markSessionExpiredPersisted, isSessionExpiredPersisted } from '../lib/session';
 
 interface AuthContextValue {
   token: string | null;
@@ -101,7 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAppSession();
       setTok(null);
       setUser(null);
-      setSessionExpired(options?.expired === true);
+      if (options?.expired === true) {
+        markSessionExpiredPersisted();
+        setSessionExpired(true);
+      } else {
+        clearSessionExpiredPersisted();
+        setSessionExpired(false);
+      }
       window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
       if (hadToken) {
         await logoutApi();
@@ -114,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (expiringRef.current) return;
     expiringRef.current = true;
     clearExpiryTimer();
+    markSessionExpiredPersisted();
     setSessionExpired(true);
     await clearSession({ expired: true });
   }, [clearExpiryTimer, clearSession]);
@@ -127,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setTok(null);
           setUser(null);
+          setSessionExpired(isSessionExpiredPersisted());
           setReady(true);
         }
         return;
@@ -134,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (isTokenExpired(stored)) {
         clearToken();
+        markSessionExpiredPersisted();
         if (!cancelled) {
           setTok(null);
           setUser(null);
@@ -158,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const status = (err as AxiosError)?.response?.status;
         if (status === 401) {
           clearToken();
+          markSessionExpiredPersisted();
           if (!cancelled) {
             setTok(null);
             setUser(null);
@@ -210,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!accessToken) throw new Error('No token in response');
     expiringRef.current = false;
     resetSessionExpiryDispatchGuard();
+    clearSessionExpiredPersisted();
     setSessionExpired(false);
     setToken(accessToken);
     setTok(accessToken);
