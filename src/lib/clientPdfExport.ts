@@ -1,13 +1,4 @@
-async function loadHtml2Pdf() {
-  const mod = await import('html2pdf.js');
-  return mod.default;
-}
-
-/** Warm the html2pdf chunk after login so the first download is faster on production. */
-export function prefetchClientPdfLibrary(): void {
-  if (typeof window === 'undefined') return;
-  void loadHtml2Pdf().catch(() => undefined);
-}
+import html2pdf from 'html2pdf.js';
 
 async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
   const doc = iframe.contentDocument;
@@ -67,7 +58,6 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
 
     await new Promise((resolve) => window.setTimeout(resolve, 200));
 
-    const html2pdf = await loadHtml2Pdf();
     const blob = await html2pdf()
       .set({
         margin: [6, 6, 8, 6],
