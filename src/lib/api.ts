@@ -3,7 +3,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { isTokenExpired } from './jwt';
 import {
   pdfFilenameFromHtml,
-  renderHtmlDocumentToPdfBlob,
+  renderHtmlDocumentToPdfBlobWithRetry,
 } from './clientPdfExport';
 
 import {
@@ -1532,6 +1532,18 @@ async function downloadSavedCompactPdfFromServer(id: string) {
   throw new Error('Could not download reconciliation PDF.');
 }
 
+async function clientCompactPdfFromHtml(html: string) {
+  const blob = await renderHtmlDocumentToPdfBlobWithRetry(html);
+  const filename = pdfFilenameFromHtml(html);
+  return {
+    data: blob,
+    headers: {
+      'content-disposition': `attachment; filename="${filename}"`,
+      'x-pdf-source': 'browser',
+    },
+  };
+}
+
 /** Pre-built compact reconciliation PDF (same file saved at analyze — instant download). */
 export async function downloadMonthlyReportPdf(statementId: string) {
   const id = statementId.trim();
@@ -1541,20 +1553,10 @@ export async function downloadMonthlyReportPdf(statementId: string) {
 
   const engine = await getBackendPdfEngine();
   if (shouldUseClientPdfExport(engine)) {
-    try {
-      await ensureAuthServiceReady(12_000);
-      const html = await fetchCompactReportHtmlPreview(id);
-      const blob = await renderHtmlDocumentToPdfBlob(html);
-      const filename = pdfFilenameFromHtml(html);
-      return {
-        data: blob,
-        headers: {
-          'content-disposition': `attachment; filename="${filename}"`,
-        },
-      };
-    } catch {
-      /* fall back to server xhtml2pdf */
-    }
+    warmupBackend();
+    await ensureAuthServiceReady(15_000);
+    const html = await fetchCompactReportHtmlPreview(id);
+    return clientCompactPdfFromHtml(html);
   }
 
   return downloadSavedCompactPdfFromServer(id);
@@ -1581,27 +1583,18 @@ export async function downloadCompactReconciliation(bank?: File, pos?: File, eco
     });
 
   if (shouldUseClientPdfExport(await getBackendPdfEngine())) {
-    try {
-      const res = await mainApi.post<string>('/api/analyze/export/compact', form, {
-        params: { preview: 1 },
-        responseType: 'text',
-        timeout: 180_000,
-      });
-      const html = res.data;
-      if (!html?.includes('<html')) {
-        throw new Error('Could not build report preview for PDF export.');
-      }
-      const blob = await renderHtmlDocumentToPdfBlob(html);
-      const filename = pdfFilenameFromHtml(html);
-      return {
-        data: blob,
-        headers: {
-          'content-disposition': `attachment; filename="${filename}"`,
-        },
-      };
-    } catch {
-      /* fall back to server-generated compact PDF */
+    warmupBackend();
+    await ensureAuthServiceReady(15_000);
+    const res = await mainApi.post<string>('/api/analyze/export/compact', form, {
+      params: { preview: 1 },
+      responseType: 'text',
+      timeout: 180_000,
+    });
+    const html = res.data;
+    if (!html?.includes('<html')) {
+      throw new Error('Could not build report preview for PDF export.');
     }
+    return clientCompactPdfFromHtml(html);
   }
 
   return downloadFromServer();
