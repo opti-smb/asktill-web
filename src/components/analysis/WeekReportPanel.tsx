@@ -1,73 +1,134 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fmtMoney, type WeekReportSliceApi, type WeekReportsViewApi } from '../../lib/analyzeResponse';
+import {
+  fmtMoney,
+  type WeekChannelSummaryApi,
+  type WeekReportSliceApi,
+  type WeekReportsViewApi,
+} from '../../lib/analyzeResponse';
 import styles from './PostmanPanels.module.css';
 import weekStyles from './WeekReportPanel.module.css';
 
-function ChannelTable({ week }: { week: WeekReportSliceApi }) {
-  const rows = [
-    week.pos ? { ...week.pos, key: 'pos' } : null,
-    week.ecommerce ? { ...week.ecommerce, key: 'ecommerce' } : null,
-    week.bank ? { ...week.bank, key: 'bank' } : null,
-  ].filter(Boolean) as Array<WeekReportSliceApi['pos'] & { key: string }>;
-
-  if (!rows.length) {
-    return (
-      <p className={weekStyles.empty}>
-        No dated POS, e-commerce, or bank rows found for this week in your uploads.
-      </p>
-    );
+/** Show $0.00 instead of em dash so POS / e-com rows read clearly. */
+function fmtMoneyZero(v: unknown): string {
+  if (v == null || (typeof v === 'number' && Number.isNaN(v))) {
+    return fmtMoney(0);
   }
+  return fmtMoney(v);
+}
+
+function num(v: unknown): number {
+  return typeof v === 'number' && !Number.isNaN(v) ? v : 0;
+}
+
+function weekProcessorTotals(week: WeekReportSliceApi) {
+  const pos = week.pos;
+  const ecom = week.ecommerce;
+
+  const posGross = num(pos?.gross_sales);
+  const ecomGross = num(ecom?.gross_sales);
+  const posRefunds = num(pos?.refunds);
+  const ecomRefunds = num(ecom?.refunds);
+  const posNet = num(pos?.net_sales ?? pos?.gross_sales);
+  const ecomNet = num(ecom?.net_sales ?? ecom?.gross_sales);
+  const posFees = num(pos?.fees);
+  const ecomFees = num(ecom?.fees);
+  const posNetBank = num(pos?.net_to_bank);
+  const ecomNetBank = num(ecom?.net_to_bank);
+
+  return {
+    gross: posGross + ecomGross,
+    refunds: posRefunds + ecomRefunds,
+    netSales: posNet + ecomNet,
+    fees: posFees + ecomFees,
+    netToBank: posNetBank + ecomNetBank,
+    posNetBank,
+    ecomNetBank,
+  };
+}
+
+function ProcessorTable({ week }: { week: WeekReportSliceApi }) {
+  const totals = weekProcessorTotals(week);
+
+  const rows: Array<{
+    key: string;
+    label: string;
+    channel: WeekChannelSummaryApi | null | undefined;
+  }> = [
+    { key: 'pos', label: 'POS (in-store)', channel: week.pos },
+    { key: 'ecom', label: 'E-commerce', channel: week.ecommerce },
+  ];
 
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Channel</th>
-            <th>Gross sales</th>
-            <th>Refunds</th>
-            <th>Net revenue</th>
-            <th>Fees</th>
-            <th>Net to bank</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <td>
-                <div>{row.label}</div>
-                {row.activity_count ? (
-                  <div className={weekStyles.activity}>
-                    {row.activity_count} {row.activity_label}
-                  </div>
-                ) : null}
-              </td>
-              <td>{fmtMoney(row.gross_sales)}</td>
-              <td>{fmtMoney(row.refunds)}</td>
-              <td>{fmtMoney(row.net_sales ?? row.gross_sales)}</td>
-              <td>{fmtMoney(row.fees)}</td>
-              <td>{fmtMoney(row.net_to_bank)}</td>
+    <>
+      <div className={weekStyles.summaryGrid}>
+        <div className={weekStyles.summaryCard}>
+          <span className={weekStyles.summaryLabel}>POS · net to bank</span>
+          <strong className={weekStyles.summaryValue}>{fmtMoneyZero(totals.posNetBank)}</strong>
+        </div>
+        <div className={weekStyles.summaryCard}>
+          <span className={weekStyles.summaryLabel}>E-commerce · net to bank</span>
+          <strong className={weekStyles.summaryValue}>{fmtMoneyZero(totals.ecomNetBank)}</strong>
+        </div>
+        <div className={`${weekStyles.summaryCard} ${weekStyles.summaryCardHighlight}`}>
+          <span className={weekStyles.summaryLabel}>Expected payouts (POS + e-com)</span>
+          <strong className={weekStyles.summaryValue}>{fmtMoneyZero(totals.netToBank)}</strong>
+        </div>
+      </div>
+
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Channel</th>
+              <th>Gross sales</th>
+              <th>Refunds</th>
+              <th>Net revenue</th>
+              <th>Fees</th>
+              <th>Net to bank</th>
             </tr>
-          ))}
-          <tr className={styles.totalRow}>
-            <td>
-              <strong>WEEK TOTAL</strong>
-            </td>
-            <td>
-              <strong>{fmtMoney(week.total_gross)}</strong>
-            </td>
-            <td>—</td>
-            <td>—</td>
-            <td>
-              <strong>{fmtMoney(week.total_fees)}</strong>
-            </td>
-            <td>
-              <strong>{fmtMoney(week.total_net_to_bank)}</strong>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map(({ key, label, channel }) => (
+              <tr key={key}>
+                <td>
+                  <div>{label}</div>
+                  {channel?.activity_count ? (
+                    <div className={weekStyles.activity}>
+                      {channel.activity_count} {channel.activity_label}
+                    </div>
+                  ) : null}
+                </td>
+                <td>{fmtMoneyZero(channel?.gross_sales)}</td>
+                <td>{fmtMoneyZero(channel?.refunds)}</td>
+                <td>{fmtMoneyZero(channel?.net_sales ?? channel?.gross_sales)}</td>
+                <td>{fmtMoneyZero(channel?.fees)}</td>
+                <td>{fmtMoneyZero(channel?.net_to_bank)}</td>
+              </tr>
+            ))}
+            <tr className={styles.totalRow}>
+              <td>
+                <strong>Week total</strong>
+              </td>
+              <td>
+                <strong>{fmtMoneyZero(totals.gross)}</strong>
+              </td>
+              <td>
+                <strong>{fmtMoneyZero(totals.refunds)}</strong>
+              </td>
+              <td>
+                <strong>{fmtMoneyZero(totals.netSales)}</strong>
+              </td>
+              <td>
+                <strong>{fmtMoneyZero(totals.fees)}</strong>
+              </td>
+              <td>
+                <strong>{fmtMoneyZero(totals.netToBank)}</strong>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -149,14 +210,20 @@ export default function WeekReportPanel({
     );
   }
 
+  const bankCredits = selectedWeek?.bank_credits ?? selectedWeek?.bank?.net_to_bank ?? null;
+  const expectedPayouts = weekProcessorTotals(selectedWeek!).netToBank;
+  const difference =
+    selectedWeek?.difference ??
+    (bankCredits != null ? num(bankCredits) - expectedPayouts : null);
+
   return (
     <section className={styles.panel}>
       <div className={styles.head}>
         <h2 className={styles.title}>Weekly report</h2>
         <p className={styles.sub}>
           {weekReports.period_label
-            ? `${weekReports.period_label} · grouped from dated POS days, e-commerce orders, and bank credits`
-            : 'Grouped from dated POS days, e-commerce orders, and bank credits in your uploads'}
+            ? `${weekReports.period_label} · POS and e-commerce by week, then bank credits compared to expected payouts`
+            : 'POS and e-commerce by week, then bank credits compared to expected payouts'}
         </p>
       </div>
 
@@ -180,22 +247,32 @@ export default function WeekReportPanel({
             <h3 className={styles.blockTitle}>
               Revenue by channel · {selectedWeek.week_title ?? selectedWeek.week_label}
             </h3>
-            <ChannelTable week={selectedWeek} />
+            <ProcessorTable week={selectedWeek} />
           </div>
 
-          {(selectedWeek.bank_credits != null || selectedWeek.difference != null) && (
-            <div className={styles.block}>
-              <h3 className={styles.blockTitle}>Bank reconciliation</h3>
-              <dl className={styles.dl}>
-                <dt>Expected processor payouts</dt>
-                <dd>{fmtMoney(selectedWeek.total_net_to_bank)}</dd>
-                <dt>Bank credits this week</dt>
-                <dd>{fmtMoney(selectedWeek.bank_credits)}</dd>
-                <dt>Difference</dt>
-                <dd>{fmtMoney(selectedWeek.difference)}</dd>
-              </dl>
-            </div>
-          )}
+          <div className={styles.block}>
+            <h3 className={styles.blockTitle}>Bank reconciliation (this week)</h3>
+            <dl className={styles.dl}>
+              <dt>POS net to bank</dt>
+              <dd>{fmtMoneyZero(weekProcessorTotals(selectedWeek).posNetBank)}</dd>
+              <dt>E-commerce net to bank</dt>
+              <dd>{fmtMoneyZero(weekProcessorTotals(selectedWeek).ecomNetBank)}</dd>
+              <dt>Expected processor payouts (POS + e-com)</dt>
+              <dd>{fmtMoneyZero(expectedPayouts)}</dd>
+              <dt>Bank credits this week</dt>
+              <dd>{fmtMoneyZero(bankCredits)}</dd>
+              {selectedWeek.bank?.activity_count ? (
+                <>
+                  <dt>Bank deposit lines</dt>
+                  <dd>
+                    {selectedWeek.bank.activity_count} {selectedWeek.bank.activity_label}
+                  </dd>
+                </>
+              ) : null}
+              <dt>Difference (bank − expected)</dt>
+              <dd>{fmtMoneyZero(difference)}</dd>
+            </dl>
+          </div>
 
           {selectedWeek.notes && selectedWeek.notes.length > 0 && (
             <div className={styles.block}>
