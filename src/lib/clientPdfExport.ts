@@ -7,6 +7,17 @@ const PDF_MARGIN_X_MM = 7;
 const PDF_MARGIN_Y_MM = 8;
 const IMAGE_FORMAT = 'PNG' as const;
 
+/** Crisp text and colors for high-DPI canvas capture. */
+const PDF_CAPTURE_CSS = `
+  html, body, * {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: geometricPrecision !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+`;
+
 async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
   const doc = iframe.contentDocument;
   if (!doc) return;
@@ -26,7 +37,14 @@ async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
     /* ignore */
   }
 
-  await new Promise((resolve) => window.setTimeout(resolve, 1800));
+  await new Promise((resolve) => window.setTimeout(resolve, 2000));
+}
+
+function injectPdfCaptureStyles(doc: Document): void {
+  const style = doc.createElement('style');
+  style.setAttribute('data-pdf-capture', '1');
+  style.textContent = PDF_CAPTURE_CSS;
+  doc.head.appendChild(style);
 }
 
 function canvasHasContent(canvas: HTMLCanvasElement): boolean {
@@ -55,7 +73,12 @@ function a4SliceHeightPx(canvasWidth: number): number {
 }
 
 function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pdf = new jsPDF({
+    unit: 'mm',
+    format: 'a4',
+    orientation: 'portrait',
+    compress: false,
+  });
   const pageW = pdf.internal.pageSize.getWidth();
   const printW = pageW - PDF_MARGIN_X_MM * 2;
 
@@ -75,6 +98,8 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
     if (!ctx) {
       throw new Error('Could not prepare PDF pages.');
     }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle = '#eef2f6';
     ctx.fillRect(0, 0, imgW, sliceH);
     ctx.drawImage(canvas, 0, yOffset, imgW, sliceH, 0, 0, imgW, sliceH);
@@ -92,7 +117,7 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
       printW,
       sliceMmH,
       undefined,
-      'FAST',
+      'NONE',
     );
 
     yOffset += sliceH;
@@ -102,9 +127,10 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
   return pdf.output('blob');
 }
 
+/** ~300 DPI equivalent for 860px report width on A4 printable area. */
 function captureScale(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  return Math.min(2.5, Math.max(2, dpr));
+  return Math.min(4, Math.max(3, Math.round(dpr * 2)));
 }
 
 /** Render server compact-report HTML with the browser engine (full CSS from iframe). */
@@ -133,6 +159,7 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
     doc.open();
     doc.write(html);
     doc.close();
+    injectPdfCaptureStyles(doc);
     await waitForFrameLayout(iframe);
 
     const pageEl = doc.querySelector('.page') as HTMLElement | null;
@@ -146,7 +173,7 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
     iframe.style.height = `${Math.min(contentHeight + 160, 48000)}px`;
     iframe.style.width = `${contentWidth + 40}px`;
 
-    await new Promise((resolve) => window.setTimeout(resolve, 900));
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
 
     const scale = captureScale();
     const canvas = await html2canvas(target, {
@@ -154,13 +181,18 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
       useCORS: true,
       logging: false,
       letterRendering: true,
-      backgroundColor: null,
+      backgroundColor: '#eef2f6',
       windowWidth: contentWidth,
       windowHeight: contentHeight,
       width: contentWidth,
       height: contentHeight,
       scrollX: 0,
       scrollY: 0,
+      onclone: (clonedDoc) => {
+        const style = clonedDoc.createElement('style');
+        style.textContent = PDF_CAPTURE_CSS;
+        clonedDoc.head.appendChild(style);
+      },
       ...(iframe.contentWindow ? { window: iframe.contentWindow } : {}),
     } as Parameters<typeof html2canvas>[1]);
 
