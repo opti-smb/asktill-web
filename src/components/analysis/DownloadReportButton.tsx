@@ -4,6 +4,7 @@ import {
   downloadMonthlyReportPdf,
   downloadWeekReports,
   getApiErrorAsync,
+  getBackendPdfEngine,
   shouldUseClientPdfExport,
   type UploadFiles,
 } from '../../lib/api';
@@ -69,7 +70,8 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
     setExportStage(null);
     setError('');
     try {
-      const useClientPdf = shouldUseClientPdfExport('');
+      const engine = await getBackendPdfEngine();
+      const useClientPdf = shouldUseClientPdfExport(engine);
       setClientPdf(useClientPdf);
       if (isWeek) {
         const { data, headers } = await downloadWeekReports(files.bank, files.pos, files.ecommerce);

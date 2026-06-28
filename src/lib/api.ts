@@ -690,11 +690,12 @@ export async function getBackendPdfEngine(): Promise<string> {
   return pdfEngineFetchInFlight;
 }
 
-/** Server compact PDF on Render; client html2pdf only when VITE_FORCE_CLIENT_PDF=1 (opt-in). */
+/** Browser PDF when Render lacks Playwright; local uses server Playwright PDF. */
 export function shouldUseClientPdfExport(engine: string): boolean {
-  void engine;
   const forced = import.meta.env.VITE_FORCE_CLIENT_PDF;
-  return forced === '1' || forced === 'true';
+  if (forced === '1' || forced === 'true') return true;
+  if (forced === '0' || forced === 'false') return false;
+  return engine !== 'playwright';
 }
 
 export async function fetchCompactReportHtmlPreview(statementId: string): Promise<string> {
@@ -1538,7 +1539,8 @@ export async function downloadMonthlyReportPdf(statementId: string) {
     throw new Error('No saved statement to download.');
   }
 
-  if (shouldUseClientPdfExport('')) {
+  const engine = await getBackendPdfEngine();
+  if (shouldUseClientPdfExport(engine)) {
     try {
       await ensureAuthServiceReady(12_000);
       const html = await fetchCompactReportHtmlPreview(id);
@@ -1551,7 +1553,7 @@ export async function downloadMonthlyReportPdf(statementId: string) {
         },
       };
     } catch {
-      /* fall back to server-generated compact PDF */
+      /* fall back to server xhtml2pdf */
     }
   }
 
@@ -1578,7 +1580,7 @@ export async function downloadCompactReconciliation(bank?: File, pos?: File, eco
       timeout: 180_000,
     });
 
-  if (shouldUseClientPdfExport('')) {
+  if (shouldUseClientPdfExport(await getBackendPdfEngine())) {
     try {
       const res = await mainApi.post<string>('/api/analyze/export/compact', form, {
         params: { preview: 1 },
