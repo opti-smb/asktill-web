@@ -1,6 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { isTokenExpired } from './jwt';
+import {
+  pdfFilenameFromHtml,
+  renderHtmlDocumentToPdfBlob,
+} from './clientPdfExport';
 
 import {
   ANALYZE_CONNECT_TIMEOUT_MS,
@@ -81,10 +85,6 @@ export function clearAppSession() {
   clearToken();
   resetUserScopedState();
   window.dispatchEvent(new CustomEvent(USER_LOGOUT_EVENT));
-}
-
-function isSessionUnauthorized(err: AxiosError): boolean {
-  return err.response?.status === 401;
 }
 
 function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
@@ -179,6 +179,13 @@ function isBackendApiRequest(err: AxiosError): boolean {
   return false;
 }
 
+function isLikelyTimeoutError(err: unknown): boolean {
+  const axiosErr = err as AxiosError;
+  if (axiosErr?.code === 'ECONNABORTED') return true;
+  const message = String(axiosErr?.message ?? '');
+  return /timeout/i.test(message);
+}
+
 function formatApiError(
   d: { detail?: unknown; message?: string; error?: string } | null,
   fallback: string,
@@ -191,7 +198,7 @@ function formatApiError(
         ? 'Cannot reach the API. Ensure Auth (8002) and Backend (8000) are running, then refresh.'
         : 'Cannot reach the server. It may be waking up — wait 30 seconds and try again.';
     }
-    if (axiosErr?.code === 'ECONNABORTED' || String(axiosErr?.message ?? '').includes('timeout')) {
+    if (isLikelyTimeoutError(err)) {
       return import.meta.env.DEV
         ? 'Request timed out. Ensure backend services are running, then try again.'
         : 'Request timed out while the server was waking up. Wait 30 seconds and try again.';
@@ -544,6 +551,8 @@ export function slotIssuesInResult(
 /** Safe gate for Continue — ok flag plus any per-box warning text. */
 export function batchValidationPasses(result: UploadValidationResult | null): boolean {
   if (!result?.ok) return false;
+  if ((result.slot_mismatches?.length ?? 0) > 0) return false;
+  if ((result.period_mismatches?.length ?? 0) > 0) return false;
   if (hasStoredPeriodConflict(result)) return false;
   const w = warningsBySlot(result);
   return !(w.bank || w.pos || w.ecommerce);
@@ -647,6 +656,52 @@ async function probeServiceHealth(url: string, timeoutMs: number): Promise<boole
 
 export function warmupBackend() {
   void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
+}
+
+type BackendHealthPayload = {
+  compact_pdf_engine?: string;
+  compact_pdf_playwright_ready?: boolean;
+};
+
+let pdfEngineCache: { engine: string; at: number } | null = null;
+
+/** Cached backend PDF engine: playwright (local) vs xhtml2pdf (Render). */
+export async function getBackendPdfEngine(): Promise<string> {
+  const now = Date.now();
+  if (pdfEngineCache && now - pdfEngineCache.at < 60_000) {
+    return pdfEngineCache.engine;
+  }
+  try {
+    warmupBackend();
+    const res = await mainApi.get<BackendHealthPayload>('/api/health', { timeout: 20_000 });
+    const engine = String(res.data?.compact_pdf_engine ?? 'unknown');
+    pdfEngineCache = { engine, at: now };
+    return engine;
+  } catch {
+    return 'xhtml2pdf';
+  }
+}
+
+/** Use browser rendering when the server lacks Playwright (production). */
+export function shouldUseClientPdfExport(engine: string): boolean {
+  const forced = import.meta.env.VITE_FORCE_CLIENT_PDF;
+  if (forced === '1' || forced === 'true') return true;
+  if (forced === '0' || forced === 'false') return false;
+  return engine !== 'playwright';
+}
+
+export async function fetchCompactReportHtmlPreview(statementId: string): Promise<string> {
+  const id = statementId.trim();
+  if (!id) throw new Error('No saved statement to download.');
+  const res = await mainApi.get<string>(`/api/reports/${encodeURIComponent(id)}/compact`, {
+    params: { preview: 1 },
+    responseType: 'text',
+    timeout: 120_000,
+  });
+  if (!res.data?.includes('<html')) {
+    throw new Error('Could not load report preview for PDF export.');
+  }
+  return res.data;
 }
 
 async function probeAuthHealth(timeoutMs: number): Promise<boolean> {
@@ -867,7 +922,27 @@ export function extractNotRegistered(err: unknown): NotRegisteredInfo | null {
 /** Stateless JWT — client discards token; safe to call on sign-out. */
 export const logoutApi = () => authApi.post('/api/auth/logout').catch(() => undefined);
 
-export const fetchCurrentUser = () => authApi.get('/api/auth/me');
+export async function fetchCurrentUser() {
+  warmupAuthService();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await authApi.get('/api/auth/me', { timeout: 45_000 });
+    } catch (err) {
+      const axiosErr = err as AxiosError;
+      const retryable =
+        isLikelyTimeoutError(err)
+        || axiosErr?.message === 'Network Error'
+        || !axiosErr?.response
+        || axiosErr?.response?.status === 503
+        || axiosErr?.response?.status === 502
+        || axiosErr?.response?.status === 504;
+      if (!retryable || attempt >= 2) throw err;
+      await ensureAuthServiceReady(attempt >= 1 ? 45_000 : 15_000);
+      await new Promise((resolve) => window.setTimeout(resolve, 1200 * (attempt + 1)));
+    }
+  }
+  throw new Error('Could not verify session.');
+}
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
   authApi.post('/api/auth/change-password', {
@@ -1337,36 +1412,46 @@ export const ask = (question: string, files: UploadFiles = {}) => {
   return mainApi.post('/api/ask', form);
 };
 
+function isRetryableHistoryError(err: unknown): boolean {
+  const axiosErr = err as AxiosError;
+  const status = axiosErr?.response?.status;
+  if (status === 401) {
+    const token = getToken();
+    return Boolean(token && !isTokenExpired(token));
+  }
+  return (
+    status === 503
+    || status === 502
+    || status === 504
+    || isLikelyTimeoutError(err)
+    || axiosErr?.message === 'Network Error'
+    || !axiosErr?.response
+  );
+}
+
 export const fetchReportHistory = async () => {
   warmupBackend();
-  await ensureAuthServiceReady(8_000);
+  warmupAuthService();
+  await ensureAuthServiceReady(15_000);
   const request = () =>
     mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 120_000 });
 
-  try {
-    return await request();
-  } catch (err) {
-    const axiosErr = err as AxiosError;
-    const status = axiosErr?.response?.status;
-    const retryable =
-      status === 503
-      || status === 401
-      || axiosErr?.code === 'ECONNABORTED'
-      || axiosErr?.message === 'Network Error'
-      || !axiosErr?.response;
-    if (!retryable) throw err;
-    await new Promise((resolve) => window.setTimeout(resolve, 2500));
-    await ensureAuthServiceReady(45_000);
-    warmupBackend();
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       return await request();
-    } catch (retryErr) {
-      if (isSessionUnauthorized(retryErr as AxiosError)) {
-        throw retryErr;
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableHistoryError(err) || attempt >= 2) {
+        throw err;
       }
-      throw err;
+      await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
+      await ensureAuthServiceReady(attempt >= 1 ? 45_000 : 20_000);
+      warmupBackend();
+      warmupAuthService();
     }
   }
+  throw lastErr ?? new Error('Could not load saved reports.');
 };
 
 export const fetchSavedReport = async (statementId: string) => ({
@@ -1412,6 +1497,21 @@ export async function downloadMonthlyReportPdf(statementId: string) {
   if (!id) {
     throw new Error('No saved statement to download.');
   }
+
+  const engine = await getBackendPdfEngine();
+  if (shouldUseClientPdfExport(engine)) {
+    await ensureAuthServiceReady(12_000);
+    const html = await fetchCompactReportHtmlPreview(id);
+    const blob = await renderHtmlDocumentToPdfBlob(html);
+    const filename = pdfFilenameFromHtml(html);
+    return {
+      data: blob,
+      headers: {
+        'content-disposition': `attachment; filename="${filename}"`,
+      },
+    };
+  }
+
   const path = `/api/reports/${encodeURIComponent(id)}/compact`;
   const request = () =>
     mainApi.get(path, {
@@ -1455,7 +1555,32 @@ export const downloadSavedReportPdf = (statementId: string) =>
   mainApi.get(`/api/reports/${statementId}/pdf`, { responseType: 'blob' });
 
 /** Compact reconciliation PDF (Postman layout) from saved statement or fresh uploads. */
-export const downloadCompactReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {
+export async function downloadCompactReconciliation(bank?: File, pos?: File, ecommerce?: File) {
+  const engine = await getBackendPdfEngine();
+  if (shouldUseClientPdfExport(engine)) {
+    const form = new FormData();
+    if (bank) form.append('bank', bank, bank.name);
+    if (pos) form.append('pos', pos, pos.name);
+    if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
+    const res = await mainApi.post<string>('/api/analyze/export/compact', form, {
+      params: { preview: 1 },
+      responseType: 'text',
+      timeout: 180_000,
+    });
+    const html = res.data;
+    if (!html?.includes('<html')) {
+      throw new Error('Could not build report preview for PDF export.');
+    }
+    const blob = await renderHtmlDocumentToPdfBlob(html);
+    const filename = pdfFilenameFromHtml(html);
+    return {
+      data: blob,
+      headers: {
+        'content-disposition': `attachment; filename="${filename}"`,
+      },
+    };
+  }
+
   const form = new FormData();
   if (bank) form.append('bank', bank, bank.name);
   if (pos) form.append('pos', pos, pos.name);
@@ -1464,7 +1589,7 @@ export const downloadCompactReconciliation = (bank?: File, pos?: File, ecommerce
     responseType: 'blob',
     timeout: 120_000,
   });
-};
+}
 
 /** @deprecated Use downloadCompactReconciliation */
 export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File) => {
@@ -1503,14 +1628,28 @@ function atLetterLandingHeaders(userId?: string): Record<string, string> {
 }
 
 /** Public landing metadata — user's latest letter or Brookline sample. */
-export const fetchAtLetterLandingMeta = (opts?: { userId?: string; email?: string }) => {
+export async function fetchAtLetterLandingMeta(opts?: { userId?: string; email?: string }) {
   const userId = opts?.userId?.trim();
   const email = opts?.email?.trim();
-  return mainApi.get<AtLetterLandingMeta>('/api/at-letter/landing', {
-    params: email ? { email } : userId ? { userId } : undefined,
-    headers: atLetterLandingHeaders(userId),
-  });
-};
+  warmupBackend();
+  await ensureAuthServiceReady(12_000);
+  const request = () =>
+    mainApi.get<AtLetterLandingMeta>('/api/at-letter/landing', {
+      params: email ? { email } : userId ? { userId } : undefined,
+      headers: atLetterLandingHeaders(userId),
+      timeout: 60_000,
+    });
+
+  try {
+    return await request();
+  } catch (err) {
+    if (!isRetryableHistoryError(err)) throw err;
+    await new Promise((resolve) => window.setTimeout(resolve, 2000));
+    await ensureAuthServiceReady(30_000);
+    warmupBackend();
+    return request();
+  }
+}
 
 export const downloadWeekReports = (bank?: File, pos?: File, ecommerce?: File) => {
   const form = new FormData();

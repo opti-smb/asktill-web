@@ -4,6 +4,8 @@ import {
   downloadMonthlyReportPdf,
   downloadWeekReports,
   getApiErrorAsync,
+  getBackendPdfEngine,
+  shouldUseClientPdfExport,
   type UploadFiles,
 } from '../../lib/api';
 import {
@@ -21,9 +23,9 @@ interface Props {
   statementId?: string | null;
 }
 
-function downloadStageLabel(stage: PdfDownloadStage | null): string {
-  if (stage === 'fetching') return 'Downloading PDF…';
-  if (stage === 'generating') return 'Generating PDF…';
+function downloadStageLabel(stage: PdfDownloadStage | null, clientRendered: boolean): string {
+  if (stage === 'fetching') return clientRendered ? 'Loading report…' : 'Downloading PDF…';
+  if (stage === 'generating') return clientRendered ? 'Rendering PDF in your browser…' : 'Generating PDF…';
   if (stage === 'opening') return 'Opening PDF…';
   if (stage === 'saving') return 'Saving to Downloads…';
   return 'Preparing download…';
@@ -33,6 +35,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
   const [exporting, setExporting] = useState(false);
   const [exportStage, setExportStage] = useState<PdfDownloadStage | null>(null);
   const [error, setError] = useState('');
+  const [clientPdf, setClientPdf] = useState<boolean | null>(null);
 
   const hasAll = Boolean(files.bank && files.pos && files.ecommerce);
   const canDownloadMonth = Boolean(statementId || hasAll);
@@ -67,6 +70,9 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
     setExportStage(null);
     setError('');
     try {
+      const engine = await getBackendPdfEngine();
+      const useClientPdf = shouldUseClientPdfExport(engine);
+      setClientPdf(useClientPdf);
       if (isWeek) {
         const { data, headers } = await downloadWeekReports(files.bank, files.pos, files.ecommerce);
         const disposition = headers['content-disposition'] as string | undefined;
@@ -82,7 +88,8 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
       const fallbackName = 'Reconciliation_Report.pdf';
       await downloadPdfWithSaveDialog({
         suggestedFilename: fallbackName,
-        prebuilt: Boolean(statementId),
+        prebuilt: Boolean(statementId) && !useClientPdf,
+        clientRendered: useClientPdf,
         onStage: setExportStage,
         fetchBlob: async () => {
           const { data, headers } = await fetchMonthlyCompactPdf();
@@ -127,7 +134,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
         onClick={handleDownload}
         disabled={exporting || (isWeek ? !hasAll : !canDownloadMonth) || isQuarter}
       >
-        {exporting ? downloadStageLabel(exportStage) : label}
+        {exporting ? downloadStageLabel(exportStage, clientPdf === true) : label}
       </button>
       {error && (
         <p className={styles.toolbarHint} style={{ color: 'var(--neg)', width: '100%' }}>
