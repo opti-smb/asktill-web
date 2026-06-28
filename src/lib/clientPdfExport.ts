@@ -1,17 +1,23 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-/** Extra rules so html2canvas paints grids, badges, and mix bars reliably. */
+/** Preserve full report styling (gradients, shadows, grids) while fixing html2canvas gaps. */
 const PDF_CAPTURE_CSS = `
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
   body { background: #eef2f6 !important; margin: 0 !important; }
-  .kpi-grid, .channel-grid, .grid-2, .comm-row, .stack { display: block !important; }
-  .kpi-cell, .comm-card { display: inline-block !important; vertical-align: top !important; width: 31% !important; margin: 0 1% 8px 0 !important; }
-  .badge { display: inline-block !important; }
-  .mix-bar-bg { background: #e2e8f0 !important; height: 6px !important; }
-  .mix-fill-card { background: #2563eb !important; min-height: 6px !important; display: block !important; }
-  .mix-fill-cash { background: #0d9488 !important; min-height: 6px !important; display: block !important; }
-  .card, .channel-panel, .kpi { box-shadow: none !important; }
+  .page { background: #eef2f6 !important; }
+  .mix-bar-bg { background: #e2e8f0 !important; border-radius: 3px !important; overflow: hidden !important; }
+  .mix-bar-bg div { border-radius: 3px !important; min-height: 5px !important; }
+  .mix-fill-card { background: #2563eb !important; }
+  .mix-fill-cash { background: #0d9488 !important; }
 `;
+
+const CAPTURE_WIDTH_PX = 980;
+const JPEG_QUALITY = 0.97;
+const PDF_MARGIN_MM = 6;
 
 async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
   const doc = iframe.contentDocument;
@@ -23,7 +29,7 @@ async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
       return;
     }
     iframe.onload = () => resolve();
-    window.setTimeout(() => resolve(), 4000);
+    window.setTimeout(() => resolve(), 5000);
   });
 
   try {
@@ -32,7 +38,7 @@ async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
     /* ignore */
   }
 
-  await new Promise((resolve) => window.setTimeout(resolve, 1000));
+  await new Promise((resolve) => window.setTimeout(resolve, 1500));
 }
 
 function injectPdfCaptureStyles(doc: Document): void {
@@ -45,7 +51,7 @@ function injectPdfCaptureStyles(doc: Document): void {
 function canvasHasContent(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext('2d');
   if (!ctx || canvas.width < 2 || canvas.height < 2) return false;
-  const sample = ctx.getImageData(0, 0, Math.min(canvas.width, 120), Math.min(canvas.height, 120)).data;
+  const sample = ctx.getImageData(0, 0, Math.min(canvas.width, 160), Math.min(canvas.height, 160)).data;
   for (let i = 0; i < sample.length; i += 4) {
     const r = sample[i];
     const g = sample[i + 1];
@@ -58,44 +64,63 @@ function canvasHasContent(canvas: HTMLCanvasElement): boolean {
   return false;
 }
 
+/** Slice a tall canvas into clean A4 pages (no white gaps between sections). */
 function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-  const marginMm = 8;
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const usableWidth = pageWidth - marginMm * 2;
-  const usableHeight = pageHeight - marginMm * 2;
-  const imgWidth = usableWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const printW = pageW - PDF_MARGIN_MM * 2;
+  const printH = pageH - PDF_MARGIN_MM * 2;
 
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
-  let heightLeft = imgHeight;
-  let y = marginMm;
+  const imgW = canvas.width;
+  const imgH = canvas.height;
+  const pageSlicePx = Math.max(1, Math.floor(imgW * (printH / printW)));
 
-  pdf.addImage(imgData, 'JPEG', marginMm, y, imgWidth, imgHeight);
-  heightLeft -= usableHeight;
+  let yOffset = 0;
+  let pageIndex = 0;
 
-  while (heightLeft > 0) {
-    y = marginMm - (imgHeight - heightLeft);
-    pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', marginMm, y, imgWidth, imgHeight);
-    heightLeft -= usableHeight;
+  while (yOffset < imgH) {
+    const sliceH = Math.min(pageSlicePx, imgH - yOffset);
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = imgW;
+    pageCanvas.height = sliceH;
+    const ctx = pageCanvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Could not prepare PDF pages.');
+    }
+    ctx.fillStyle = '#eef2f6';
+    ctx.fillRect(0, 0, imgW, sliceH);
+    ctx.drawImage(canvas, 0, yOffset, imgW, sliceH, 0, 0, imgW, sliceH);
+
+    const sliceMmH = (sliceH / imgW) * printW;
+    const imgData = pageCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
+    if (pageIndex > 0) {
+      pdf.addPage();
+    }
+    pdf.addImage(imgData, 'JPEG', PDF_MARGIN_MM, PDF_MARGIN_MM, printW, sliceMmH);
+
+    yOffset += sliceH;
+    pageIndex += 1;
   }
 
   return pdf.output('blob');
+}
+
+function captureScale(): number {
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  return Math.min(3, Math.max(2.5, dpr * 1.25));
 }
 
 /** Render server compact-report HTML with the browser engine (full CSS from iframe). */
 export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('title', 'Report PDF preview');
-  // Off-screen but fully painted — opacity:hidden breaks html2canvas.
   iframe.style.cssText = [
     'position:fixed',
-    'left:-12000px',
+    'left:-14000px',
     'top:0',
-    'width:920px',
-    'min-height:1400px',
+    `width:${CAPTURE_WIDTH_PX}px`,
+    'min-height:1600px',
     'border:0',
     'opacity:1',
     'visibility:visible',
@@ -116,17 +141,19 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
     await waitForFrameLayout(iframe);
 
     const target = (doc.querySelector('.page') ?? doc.body) as HTMLElement;
-    const contentHeight = Math.max(target.scrollHeight, target.offsetHeight, 900);
-    const contentWidth = Math.max(target.scrollWidth, target.offsetWidth, 880);
-    iframe.style.height = `${Math.min(contentHeight + 80, 32000)}px`;
-    iframe.style.width = `${contentWidth + 24}px`;
+    const contentHeight = Math.max(target.scrollHeight, target.offsetHeight, 1200);
+    const contentWidth = Math.max(target.scrollWidth, target.offsetWidth, CAPTURE_WIDTH_PX - 40);
+    iframe.style.height = `${Math.min(contentHeight + 120, 48000)}px`;
+    iframe.style.width = `${contentWidth + 32}px`;
 
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    await new Promise((resolve) => window.setTimeout(resolve, 800));
 
+    const scale = captureScale();
     const canvas = await html2canvas(target, {
-      scale: 2,
+      scale,
       useCORS: true,
       logging: false,
+      letterRendering: true,
       backgroundColor: '#eef2f6',
       windowWidth: contentWidth,
       windowHeight: contentHeight,
@@ -134,6 +161,11 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
       height: contentHeight,
       scrollX: 0,
       scrollY: 0,
+      onclone: (clonedDoc) => {
+        const style = clonedDoc.createElement('style');
+        style.textContent = PDF_CAPTURE_CSS;
+        clonedDoc.head.appendChild(style);
+      },
       ...(iframe.contentWindow ? { window: iframe.contentWindow } : {}),
     } as Parameters<typeof html2canvas>[1]);
 
