@@ -10,7 +10,7 @@ import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
 import { fetchSavedWeekReports, fetchWeekReports, getApiError } from '../lib/api';
 import { getAnalyzeAnalysis, type WeekReportsViewApi } from '../lib/analyzeResponse';
-import { periodKeyFromLabel, resolveAtLetterStatementId } from '../lib/atLetterStatement';
+import { periodKeyFromLabel } from '../lib/atLetterStatement';
 import type { Period } from '../types';
 import styles from './ReportsPage.module.css';
 import postmanStyles from '../components/analysis/PostmanPanels.module.css';
@@ -23,18 +23,8 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('Month');
   const { result, files, mergeWeekReports, loadSavedReport } = useAnalysis();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
-  const { historyReady, primaryReport } = useReportSync();
+  const { historyReady } = useReportSync();
   const analysis = getAnalyzeAnalysis(result);
-  const pdfStatementId = useMemo(
-    () =>
-      resolveAtLetterStatementId({
-        sessionStatementId: result?.statement_id,
-        sessionPeriodKey: periodKeyFromLabel(analysis?.period_label),
-        primaryReport,
-        historyReady,
-      }) ?? result?.statement_id ?? null,
-    [result?.statement_id, analysis?.period_label, primaryReport, historyReady],
-  );
   const documents = result?.documents ?? [];
   const fallbackBusinessName = useMemo(() => {
     const fromAnalysis = analysis?.business_name?.trim();
@@ -60,7 +50,8 @@ export default function ReportsPage() {
   }, [result?.statement_id]);
 
   const analysisWeekCount = analysis?.week_reports?.weeks?.length ?? 0;
-  const weekStatementId = pdfStatementId ?? result?.statement_id ?? null;
+  /** Week rollups must match the statement on screen — not AT Letter's resolved primary month. */
+  const reportStatementId = result?.statement_id ?? null;
 
   useEffect(() => {
     if (period !== 'Week' || !result) {
@@ -69,7 +60,13 @@ export default function ReportsPage() {
     }
 
     const fromAnalysis = analysis?.week_reports;
-    if (analysisWeekCount > 0) {
+    const sessionPeriodKey = periodKeyFromLabel(analysis?.period_label);
+    const weekPeriodKey =
+      fromAnalysis?.period_month ?? periodKeyFromLabel(fromAnalysis?.period_label);
+    const weekPeriodMatches =
+      !sessionPeriodKey || !weekPeriodKey || sessionPeriodKey === weekPeriodKey;
+
+    if (analysisWeekCount > 0 && weekPeriodMatches) {
       setWeekReports(fromAnalysis ?? null);
       setWeekLoading(false);
       setWeekError(null);
@@ -82,8 +79,8 @@ export default function ReportsPage() {
 
     const load = async () => {
       try {
-        if (weekStatementId) {
-          const { data } = await fetchSavedWeekReports(weekStatementId);
+        if (reportStatementId) {
+          const { data } = await fetchSavedWeekReports(reportStatementId);
           if (seq !== weekLoadSeq.current) return;
           setWeekReports(data);
           if (data.weeks?.length) {
@@ -120,7 +117,7 @@ export default function ReportsPage() {
     };
 
     void load();
-  }, [period, result, weekStatementId, analysisWeekCount, mergeWeekReports, analysis?.week_reports]);
+  }, [period, result, reportStatementId, analysisWeekCount, mergeWeekReports, analysis?.week_reports]);
 
   const activeWeekReports = weekReports ?? analysis?.week_reports ?? null;
   const currentPeriodKey = useMemo(() => {
@@ -160,7 +157,7 @@ export default function ReportsPage() {
       <div className={styles.main}>
         <div className="wrap">
           <>
-            <DownloadReportButton files={files} period={period} statementId={pdfStatementId} />
+            <DownloadReportButton files={files} period={period} statementId={reportStatementId} />
 
               {period === 'Month' && (
                 <>

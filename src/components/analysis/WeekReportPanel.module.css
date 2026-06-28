@@ -59,3 +59,40 @@
   line-height: 1.5;
   margin: 0;
 }
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.summaryCard {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryCardHighlight {
+  border-color: var(--brand);
+  background: var(--brand-tint);
+}
+
+.summaryLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.summaryValue {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}

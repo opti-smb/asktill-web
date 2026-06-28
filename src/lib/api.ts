@@ -690,13 +690,12 @@ export async function getBackendPdfEngine(): Promise<string> {
   return pdfEngineFetchInFlight;
 }
 
-/** Use server PDF (Playwright locally, xhtml2pdf on Render) — sharp vector text, not browser screenshots. */
+/** Render compact HTML in the browser on Render (xhtml2pdf cannot lay out our CSS). Playwright stays server-side locally. */
 export function shouldUseClientPdfExport(engine: string): boolean {
   const forced = import.meta.env.VITE_FORCE_CLIENT_PDF;
   if (forced === '1' || forced === 'true') return true;
   if (forced === '0' || forced === 'false') return false;
-  void engine;
-  return false;
+  return engine !== 'playwright';
 }
 
 export async function fetchCompactReportHtmlPreview(statementId: string): Promise<string> {

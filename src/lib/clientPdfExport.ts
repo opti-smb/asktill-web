@@ -5,7 +5,8 @@ import { jsPDF } from 'jspdf';
 const PAGE_CONTENT_MAX_PX = 860;
 const PDF_MARGIN_X_MM = 7;
 const PDF_MARGIN_Y_MM = 8;
-const IMAGE_FORMAT = 'PNG' as const;
+const IMAGE_FORMAT = 'JPEG' as const;
+const JPEG_QUALITY = 0.92;
 
 /** Crisp text and colors for high-DPI canvas capture. */
 const PDF_CAPTURE_CSS = `
@@ -77,7 +78,7 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
     unit: 'mm',
     format: 'a4',
     orientation: 'portrait',
-    compress: false,
+    compress: true,
   });
   const pageW = pdf.internal.pageSize.getWidth();
   const printW = pageW - PDF_MARGIN_X_MM * 2;
@@ -105,7 +106,7 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
     ctx.drawImage(canvas, 0, yOffset, imgW, sliceH, 0, 0, imgW, sliceH);
 
     const sliceMmH = (sliceH / imgW) * printW;
-    const imgData = pageCanvas.toDataURL('image/png');
+    const imgData = pageCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
     if (pageIndex > 0) {
       pdf.addPage();
     }
@@ -117,7 +118,7 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
       printW,
       sliceMmH,
       undefined,
-      'NONE',
+      'FAST',
     );
 
     yOffset += sliceH;
@@ -127,10 +128,10 @@ function canvasToPdfBlob(canvas: HTMLCanvasElement): Blob {
   return pdf.output('blob');
 }
 
-/** ~300 DPI equivalent for 860px report width on A4 printable area. */
+/** ~200 DPI — sharp enough for reports without 70MB PNG exports. */
 function captureScale(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  return Math.min(4, Math.max(3, Math.round(dpr * 2)));
+  return Math.min(2.5, Math.max(2, dpr));
 }
 
 /** Render server compact-report HTML with the browser engine (full CSS from iframe). */
