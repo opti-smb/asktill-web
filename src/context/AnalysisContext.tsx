@@ -267,7 +267,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
           markUserHasSavedLetter(user.userId);
         }
         window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
-        window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+        // Defer history sync until after React commits the new analyze result.
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+        }, 0);
       }
 
       if (resolved.statement_id) {
