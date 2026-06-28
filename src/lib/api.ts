@@ -1556,7 +1556,11 @@ export async function downloadMonthlyReportPdf(statementId: string) {
     warmupBackend();
     await ensureAuthServiceReady(15_000);
     const html = await fetchCompactReportHtmlPreview(id);
-    return clientCompactPdfFromHtml(html);
+    try {
+      return await clientCompactPdfFromHtml(html);
+    } catch {
+      /* fall back to stored server PDF if browser capture fails */
+    }
   }
 
   return downloadSavedCompactPdfFromServer(id);
@@ -1594,7 +1598,11 @@ export async function downloadCompactReconciliation(bank?: File, pos?: File, eco
     if (!html?.includes('<html')) {
       throw new Error('Could not build report preview for PDF export.');
     }
-    return clientCompactPdfFromHtml(html);
+    try {
+      return await clientCompactPdfFromHtml(html);
+    } catch {
+      /* fall back to server-generated compact PDF */
+    }
   }
 
   return downloadFromServer();
