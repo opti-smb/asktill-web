@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   downloadCompactReconciliation,
   downloadMonthlyReportPdf,
+  downloadSavedWeekReportsPdf,
   downloadWeekReports,
   getApiErrorAsync,
   getBackendPdfEngine,
@@ -40,7 +41,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
   const hasAll = Boolean(files.bank && files.pos && files.ecommerce);
   const canDownloadMonth = Boolean(statementId || hasAll);
   const isWeek = period === 'Week';
-  const isQuarter = period === 'Quarter';
+  const canDownloadWeek = Boolean(statementId || hasAll);
 
   async function fetchMonthlyCompactPdf() {
     if (statementId) {
@@ -53,12 +54,8 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
   }
 
   async function handleDownload() {
-    if (isQuarter) {
-      setError('Quarterly PDF export is not available yet. Use Month or Week.');
-      return;
-    }
-    if (isWeek && !hasAll) {
-      setError('Upload bank, POS, and ecommerce files to download.');
+    if (isWeek && !canDownloadWeek) {
+      setError('Upload bank, POS, and ecommerce files, or open a saved month to download.');
       return;
     }
     if (!isWeek && !canDownloadMonth) {
@@ -74,7 +71,9 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
       const useClientPdf = shouldUseClientPdfExport(engine);
       setClientPdf(useClientPdf);
       if (isWeek) {
-        const { data, headers } = await downloadWeekReports(files.bank, files.pos, files.ecommerce);
+        const { data, headers } = statementId
+          ? await downloadSavedWeekReportsPdf(statementId)
+          : await downloadWeekReports(files.bank, files.pos, files.ecommerce);
         const disposition = headers['content-disposition'] as string | undefined;
         const filename = filenameFromDisposition(disposition, 'Weekly_Report.pdf');
         await downloadPdfWithSaveDialog({
@@ -132,7 +131,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
         type="button"
         className={styles.downloadBtn}
         onClick={handleDownload}
-        disabled={exporting || (isWeek ? !hasAll : !canDownloadMonth) || isQuarter}
+        disabled={exporting || (isWeek ? !canDownloadWeek : !canDownloadMonth)}
       >
         {exporting ? downloadStageLabel(exportStage, clientPdf === true) : label}
       </button>

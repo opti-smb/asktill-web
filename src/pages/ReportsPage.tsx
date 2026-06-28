@@ -60,6 +60,7 @@ export default function ReportsPage() {
   }, [result?.statement_id]);
 
   const analysisWeekCount = analysis?.week_reports?.weeks?.length ?? 0;
+  const weekStatementId = pdfStatementId ?? result?.statement_id ?? null;
 
   useEffect(() => {
     if (period !== 'Week' || !result) {
@@ -81,8 +82,8 @@ export default function ReportsPage() {
 
     const load = async () => {
       try {
-        if (result.statement_id) {
-          const { data } = await fetchSavedWeekReports(result.statement_id);
+        if (weekStatementId) {
+          const { data } = await fetchSavedWeekReports(weekStatementId);
           if (seq !== weekLoadSeq.current) return;
           setWeekReports(data);
           if (data.weeks?.length) {
@@ -119,7 +120,7 @@ export default function ReportsPage() {
     };
 
     void load();
-  }, [period, result, result?.statement_id, analysisWeekCount, mergeWeekReports, analysis?.week_reports]);
+  }, [period, result, weekStatementId, analysisWeekCount, mergeWeekReports, analysis?.week_reports]);
 
   const activeWeekReports = weekReports ?? analysis?.week_reports ?? null;
   const currentPeriodKey = useMemo(() => {
@@ -204,19 +205,6 @@ export default function ReportsPage() {
                   loading={weekLoading}
                   error={weekError}
                 />
-              )}
-
-              {period === 'Quarter' && (
-                <section className={postmanStyles.panel}>
-                  <div className={postmanStyles.head}>
-                    <h2 className={postmanStyles.title}>Quarterly report</h2>
-                    <p className={postmanStyles.sub}>
-                      Quarterly rollups are coming soon. Use <strong>Month</strong> for the full
-                      statement report or <strong>Week</strong> for dated POS, e-commerce, and bank
-                      breakdowns.
-                    </p>
-                  </div>
-                </section>
               )}
           </>
 

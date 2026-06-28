@@ -85,7 +85,7 @@ export interface LandingStat {
   sublabel: string;
 }
 
-export type Period = 'Week' | 'Month' | 'Quarter';
+export type Period = 'Week' | 'Month';
 
 export interface FileUploadState {
   uploaded: boolean;
