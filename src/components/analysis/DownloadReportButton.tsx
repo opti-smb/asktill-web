@@ -120,7 +120,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
   const hint = isWeek
     ? 'PDF with Week 1, Week 2, … breakdowns for this statement month.'
     : statementId
-      ? 'Same compact reconciliation PDF as local — saved when you analyzed this month.'
+      ? 'Same compact reconciliation PDF — on production this renders in your browser (may take 30–60s the first time).'
       : hasAll
         ? 'Compact monthly report from uploaded files (may take longer while statements are processed).'
         : 'Upload bank, POS, and ecommerce files to download.';

@@ -3,6 +3,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { isTokenExpired } from './jwt';
 import {
   pdfFilenameFromHtml,
+  prefetchClientPdfLibrary,
   renderHtmlDocumentToPdfBlob,
 } from './clientPdfExport';
 
@@ -656,6 +657,7 @@ async function probeServiceHealth(url: string, timeoutMs: number): Promise<boole
 
 export function warmupBackend() {
   void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
+  warmupClientPdfExport();
 }
 
 type BackendHealthPayload = {
@@ -688,6 +690,17 @@ export function shouldUseClientPdfExport(engine: string): boolean {
   if (forced === '1' || forced === 'true') return true;
   if (forced === '0' || forced === 'false') return false;
   return engine !== 'playwright';
+}
+
+/** Preload html2pdf on production so the first monthly PDF download is faster. */
+export function warmupClientPdfExport(): void {
+  void getBackendPdfEngine()
+    .then((engine) => {
+      if (shouldUseClientPdfExport(engine)) {
+        prefetchClientPdfLibrary();
+      }
+    })
+    .catch(() => undefined);
 }
 
 export async function fetchCompactReportHtmlPreview(statementId: string): Promise<string> {
