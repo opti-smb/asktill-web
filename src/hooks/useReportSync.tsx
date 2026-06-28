@@ -212,6 +212,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const sessionKey = periodKeyFromLabel(sessionAnalysis?.period_label);
           const primaryKey = periodKeyFromLabel(primary?.period_label);
           const sessionStatementId = sessionResult?.statement_id?.trim();
+          const activeViewId = getActiveStatementViewId()?.trim() || null;
+          const effectiveSessionId = activeViewId || sessionStatementId || null;
           const inAnalyzeGrace = hasRecentAnalyzeSession();
           const primaryIsNewerThanSession =
             Boolean(sessionKey && primaryKey)
@@ -219,14 +221,22 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const primaryIsNewerOrSame =
             !sessionKey || !primaryKey || comparePeriodKeys(sessionKey, primaryKey) >= 0;
           const statementIdsDiffer =
-            Boolean(sessionStatementId && primary?.statement_id)
-            && sessionStatementId !== primary?.statement_id;
-          const activeViewId = getActiveStatementViewId()?.trim();
-          const pinnedView =
-            Boolean(activeViewId && sessionStatementId === activeViewId);
+            Boolean(effectiveSessionId && primary?.statement_id)
+            && effectiveSessionId !== primary?.statement_id;
+          const pinnedView = Boolean(
+            activeViewId
+            && (activeViewId === sessionStatementId || inAnalyzeGrace),
+          );
+          const keepPinnedUpload =
+            Boolean(
+              activeViewId
+              && primary?.statement_id
+              && activeViewId !== primary.statement_id
+              && (inAnalyzeGrace || Boolean(sessionAnalysis) || analyzeLoadingRef.current),
+            );
 
           const statementId = resolveAtLetterStatementId({
-            sessionStatementId: sessionResult?.statement_id,
+            sessionStatementId: effectiveSessionId,
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
@@ -238,19 +248,20 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
-          if ((inAnalyzeGrace || pinnedView) && sessionStatementId) {
-            if (!sessionResult?.analysis) {
-              if (hydratedStatementIdRef.current !== sessionStatementId) {
-                hydratedStatementIdRef.current = sessionStatementId;
-                try {
-                  const { data: saved } = await fetchSavedReport(sessionStatementId);
-                  if (!cancelled) loadSavedReport(saved);
-                } catch {
-                  /* keep partial session payload */
-                }
+          if ((inAnalyzeGrace || pinnedView) && effectiveSessionId) {
+            const needsHydrate =
+              !sessionAnalysis
+              || (activeViewId && sessionStatementId && activeViewId !== sessionStatementId);
+            if (needsHydrate && hydratedStatementIdRef.current !== effectiveSessionId) {
+              hydratedStatementIdRef.current = effectiveSessionId;
+              try {
+                const { data: saved } = await fetchSavedReport(effectiveSessionId);
+                if (!cancelled) loadSavedReport(saved);
+              } catch {
+                /* keep partial session payload */
               }
             }
-          } else {
+          } else if (!keepPinnedUpload) {
             const shouldHydrateFromServer =
               primary
               && !analyzeLoadingRef.current
