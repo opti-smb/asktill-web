@@ -690,12 +690,13 @@ export async function getBackendPdfEngine(): Promise<string> {
   return pdfEngineFetchInFlight;
 }
 
-/** Browser PDF when Render lacks Playwright; local uses server Playwright PDF. */
+/** Use server PDF (Playwright locally, xhtml2pdf on Render) — sharp vector text, not browser screenshots. */
 export function shouldUseClientPdfExport(engine: string): boolean {
   const forced = import.meta.env.VITE_FORCE_CLIENT_PDF;
   if (forced === '1' || forced === 'true') return true;
   if (forced === '0' || forced === 'false') return false;
-  return engine !== 'playwright';
+  void engine;
+  return false;
 }
 
 export async function fetchCompactReportHtmlPreview(statementId: string): Promise<string> {
@@ -1407,7 +1408,18 @@ export const fetchWeekReports = (bank?: File, pos?: File, ecommerce?: File) => {
 };
 
 export const fetchSavedWeekReports = (statementId: string) =>
-  mainApi.get<WeekReportsViewApi>(`/api/reports/${statementId}/weeks`, { timeout: 120_000 });
+  mainApi.get<WeekReportsViewApi>(`/api/reports/${encodeURIComponent(statementId)}/weeks`, {
+    timeout: 120_000,
+  });
+
+export async function downloadSavedWeekReportsPdf(statementId: string) {
+  const id = statementId.trim();
+  if (!id) throw new Error('No saved statement to download.');
+  return mainApi.get(`/api/reports/${encodeURIComponent(id)}/weeks/export`, {
+    responseType: 'blob',
+    timeout: 120_000,
+  });
+}
 
 export const ask = (question: string, files: UploadFiles = {}) => {
   const form = new FormData();

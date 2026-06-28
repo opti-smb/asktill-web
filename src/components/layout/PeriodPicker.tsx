@@ -1,7 +1,7 @@
 import type { Period } from '../../types';
 import styles from './PeriodPicker.module.css';
 
-const periods: Period[] = ['Week', 'Month', 'Quarter'];
+const periods: Period[] = ['Month', 'Week'];
 
 interface PeriodPickerProps {
   period: Period;
