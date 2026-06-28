@@ -64,8 +64,15 @@ export async function downloadPdfWithSaveDialog(options: {
   openAfterDownload?: boolean;
   /** Saved report PDF already on server — show "Downloading" instead of "Generating". */
   prebuilt?: boolean;
+  /** Browser-side render from HTML preview (production). */
+  clientRendered?: boolean;
 }): Promise<void> {
-  options.onStage?.(options.prebuilt ? 'fetching' : 'generating');
+  const stageForFetch = options.clientRendered
+    ? 'generating'
+    : options.prebuilt
+      ? 'fetching'
+      : 'generating';
+  options.onStage?.(stageForFetch);
   const blob = await options.fetchBlob();
   options.onStage?.('saving');
   const pdf = await ensurePdfBlob(blob);
