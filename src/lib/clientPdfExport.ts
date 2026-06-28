@@ -3,29 +3,51 @@ async function loadHtml2Pdf() {
   return mod.default;
 }
 
-function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
-  return new Promise((resolve) => {
-    const doc = iframe.contentDocument;
-    if (!doc) {
+/** Warm the html2pdf chunk after login so the first download is faster on production. */
+export function prefetchClientPdfLibrary(): void {
+  if (typeof window === 'undefined') return;
+  void loadHtml2Pdf().catch(() => undefined);
+}
+
+async function waitForFrameLayout(iframe: HTMLIFrameElement): Promise<void> {
+  const doc = iframe.contentDocument;
+  if (!doc) return;
+
+  await new Promise<void>((resolve) => {
+    if (doc.readyState === 'complete') {
       resolve();
       return;
     }
-    const finish = () => window.setTimeout(() => resolve(), 350);
-    if (doc.readyState === 'complete') {
-      finish();
-      return;
-    }
-    iframe.onload = () => finish();
-    window.setTimeout(() => resolve(), 2500);
+    iframe.onload = () => resolve();
+    window.setTimeout(() => resolve(), 3000);
   });
+
+  try {
+    await doc.fonts.ready;
+  } catch {
+    /* ignore */
+  }
+
+  // Let tables and webfonts finish layout — hidden iframes skip paint in some browsers.
+  await new Promise((resolve) => window.setTimeout(resolve, 450));
 }
 
 /** Render server compact-report HTML with the browser engine (matches on-screen layout). */
 export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('title', 'Report PDF preview');
-  iframe.style.cssText =
-    'position:fixed;left:-10000px;top:0;width:210mm;min-height:297mm;border:0;visibility:hidden';
+  // Must NOT use visibility:hidden — html2canvas skips non-painted nodes and yields blank PDFs.
+  iframe.style.cssText = [
+    'position:fixed',
+    'left:0',
+    'top:0',
+    'width:900px',
+    'min-height:1200px',
+    'border:0',
+    'opacity:0.01',
+    'pointer-events:none',
+    'z-index:-9999',
+  ].join(';');
   document.body.appendChild(iframe);
 
   try {
@@ -39,25 +61,34 @@ export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
     await waitForFrameLayout(iframe);
 
     const target = (doc.querySelector('.page') ?? doc.body) as HTMLElement;
+    const contentHeight = Math.max(target.scrollHeight, target.offsetHeight, 800);
+    const contentWidth = Math.max(target.scrollWidth, target.offsetWidth, 860);
+    iframe.style.height = `${Math.min(contentHeight + 40, 32000)}px`;
+
+    await new Promise((resolve) => window.setTimeout(resolve, 200));
+
     const html2pdf = await loadHtml2Pdf();
     const blob = await html2pdf()
       .set({
         margin: [6, 6, 8, 6],
         filename: 'Reconciliation_Report.pdf',
-        image: { type: 'jpeg', quality: 0.96 },
+        image: { type: 'jpeg', quality: 0.92 },
         html2canvas: {
-          scale: 2,
+          scale: 1.25,
           useCORS: true,
           logging: false,
           scrollY: 0,
-          windowWidth: target.scrollWidth || 794,
+          scrollX: 0,
+          backgroundColor: '#eef2f6',
+          windowWidth: contentWidth,
+          windowHeight: contentHeight,
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       })
       .from(target)
       .outputPdf('blob');
 
-    if (!(blob instanceof Blob) || blob.size < 128) {
+    if (!(blob instanceof Blob) || blob.size < 4096) {
       throw new Error('PDF export produced an empty file.');
     }
     return blob;
