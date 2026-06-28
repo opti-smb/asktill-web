@@ -30,7 +30,7 @@ function EcommIcon() {
 
 export default function AnalysisPage() {
   const { result } = useAnalysis();
-  const { historyReady } = useReportSync();
+  const { historyReady, savedCount } = useReportSync();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   const analysis = getAnalyzeAnalysis(result);
   const apiKpis = mapApiKpisToUi(analysis?.kpis, result);
@@ -41,6 +41,17 @@ export default function AnalysisPage() {
     return (
       <div className={styles.main}>
         <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.emptyHint} />
+      </div>
+    );
+  }
+
+  if (!analysis) {
+    return (
+      <div className={styles.main}>
+        <DashboardEmptyState
+          historyReady={savedCount > 0 ? false : historyReady}
+          loadingHintClassName={styles.emptyHint}
+        />
       </div>
     );
   }

@@ -3,7 +3,6 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { isTokenExpired } from './jwt';
 import {
   pdfFilenameFromHtml,
-  prefetchClientPdfLibrary,
   renderHtmlDocumentToPdfBlob,
 } from './clientPdfExport';
 
@@ -657,7 +656,6 @@ async function probeServiceHealth(url: string, timeoutMs: number): Promise<boole
 
 export function warmupBackend() {
   void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
-  warmupClientPdfExport();
 }
 
 type BackendHealthPayload = {
@@ -666,6 +664,7 @@ type BackendHealthPayload = {
 };
 
 let pdfEngineCache: { engine: string; at: number } | null = null;
+let pdfEngineFetchInFlight: Promise<string> | null = null;
 
 /** Cached backend PDF engine: playwright (local) vs xhtml2pdf (Render). */
 export async function getBackendPdfEngine(): Promise<string> {
@@ -673,34 +672,29 @@ export async function getBackendPdfEngine(): Promise<string> {
   if (pdfEngineCache && now - pdfEngineCache.at < 60_000) {
     return pdfEngineCache.engine;
   }
-  try {
-    warmupBackend();
-    const res = await mainApi.get<BackendHealthPayload>('/api/health', { timeout: 20_000 });
-    const engine = String(res.data?.compact_pdf_engine ?? 'unknown');
-    pdfEngineCache = { engine, at: now };
-    return engine;
-  } catch {
-    return 'xhtml2pdf';
-  }
+  if (pdfEngineFetchInFlight) return pdfEngineFetchInFlight;
+
+  pdfEngineFetchInFlight = (async () => {
+    try {
+      const res = await mainApi.get<BackendHealthPayload>('/api/health', { timeout: 20_000 });
+      const engine = String(res.data?.compact_pdf_engine ?? 'xhtml2pdf');
+      pdfEngineCache = { engine, at: Date.now() };
+      return engine;
+    } catch {
+      return 'xhtml2pdf';
+    } finally {
+      pdfEngineFetchInFlight = null;
+    }
+  })();
+
+  return pdfEngineFetchInFlight;
 }
 
-/** Use browser rendering when the server lacks Playwright (production). */
+/** Server compact PDF on Render; client html2pdf only when VITE_FORCE_CLIENT_PDF=1 (opt-in). */
 export function shouldUseClientPdfExport(engine: string): boolean {
+  void engine;
   const forced = import.meta.env.VITE_FORCE_CLIENT_PDF;
-  if (forced === '1' || forced === 'true') return true;
-  if (forced === '0' || forced === 'false') return false;
-  return engine !== 'playwright';
-}
-
-/** Preload html2pdf on production so the first monthly PDF download is faster. */
-export function warmupClientPdfExport(): void {
-  void getBackendPdfEngine()
-    .then((engine) => {
-      if (shouldUseClientPdfExport(engine)) {
-        prefetchClientPdfLibrary();
-      }
-    })
-    .catch(() => undefined);
+  return forced === '1' || forced === 'true';
 }
 
 export async function fetchCompactReportHtmlPreview(statementId: string): Promise<string> {
@@ -937,24 +931,22 @@ export const logoutApi = () => authApi.post('/api/auth/logout').catch(() => unde
 
 export async function fetchCurrentUser() {
   warmupAuthService();
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      return await authApi.get('/api/auth/me', { timeout: 45_000 });
-    } catch (err) {
-      const axiosErr = err as AxiosError;
-      const retryable =
-        isLikelyTimeoutError(err)
-        || axiosErr?.message === 'Network Error'
-        || !axiosErr?.response
-        || axiosErr?.response?.status === 503
-        || axiosErr?.response?.status === 502
-        || axiosErr?.response?.status === 504;
-      if (!retryable || attempt >= 2) throw err;
-      await ensureAuthServiceReady(attempt >= 1 ? 45_000 : 15_000);
-      await new Promise((resolve) => window.setTimeout(resolve, 1200 * (attempt + 1)));
-    }
+  try {
+    return await authApi.get('/api/auth/me', { timeout: 45_000 });
+  } catch (err) {
+    const axiosErr = err as AxiosError;
+    const retryable =
+      isLikelyTimeoutError(err)
+      || axiosErr?.message === 'Network Error'
+      || !axiosErr?.response
+      || axiosErr?.response?.status === 503
+      || axiosErr?.response?.status === 502
+      || axiosErr?.response?.status === 504;
+    if (!retryable) throw err;
+    await ensureAuthServiceReady(15_000);
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
+    return await authApi.get('/api/auth/me', { timeout: 45_000 });
   }
-  throw new Error('Could not verify session.');
 }
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
@@ -1449,22 +1441,14 @@ export const fetchReportHistory = async () => {
   const request = () =>
     mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 120_000 });
 
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      return await request();
-    } catch (err) {
-      lastErr = err;
-      if (!isRetryableHistoryError(err) || attempt >= 2) {
-        throw err;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
-      await ensureAuthServiceReady(attempt >= 1 ? 45_000 : 20_000);
-      warmupBackend();
-      warmupAuthService();
-    }
+  try {
+    return await request();
+  } catch (err) {
+    if (!isRetryableHistoryError(err)) throw err;
+    await new Promise((resolve) => window.setTimeout(resolve, 1500));
+    await ensureAuthServiceReady(20_000);
+    return await request();
   }
-  throw lastErr ?? new Error('Could not load saved reports.');
 };
 
 export const fetchSavedReport = async (statementId: string) => ({
@@ -1504,46 +1488,34 @@ async function blobLooksLikePdf(data: Blob): Promise<boolean> {
   );
 }
 
-/** Pre-built compact reconciliation PDF (same file saved at analyze — instant download). */
-export async function downloadMonthlyReportPdf(statementId: string) {
-  const id = statementId.trim();
-  if (!id) {
-    throw new Error('No saved statement to download.');
-  }
-
-  const engine = await getBackendPdfEngine();
-  if (shouldUseClientPdfExport(engine)) {
-    await ensureAuthServiceReady(12_000);
-    const html = await fetchCompactReportHtmlPreview(id);
-    const blob = await renderHtmlDocumentToPdfBlob(html);
-    const filename = pdfFilenameFromHtml(html);
-    return {
-      data: blob,
-      headers: {
-        'content-disposition': `attachment; filename="${filename}"`,
-      },
-    };
-  }
-
+async function downloadSavedCompactPdfFromServer(id: string) {
   const path = `/api/reports/${encodeURIComponent(id)}/compact`;
-  const request = () =>
+  const request = (timeoutMs: number) =>
     mainApi.get(path, {
       responseType: 'blob',
-      timeout: 45_000,
+      timeout: timeoutMs,
       validateStatus: () => true,
     });
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (attempt === 0) {
-      warmupBackend();
-      await ensureAuthServiceReady(12_000);
+  const timeouts = [180_000, 180_000, 240_000];
+  for (let attempt = 0; attempt < timeouts.length; attempt += 1) {
+    warmupBackend();
+    await ensureAuthServiceReady(attempt === 0 ? 15_000 : 45_000);
+    if (attempt > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000 * attempt));
     }
-    const res = await request();
+    let res;
+    try {
+      res = await request(timeouts[attempt] ?? 180_000);
+    } catch (err) {
+      if (isLikelyTimeoutError(err) && attempt < timeouts.length - 1) {
+        continue;
+      }
+      throw err;
+    }
     if (res.status === 401) {
       await ensureAuthServiceReady(45_000);
-      warmupBackend();
-      if (attempt < 2) {
-        await new Promise((resolve) => window.setTimeout(resolve, 800 * (attempt + 1)));
+      if (attempt < timeouts.length - 1) {
         continue;
       }
       throw await blobErrorFromAxiosResponse(res.data as Blob, res.status);
@@ -1551,13 +1523,39 @@ export async function downloadMonthlyReportPdf(statementId: string) {
     if (res.status < 400 && await blobLooksLikePdf(res.data as Blob)) {
       return { data: res.data as Blob, headers: res.headers };
     }
-    if ((res.status === 404 || res.status >= 500) && attempt < 2) {
-      await new Promise((resolve) => window.setTimeout(resolve, 1000 * (attempt + 1)));
+    if ((res.status === 404 || res.status >= 500) && attempt < timeouts.length - 1) {
       continue;
     }
     throw await blobErrorFromAxiosResponse(res.data as Blob, res.status);
   }
   throw new Error('Could not download reconciliation PDF.');
+}
+
+/** Pre-built compact reconciliation PDF (same file saved at analyze — instant download). */
+export async function downloadMonthlyReportPdf(statementId: string) {
+  const id = statementId.trim();
+  if (!id) {
+    throw new Error('No saved statement to download.');
+  }
+
+  if (shouldUseClientPdfExport('')) {
+    try {
+      await ensureAuthServiceReady(12_000);
+      const html = await fetchCompactReportHtmlPreview(id);
+      const blob = await renderHtmlDocumentToPdfBlob(html);
+      const filename = pdfFilenameFromHtml(html);
+      return {
+        data: blob,
+        headers: {
+          'content-disposition': `attachment; filename="${filename}"`,
+        },
+      };
+    } catch {
+      /* fall back to server-generated compact PDF */
+    }
+  }
+
+  return downloadSavedCompactPdfFromServer(id);
 }
 
 export const downloadSavedReportCompact = (statementId: string) =>
@@ -1569,39 +1567,42 @@ export const downloadSavedReportPdf = (statementId: string) =>
 
 /** Compact reconciliation PDF (Postman layout) from saved statement or fresh uploads. */
 export async function downloadCompactReconciliation(bank?: File, pos?: File, ecommerce?: File) {
-  const engine = await getBackendPdfEngine();
-  if (shouldUseClientPdfExport(engine)) {
-    const form = new FormData();
-    if (bank) form.append('bank', bank, bank.name);
-    if (pos) form.append('pos', pos, pos.name);
-    if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
-    const res = await mainApi.post<string>('/api/analyze/export/compact', form, {
-      params: { preview: 1 },
-      responseType: 'text',
-      timeout: 180_000,
-    });
-    const html = res.data;
-    if (!html?.includes('<html')) {
-      throw new Error('Could not build report preview for PDF export.');
-    }
-    const blob = await renderHtmlDocumentToPdfBlob(html);
-    const filename = pdfFilenameFromHtml(html);
-    return {
-      data: blob,
-      headers: {
-        'content-disposition': `attachment; filename="${filename}"`,
-      },
-    };
-  }
-
   const form = new FormData();
   if (bank) form.append('bank', bank, bank.name);
   if (pos) form.append('pos', pos, pos.name);
   if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
-  return mainApi.post('/api/analyze/export/compact', form, {
-    responseType: 'blob',
-    timeout: 120_000,
-  });
+
+  const downloadFromServer = () =>
+    mainApi.post('/api/analyze/export/compact', form, {
+      responseType: 'blob',
+      timeout: 180_000,
+    });
+
+  if (shouldUseClientPdfExport('')) {
+    try {
+      const res = await mainApi.post<string>('/api/analyze/export/compact', form, {
+        params: { preview: 1 },
+        responseType: 'text',
+        timeout: 180_000,
+      });
+      const html = res.data;
+      if (!html?.includes('<html')) {
+        throw new Error('Could not build report preview for PDF export.');
+      }
+      const blob = await renderHtmlDocumentToPdfBlob(html);
+      const filename = pdfFilenameFromHtml(html);
+      return {
+        data: blob,
+        headers: {
+          'content-disposition': `attachment; filename="${filename}"`,
+        },
+      };
+    } catch {
+      /* fall back to server-generated compact PDF */
+    }
+  }
+
+  return downloadFromServer();
 }
 
 /** @deprecated Use downloadCompactReconciliation */

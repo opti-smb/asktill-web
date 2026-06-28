@@ -38,12 +38,12 @@ export default function AtLetterPage() {
 
   const letterStatementId = statementId ?? undefined;
 
-  const activeView = viewMode ?? (letterStatementId ?? ROLLING_VIEW);
+  const activeView = viewMode ?? (letterStatementId ? 'month' : ROLLING_VIEW);
   const monthOnly = activeView !== ROLLING_VIEW;
 
   const { html, loading, error } = useAtLetterHtml(letterStatementId, { monthOnly });
 
-  const showViewFilters = savedCount >= 1 && Boolean(letterStatementId);
+  const showViewFilters = Boolean(letterStatementId);
 
   useEffect(() => {
     setViewMode(null);
@@ -58,7 +58,7 @@ export default function AtLetterPage() {
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
-      const monthsOnFile = Math.min(savedCount, 3);
+      const monthsOnFile = Math.min(Math.max(savedCount, letterStatementId ? 1 : 0), 3);
       if (monthsOnFile >= 3) {
         return 'Quarter view — comparing your latest 3 months on file.';
       }
@@ -69,7 +69,7 @@ export default function AtLetterPage() {
     }
     const label = periodLabel?.trim() || 'Selected month';
     return `${label} only — single-month letter, no rolling comparison.`;
-  }, [monthOnly, savedCount, periodLabel]);
+  }, [monthOnly, savedCount, periodLabel, letterStatementId]);
 
   if (!hasLiveAnalysis) {
     return (

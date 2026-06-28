@@ -63,7 +63,7 @@ export function clearJustAnalyzedGrace(): void {
   }
 }
 
-function consumeJustAnalyzedGrace(): boolean {
+function peekJustAnalyzedGrace(): boolean {
   try {
     const raw = sessionStorage.getItem(JUST_ANALYZED_KEY);
     if (!raw) return false;
@@ -79,16 +79,17 @@ function consumeJustAnalyzedGrace(): boolean {
 }
 
 export function hasRecentAnalyzeSession(): boolean {
-  return consumeJustAnalyzedGrace();
+  return peekJustAnalyzedGrace();
 }
 
 /** True when dashboard tabs can render live analysis (not welcome/empty). */
 export function useHasLiveDashboardAnalysis(result: AnalyzeResult | null | undefined): boolean {
   const { historyReady, savedCount } = useReportSync();
   if (Boolean(result?.analysis)) return true;
-  if (hasRecentAnalyzeSession() && result?.statement_id) return true;
-  if (!historyReady) return Boolean(result?.statement_id);
-  return savedCount > 0 && Boolean(result?.statement_id);
+  if (peekJustAnalyzedGrace() && result?.statement_id) return true;
+  if (!historyReady) return false;
+  if (savedCount > 0) return true;
+  return Boolean(result?.statement_id);
 }
 
 export function useReportSync(): ReportSyncContextValue {
@@ -204,7 +205,6 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
         setSavedCount(reports.length);
         setPrimaryReport(primary);
         setSavedReports(sorted);
-        setHistoryReady(true);
 
         if (reports.length > 0) {
           const sessionResult = resultRef.current;
@@ -239,43 +239,46 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           }
 
           if ((inAnalyzeGrace || pinnedView) && sessionStatementId) {
-            if (sessionResult?.analysis) {
-              return;
-            }
-            if (hydratedStatementIdRef.current !== sessionStatementId) {
-              hydratedStatementIdRef.current = sessionStatementId;
-              try {
-                const { data: saved } = await fetchSavedReport(sessionStatementId);
-                if (!cancelled) loadSavedReport(saved);
-              } catch {
-                /* keep partial session payload */
+            if (!sessionResult?.analysis) {
+              if (hydratedStatementIdRef.current !== sessionStatementId) {
+                hydratedStatementIdRef.current = sessionStatementId;
+                try {
+                  const { data: saved } = await fetchSavedReport(sessionStatementId);
+                  if (!cancelled) loadSavedReport(saved);
+                } catch {
+                  /* keep partial session payload */
+                }
               }
             }
-            return;
-          }
+          } else {
+            const shouldHydrateFromServer =
+              primary
+              && !analyzeLoadingRef.current
+              && !pinnedView
+              && (
+                !sessionResult?.analysis
+                || primaryIsNewerThanSession
+                || (statementIdsDiffer && primaryIsNewerOrSame)
+              );
 
-          const shouldHydrateFromServer =
-            primary
-            && !analyzeLoadingRef.current
-            && !pinnedView
-            && (
-              !sessionResult?.analysis
-              || primaryIsNewerThanSession
-              || (statementIdsDiffer && primaryIsNewerOrSame)
-            );
-
-          if (
-            shouldHydrateFromServer
-            && hydratedStatementIdRef.current !== primary.statement_id
-          ) {
-            hydratedStatementIdRef.current = primary.statement_id;
-            try {
-              const { data: saved } = await fetchSavedReport(primary.statement_id);
-              if (!cancelled) loadSavedReport(saved);
-            } catch {
-              /* overview can still open saved report manually */
+            if (
+              shouldHydrateFromServer
+              && hydratedStatementIdRef.current !== primary.statement_id
+            ) {
+              hydratedStatementIdRef.current = primary.statement_id;
+              try {
+                const { data: saved } = await fetchSavedReport(primary.statement_id);
+                if (!cancelled) loadSavedReport(saved);
+              } catch {
+                /* overview can still open saved report manually */
+              }
             }
           }
+        }
+
+        setHistoryReady(true);
+
+        if (reports.length > 0) {
           return;
         }
 
@@ -300,10 +303,29 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           clearResult();
         }
       })
-      .catch(() => {
+      .catch(async () => {
         if (cancelled) return;
-        setSavedCount(0);
-        setPrimaryReport(null);
+        if (!isBackgroundRefresh) {
+          const cachedId = user?.userId
+            ? loadAtLetterCache(user.userId)?.statementId?.trim()
+            : undefined;
+          if (cachedId) {
+            try {
+              const { data: saved } = await fetchSavedReport(cachedId);
+              if (!cancelled) {
+                loadSavedReport(saved);
+                setSavedCount(1);
+                setHistoryReady(true);
+                return;
+              }
+            } catch {
+              /* fall through */
+            }
+          }
+          setSavedCount(0);
+          setPrimaryReport(null);
+          setSavedReports([]);
+        }
         setHistoryReady(true);
       });
 

@@ -4,7 +4,6 @@ import {
   downloadMonthlyReportPdf,
   downloadWeekReports,
   getApiErrorAsync,
-  getBackendPdfEngine,
   shouldUseClientPdfExport,
   type UploadFiles,
 } from '../../lib/api';
@@ -70,8 +69,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
     setExportStage(null);
     setError('');
     try {
-      const engine = await getBackendPdfEngine();
-      const useClientPdf = shouldUseClientPdfExport(engine);
+      const useClientPdf = shouldUseClientPdfExport('');
       setClientPdf(useClientPdf);
       if (isWeek) {
         const { data, headers } = await downloadWeekReports(files.bank, files.pos, files.ecommerce);
@@ -120,7 +118,7 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
   const hint = isWeek
     ? 'PDF with Week 1, Week 2, … breakdowns for this statement month.'
     : statementId
-      ? 'Same compact reconciliation PDF — on production this renders in your browser (may take 30–60s the first time).'
+      ? 'Same compact reconciliation PDF as local — saved when you analyzed this month.'
       : hasAll
         ? 'Compact monthly report from uploaded files (may take longer while statements are processed).'
         : 'Upload bank, POS, and ecommerce files to download.';
