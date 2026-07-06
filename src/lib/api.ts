@@ -283,6 +283,7 @@ export interface UploadValidationResult {
     statement_id?: string | null;
   }>;
   detected_periods: Partial<Record<'bank' | 'pos' | 'ecommerce', string>>;
+  upload_continuity?: import('./uploadContinuity').UploadContinuityView | null;
 }
 
 export interface StatementDuplicateInfo {
@@ -1686,3 +1687,85 @@ export const downloadWeekReports = (bank?: File, pos?: File, ecommerce?: File) =
   if (ecommerce) form.append('ecommerce', ecommerce, ecommerce.name);
   return mainApi.post('/api/reports/weeks/export', form, { responseType: 'blob' });
 };
+
+export interface RewardsBalance {
+  points: number;
+  usd_value: number;
+  lifetime_earned: number;
+  lifetime_redeemed: number;
+  conversion_rate?: number;
+}
+
+export interface RewardsLedgerEntry {
+  txn_id: string;
+  event_date: string | null;
+  type: string;
+  action_code: string;
+  points: number;
+  usd_value: number;
+  source_ref: string;
+  status: string;
+  notes?: string | null;
+  business_name?: string | null;
+}
+
+export interface RewardsEarnAction {
+  code: string;
+  points: number;
+  pillar?: string;
+  description: string;
+}
+
+export interface RewardsCatalog {
+  conversion_rate: number;
+  earn_actions: RewardsEarnAction[];
+}
+
+export interface RewardsReferralShare {
+  referral_code: string | null;
+  referral_link: string | null;
+  reward_points: number;
+  conversion_rate?: number;
+}
+
+export interface RewardsMonthlyTotal {
+  user_id: string;
+  business_name: string | null;
+  period_key: string;
+  /** Last day of month — matches Excel Sheet 1 “Month” column (e.g. 2026-06-30). */
+  period_month: string | null;
+  period_label: string;
+  points: number;
+  usd_value: number;
+}
+
+export async function fetchRewardsReferral(): Promise<RewardsReferralShare> {
+  const res = await mainApi.get<RewardsReferralShare>('/api/rewards/referral', { timeout: 30_000 });
+  return res.data;
+}
+
+export async function fetchRewardsBalance(): Promise<RewardsBalance> {
+  const res = await mainApi.get<RewardsBalance>('/api/rewards/balance', { timeout: 30_000 });
+  return res.data;
+}
+
+export async function fetchRewardsLedger(limit = 50): Promise<{ entries: RewardsLedgerEntry[] }> {
+  const res = await mainApi.get<{ entries: RewardsLedgerEntry[] }>('/api/rewards/ledger', {
+    params: { limit },
+    timeout: 30_000,
+  });
+  return res.data;
+}
+
+export async function fetchRewardsCatalog(): Promise<RewardsCatalog> {
+  const res = await mainApi.get<RewardsCatalog>('/api/rewards/catalog', { timeout: 30_000 });
+  return res.data;
+}
+
+export async function fetchRewardsMonthly(limit = 24): Promise<{ months: RewardsMonthlyTotal[] }> {
+  const res = await mainApi.get<{ months: RewardsMonthlyTotal[] }>('/api/rewards/monthly', {
+    params: { limit },
+    timeout: 30_000,
+  });
+  return res.data;
+}
