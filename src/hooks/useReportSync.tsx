@@ -209,11 +209,17 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
         if (reports.length > 0) {
           const sessionResult = resultRef.current;
           const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
-          const sessionKey = periodKeyFromLabel(sessionAnalysis?.period_label);
-          const primaryKey = periodKeyFromLabel(primary?.period_label);
           const sessionStatementId = sessionResult?.statement_id?.trim();
           const activeViewId = getActiveStatementViewId()?.trim() || null;
           const effectiveSessionId = activeViewId || sessionStatementId || null;
+          const sessionReport = effectiveSessionId
+            ? reports.find((row) => row.statement_id === effectiveSessionId)
+            : undefined;
+          const sessionKey =
+            periodKeyFromLabel(sessionAnalysis?.period_label)
+            ?? sessionReport?.period_key
+            ?? null;
+          const primaryKey = periodKeyFromLabel(primary?.period_label);
           const inAnalyzeGrace = hasRecentAnalyzeSession();
           const primaryIsNewerThanSession =
             Boolean(sessionKey && primaryKey)
@@ -240,7 +246,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
-            preferSession: inAnalyzeGrace || pinnedView,
+            preferSession: inAnalyzeGrace || pinnedView || keepPinnedUpload,
             activeViewId,
           });
           if (statementId) {
@@ -248,7 +254,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
-          if ((inAnalyzeGrace || pinnedView) && effectiveSessionId) {
+          if (keepPinnedUpload || ((inAnalyzeGrace || pinnedView) && effectiveSessionId)) {
             const needsHydrate =
               !sessionAnalysis
               || (activeViewId && sessionStatementId && activeViewId !== sessionStatementId);
