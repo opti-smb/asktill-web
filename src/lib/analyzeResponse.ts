@@ -451,6 +451,7 @@ export interface UiAnalysisView {
   week_reports?: WeekReportsViewApi | null;
   completeness?: string;
   message?: string | null;
+  upload_continuity?: import('./uploadContinuity').UploadContinuityView | null;
 }
 
 export interface ParsedDocumentApi {

@@ -59,6 +59,7 @@ function AppRoutes() {
           <Route path="at-letter" element={<AtLetterPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="sources" element={<SourcesPage />} />
+          <Route path="rewards" element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
     </Routes>

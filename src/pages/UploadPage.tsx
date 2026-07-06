@@ -5,6 +5,7 @@ import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
+import UploadContinuityNudge from '../components/upload/UploadContinuityNudge';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
@@ -35,6 +36,10 @@ import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import type { FileUploadState } from '../types';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
+import {
+  shouldShowContinuityNudge,
+  type UploadContinuityView,
+} from '../lib/uploadContinuity';
 import styles from './UploadPage.module.css';
 
 type FormData = Record<string, FileList>;
@@ -215,6 +220,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   });
   const [validationError, setValidationError] = useState<string | null>(null);
   const [uploadPrompt, setUploadPrompt] = useState<string | null>(null);
+  const [continuityDismissed, setContinuityDismissed] = useState(false);
+  const [postAnalyzeContinuity, setPostAnalyzeContinuity] = useState<UploadContinuityView | null>(
+    null,
+  );
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
   const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
@@ -288,6 +297,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     setSlotChecking({ bank: false, pos: false, ecommerce: false });
     setValidationError(null);
     setUploadPrompt(null);
+    setContinuityDismissed(false);
+    setPostAnalyzeContinuity(null);
     validatedFileKeysRef.current = '';
     validationRequestRef.current += 1;
   }, [resetForm]);
@@ -316,6 +327,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     clearUploadMismatch();
     clearStatementDuplicate();
     if (uploadedCount > 0) setUploadPrompt(null);
+    setContinuityDismissed(false);
+    setPostAnalyzeContinuity(null);
     setPinnedSlotWarnings((prev) => ({
       bank: prev.bank?.fileKey === bankKey ? prev.bank : null,
       pos: prev.pos?.fileKey === posKey ? prev.pos : null,
@@ -525,6 +538,22 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     !hasBoxWarnings &&
     validationReady;
 
+  const validationContinuity = activeValidation?.upload_continuity ?? null;
+  const showValidationContinuityNudge =
+    validationSettled &&
+    !postAnalyzeContinuity &&
+    !continuityDismissed &&
+    shouldShowContinuityNudge(validationContinuity);
+
+  const goToDashboard = useCallback(() => {
+    navigate(DEFAULT_DASHBOARD_PATH);
+  }, [navigate]);
+
+  const dismissContinuityNudge = useCallback(() => {
+    setContinuityDismissed(true);
+    setPostAnalyzeContinuity(null);
+  }, []);
+
   useEffect(() => {
     if (headerNotice && error && isAlreadyStoredMessage(error)) {
       clearError();
@@ -555,7 +584,13 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       ecommerce: ecommerceFile,
     }, force ? { force: true } : undefined);
     if (result && (getAnalyzeAnalysis(result) || result.statement_id)) {
-      navigate(DEFAULT_DASHBOARD_PATH);
+      const continuity = getAnalyzeAnalysis(result)?.upload_continuity ?? null;
+      if (shouldShowContinuityNudge(continuity)) {
+        setPostAnalyzeContinuity(continuity);
+        setContinuityDismissed(false);
+        return;
+      }
+      goToDashboard();
       return;
     }
 
@@ -599,6 +634,19 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   return (
     <div className={`${styles.pageBg} ${embedded ? styles.pageBgEmbedded : ''}`}>
       {analyzeProgress && <AnalyzeProgressOverlay progress={analyzeProgress} />}
+      {showValidationContinuityNudge && validationContinuity ? (
+        <UploadContinuityNudge
+          continuity={validationContinuity}
+          onDismiss={dismissContinuityNudge}
+        />
+      ) : null}
+      {postAnalyzeContinuity ? (
+        <UploadContinuityNudge
+          continuity={postAnalyzeContinuity}
+          onDismiss={dismissContinuityNudge}
+          onContinue={goToDashboard}
+        />
+      ) : null}
       {!embedded ? (
       <nav className={styles.nav}>
         <div className="wrap">

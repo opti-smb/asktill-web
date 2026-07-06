@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useClerk, useSignUp, useUser } from '@clerk/clerk-react';
 import AuthNav from '../components/auth/AuthNav';
 import AuthPageFooter from '../components/auth/AuthPageFooter';
@@ -108,10 +108,15 @@ async function satisfyClerkPassword(
 function RegisterClerkFlow() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuth, ready } = useAuth();
+  const [searchParams] = useSearchParams();
+  const referralCodeRef = useRef(
+    (searchParams.get('ref') || searchParams.get('referral') || '').trim().toUpperCase(),
+  );
+  const { login, isAuth, ready, logout } = useAuth();
   const clerk = useClerk();
   const { isLoaded, signUp } = useSignUp();
   const { user: clerkUser, isLoaded: clerkUserLoaded } = useUser();
+  const referralSessionPreparedRef = useRef(false);
 
   const [step, setStep] = useState<RegisterStep>(0);
   const [email, setEmail] = useState('');
@@ -138,7 +143,21 @@ function RegisterClerkFlow() {
   }, []);
 
   useEffect(() => {
-    if (ready && isAuth) {
+    if (!ready || !referralCodeRef.current) return;
+    if (!isAuth || referralSessionPreparedRef.current) return;
+    referralSessionPreparedRef.current = true;
+    void (async () => {
+      clearRegisterDraft();
+      await logout();
+      if (clerk.loaded) {
+        await clearClerkSession(clerk, { stayOnPage: true });
+      }
+      setInfo('Signed out so you can create a new account with this referral link.');
+    })();
+  }, [ready, isAuth, logout, clerk]);
+
+  useEffect(() => {
+    if (ready && isAuth && !referralCodeRef.current) {
       clearRegisterDraft();
       navigate('/onboarding', { replace: true });
     }
@@ -475,6 +494,7 @@ function RegisterClerkFlow() {
         businessName: companyName.trim(),
         fullName: fullName.trim(),
         country: 'US',
+        ...(referralCodeRef.current ? { referralCode: referralCodeRef.current } : {}),
       });
       setCreateStep('signing-in');
       await login(addr, password);
