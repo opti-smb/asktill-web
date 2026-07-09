@@ -14,7 +14,7 @@ import {
   CLASSIC_PIPELINE_STEP_MS,
   type AnalyzeProgressEvent,
 } from './analyzeProgress';
-import { normalizeTier, tierDisplayLabel } from './subscription';
+import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickPrimarySavedReport } from './atLetterStatement';
 export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
