@@ -258,7 +258,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             const needsHydrate =
               !sessionAnalysis
               || (activeViewId && sessionStatementId && activeViewId !== sessionStatementId);
-            if (needsHydrate && hydratedStatementIdRef.current !== effectiveSessionId) {
+            if (needsHydrate && effectiveSessionId && hydratedStatementIdRef.current !== effectiveSessionId) {
               hydratedStatementIdRef.current = effectiveSessionId;
               try {
                 const { data: saved } = await fetchSavedReport(effectiveSessionId);

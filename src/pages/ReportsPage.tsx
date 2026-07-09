@@ -136,12 +136,16 @@ export default function ReportsPage() {
   if (!hasLiveAnalysis) {
     return (
       <div className={styles.main}>
-        <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.sectionSub} />
         <div className="wrap">
-          <PreviousReportsPanel
-            excludePeriodKey={currentPeriodKey}
-            onLoadReport={loadSavedReport}
-          />
+          <div className={styles.card}>
+            <div className={styles.scrollViewport}>
+              <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.sectionSub} />
+              <PreviousReportsPanel
+                excludePeriodKey={currentPeriodKey}
+                onLoadReport={loadSavedReport}
+              />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -156,8 +160,9 @@ export default function ReportsPage() {
       />
       <div className={styles.main}>
         <div className="wrap">
-          <>
-            <DownloadReportButton files={files} period={period} statementId={reportStatementId} />
+          <div className={styles.card}>
+            <div className={styles.scrollViewport}>
+              <DownloadReportButton files={files} period={period} statementId={reportStatementId} />
 
               {period === 'Month' && (
                 <>
@@ -203,12 +208,13 @@ export default function ReportsPage() {
                   error={weekError}
                 />
               )}
-          </>
 
-          <PreviousReportsPanel
-            excludePeriodKey={currentPeriodKey}
-            onLoadReport={loadSavedReport}
-          />
+              <PreviousReportsPanel
+                excludePeriodKey={currentPeriodKey}
+                onLoadReport={loadSavedReport}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </>

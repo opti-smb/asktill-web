@@ -12,6 +12,7 @@ import { useAuth } from './AuthContext';
 import {
   analyzeWithProgress,
   ensureAuthServiceReady,
+  extractFreeTierLimit,
   extractStatementDuplicate,
   extractUploadMismatches,
   fetchSavedReportWithRetry,
@@ -317,6 +318,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         setStatementDuplicate(duplicate);
         setUploadMismatch(null);
         setError(null);
+        return null;
+      }
+
+      const freeTierMessage = extractFreeTierLimit(err);
+      if (freeTierMessage) {
+        setAnalyzeProgress(null);
+        setStatementDuplicate(null);
+        setUploadMismatch(null);
+        setError(freeTierMessage);
         return null;
       }
 

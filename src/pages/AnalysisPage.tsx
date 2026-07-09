@@ -73,51 +73,55 @@ export default function AnalysisPage() {
 
       <div className={styles.main}>
         <div className="wrap">
-          <div className={styles.kpiBand}>
-            {apiKpis.map((kpi) => (
-              <KPICard key={kpi.label} kpi={kpi} />
-            ))}
-          </div>
+          <div className={styles.card}>
+            <div className={styles.scrollViewport}>
+              <div className={styles.kpiBand}>
+                {apiKpis.map((kpi) => (
+                  <KPICard key={kpi.label} kpi={kpi} />
+                ))}
+              </div>
 
-          <div className={styles.sectionHead}>
-            <div className={styles.sectionH}>
-              Three things <em>everyone needs to know.</em>
-            </div>
-            <div className={styles.sectionSub}>Always shown · updated daily</div>
-          </div>
-          <StandardQuestions insights={insights} hasLiveAnalysis={hasLiveAnalysis} />
+              <div className={styles.sectionHead}>
+                <div className={styles.sectionH}>
+                  Three things <em>everyone needs to know.</em>
+                </div>
+                <div className={styles.sectionSub}>Always shown · updated daily</div>
+              </div>
+              <StandardQuestions insights={insights} hasLiveAnalysis={hasLiveAnalysis} />
 
-          <div className={styles.sectionHead}>
-            <div className={styles.sectionH}>
-              Where your money <em>actually goes.</em>
-            </div>
-            <div className={styles.sectionSub}>Commission &amp; timing across processors</div>
-          </div>
+              <div className={styles.sectionHead}>
+                <div className={styles.sectionH}>
+                  Where your money <em>actually goes.</em>
+                </div>
+                <div className={styles.sectionSub}>Commission &amp; timing across processors</div>
+              </div>
 
-          {processors.length > 0 ? (
-            <div className={styles.processorGrid}>
-              {processors.map((p) => (
-                <ProcessorCard
-                  key={p.title}
-                  iconType={p.iconType}
-                  icon={p.iconType === 'ecomm' ? <EcommIcon /> : <PosIcon />}
-                  title={p.title}
-                  subtitle={p.subtitle}
-                  stat1Label={p.stat1Label}
-                  stat1Value={p.stat1Value}
-                  stat1Range={p.stat1Range}
-                  stat1Delta={p.stat1Delta}
-                  stat1DeltaType={p.stat1DeltaType}
-                  stat2Label={p.stat2Label}
-                  stat2Value={p.stat2Value}
-                  stat2Range={p.stat2Range}
-                  stat2Delta={p.stat2Delta}
-                  stat2DeltaType={p.stat2DeltaType}
-                  compRows={p.compRows}
-                />
-              ))}
+              {processors.length > 0 ? (
+                <div className={styles.processorGrid}>
+                  {processors.map((p) => (
+                    <ProcessorCard
+                      key={p.title}
+                      iconType={p.iconType}
+                      icon={p.iconType === 'ecomm' ? <EcommIcon /> : <PosIcon />}
+                      title={p.title}
+                      subtitle={p.subtitle}
+                      stat1Label={p.stat1Label}
+                      stat1Value={p.stat1Value}
+                      stat1Range={p.stat1Range}
+                      stat1Delta={p.stat1Delta}
+                      stat1DeltaType={p.stat1DeltaType}
+                      stat2Label={p.stat2Label}
+                      stat2Value={p.stat2Value}
+                      stat2Range={p.stat2Range}
+                      stat2Delta={p.stat2Delta}
+                      stat2DeltaType={p.stat2DeltaType}
+                      compRows={p.compRows}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
     </>

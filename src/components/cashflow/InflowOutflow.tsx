@@ -22,19 +22,6 @@ function deltaPillClass(deltaType?: string | null): string {
   return styles.up;
 }
 
-function renderGuidanceAnswer(text: string) {
-  const parts = text.split(/(\$[\d,]+(?:\.\d{2})?)/g);
-  return parts.map((part, i) =>
-    part.startsWith('$') ? (
-      <strong key={i} className={styles.num}>
-        {part}
-      </strong>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
 function MockMonthBars({
   bars,
   avgY,
@@ -120,52 +107,16 @@ export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) 
   const inTrend = cashFlow?.money_in_trend;
   const outTrend = cashFlow?.money_out_trend;
 
-  const guidance = cashFlow?.guidance;
   const moneyOutNote = cashFlow?.money_out_note;
   const moneyInNote = cashFlow?.money_in_note;
   const debitsReconciled = cashFlow?.debits_reconciled;
   const bankBasedFlow = Boolean(
-    guidance ||
-      cashFlow?.money_in_subtitle?.includes('credits on bank statement') ||
+    cashFlow?.money_in_subtitle?.includes('credits on bank statement') ||
       cashFlow?.money_out_subtitle?.includes('debits on bank statement'),
   );
 
   return (
     <>
-      <div className={`${styles.askBanner} ${guidance?.severity === 'warn' ? styles.askBannerWarn : ''}`}>
-        <div className={styles.askBannerIcon}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-          </svg>
-        </div>
-        <div className={styles.askBannerContent}>
-          <div className={styles.askBannerQ}>
-            &quot;{guidance?.question ?? 'Can I afford to hire a new server next month?'}&quot;
-          </div>
-          {guidance ? (
-            <>
-              <div className={styles.askBannerHeadline}>{guidance.headline}</div>
-              <div className={styles.askBannerA}>{renderGuidanceAnswer(guidance.answer)}</div>
-            </>
-          ) : (
-            <div className={styles.askBannerA}>
-              {hasLiveData ? (
-                <>
-                  Upload a bank statement to see where money came in and went out, then compare cash on hand to the
-                  wage you&apos;re considering.
-                </>
-              ) : (
-                <>
-                  <strong>Example only.</strong> At{' '}
-                  <span className={styles.num}>$18/hr × 30hrs/week</span>, you&apos;d add ~$2,340/mo in payroll — upload
-                  statements to see your real numbers.
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
       <div className={styles.grid2}>
         <div className={styles.card}>
           <div className={styles.cardHeader}>

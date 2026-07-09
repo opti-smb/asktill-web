@@ -1,0 +1,138 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  align-content: center;
+}
+
+.plan {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 18px 14px;
+  background: var(--bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.featured {
+  border: 2px solid var(--brand-bright);
+}
+
+.current {
+  box-shadow: 0 0 0 1px var(--brand-soft);
+}
+
+.badge,
+.currentBadge {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.badge {
+  background: var(--brand-bright);
+  color: #fff;
+}
+
+.currentBadge {
+  background: var(--brand-deep);
+  color: #fff;
+}
+
+.featured .currentBadge {
+  top: 16px;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.price {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.05;
+}
+
+.period {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.items {
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.items div {
+  margin-bottom: 4px;
+}
+
+.highlight {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.btnPrimary,
+.btnOutline {
+  width: 100%;
+  margin-top: 12px;
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 999px;
+  text-align: center;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.btnPrimary {
+  background: var(--ink);
+  color: var(--bg);
+  border: 1px solid var(--ink);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+.btnPrimary:disabled,
+.btnOutline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

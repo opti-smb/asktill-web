@@ -30,8 +30,12 @@ export default function CashFlowPage() {
       />
       <div className={styles.main}>
         <div className="wrap">
-          <ForecastChart cashFlow={cashFlow} result={result} />
-          <InflowOutflow cashFlow={cashFlow} result={result} />
+          <div className={styles.card}>
+            <div className={styles.scrollViewport}>
+              <ForecastChart cashFlow={cashFlow} result={result} />
+              <InflowOutflow cashFlow={cashFlow} result={result} />
+            </div>
+          </div>
         </div>
       </div>
     </>
