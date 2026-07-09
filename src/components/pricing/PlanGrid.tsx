@@ -69,7 +69,6 @@ export default function PlanGrid({
   onSubscribe,
 }: PlanGridProps) {
   const compactMode = variant === 'upgrade';
-  const c = compactMode ? compact : landing;
 
   if (compactMode) {
     return (

@@ -92,7 +92,7 @@ export function useSubscription(): SubscriptionContextValue {
 
 /** Gate a dashboard path — returns false and opens paywall when the route is paid-only. */
 export function usePaidPathAccess(path: string): boolean {
-  const { isPaid, requestPaidAccess } = useSubscription();
+  const { requestPaidAccess } = useSubscription();
   if (!isPaidOnlyPath(path)) return true;
   return requestPaidAccess('This section');
 }
