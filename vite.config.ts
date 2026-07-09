@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   envPrefix: ['VITE_', 'TOKEN_'],
   server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/health': { target: 'http://localhost:8002', changeOrigin: true },
       '/api/register': { target: 'http://localhost:8003', changeOrigin: true },

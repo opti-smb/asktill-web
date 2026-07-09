@@ -4,6 +4,7 @@ import SectionHeader from '../components/layout/SectionHeader';
 import { useAuth } from '../context/AuthContext';
 import { changePassword, getApiError } from '../lib/api';
 import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
+import { tierDisplayLabel } from '../lib/subscription';
 import styles from './ProfilePage.module.css';
 
 interface PasswordFormData {
@@ -94,7 +95,7 @@ export default function ProfilePage() {
             ) : null}
             <div className={styles.fieldRow}>
               <dt>Plan</dt>
-              <dd>{user?.tier ? user.tier.replace(/_/g, ' ') : 'Pilot'}</dd>
+              <dd>{tierDisplayLabel(user?.tier)}</dd>
             </div>
             <div className={styles.fieldRow}>
               <dt>Member since</dt>

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import Logo from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -13,12 +13,22 @@ import styles from './DashboardNav.module.css';
 
 export default function DashboardNav() {
   const { isAuth, ready } = useAuth();
+  const { pathname } = useLocation();
+  const isAtLetterRoute = /^\/dashboard(?:\/at-letter)?\/?$/.test(pathname);
+  const isCashFlowRoute = pathname.startsWith('/dashboard/cashflow');
+  const isReconRoute = pathname.startsWith('/dashboard/reconciliation');
+  const isOverviewRoute = pathname.startsWith('/dashboard/analysis');
+  const isReportsRoute = pathname.startsWith('/dashboard/reports');
+  // Same dual-scroll pattern as Cash Flow / Overview / Reports:
+  // outer page scroll (sticky nav) + inner capped viewport scroll.
+  const usePageScrollShell =
+    isAtLetterRoute || isCashFlowRoute || isReconRoute || isOverviewRoute || isReportsRoute;
 
   return (
 
-    <>
+    <div className={usePageScrollShell ? styles.shellAtLetter : styles.shell}>
 
-      <nav className={styles.nav}>
+      <nav className={`${styles.nav} ${usePageScrollShell ? styles.navSticky : ''}`}>
 
         <div className="wrap">
 
@@ -134,11 +144,13 @@ export default function DashboardNav() {
 
       </nav>
 
-      <Outlet />
+      <div className={usePageScrollShell ? styles.pageBodyAtLetter : styles.pageBody}>
+        <Outlet />
+      </div>
 
       <FloatingAskButton />
 
-    </>
+    </div>
 
   );
 

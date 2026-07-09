@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
@@ -14,8 +14,10 @@ import {
   downloadMonthlyReportPdf,
   fetchReportHistory,
   fetchSavedReport,
+  freeTierLimitNotice,
   getApiError,
   getApiErrorAsync,
+  hasFreeTierLimitConflict,
   isAlreadyStoredMessage,
   hasStoredPeriodConflict,
   storedPeriodMessage,
@@ -28,6 +30,7 @@ import {
   ensureAuthServiceReady,
   warmupBackend,
   warningsBySlot,
+  type FreeTierLimitNotice,
   type UploadValidationResult,
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
@@ -190,6 +193,7 @@ function fileKey(file: File | undefined): string {
 export default function UploadPage({ embedded = false }: { embedded?: boolean }) {
   const { register, watch, reset: resetForm } = useForm<FormData>();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     runAnalyze,
     loading,
@@ -206,6 +210,11 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     getLastStreamStatementId,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
+
+  const goToPricing = useCallback(() => {
+    const from = encodeURIComponent(location.pathname);
+    navigate(`/pricing?from=${from}`);
+  }, [location.pathname, navigate]);
   const [showPreviousReports, setShowPreviousReports] = useState(false);
   const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
   const [duplicateBusy, setDuplicateBusy] = useState(false);
@@ -224,9 +233,26 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const [postAnalyzeContinuity, setPostAnalyzeContinuity] = useState<UploadContinuityView | null>(
     null,
   );
+  const [persistentFreeTierNotice, setPersistentFreeTierNotice] =
+    useState<FreeTierLimitNotice | null>(null);
+  const [uploadFormKey, setUploadFormKey] = useState(0);
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
   const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
+
+  const rejectFreeTierUpload = useCallback(
+    (notice: FreeTierLimitNotice | null) => {
+      if (notice) setPersistentFreeTierNotice(notice);
+      validationRequestRef.current += 1;
+      setValidation(null);
+      setPinnedSlotWarnings({});
+      validatedFileKeysRef.current = '';
+      setSlotChecking({ bank: false, pos: false, ecommerce: false });
+      resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
+      setUploadFormKey((key) => key + 1);
+    },
+    [resetForm],
+  );
 
   useEffect(() => {
     warmupBackend();
@@ -299,6 +325,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     setUploadPrompt(null);
     setContinuityDismissed(false);
     setPostAnalyzeContinuity(null);
+    setPersistentFreeTierNotice(null);
+    setUploadFormKey((key) => key + 1);
     validatedFileKeysRef.current = '';
     validationRequestRef.current += 1;
   }, [resetForm]);
@@ -372,6 +400,11 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
           if (cancelled || validationRequestRef.current !== requestId) return;
           if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
 
+          if (hasFreeTierLimitConflict(data)) {
+            rejectFreeTierUpload(freeTierLimitNotice(data));
+            return;
+          }
+
           setValidation(data);
           validatedFileKeysRef.current = fileKeysAtStart;
           setPinnedSlotWarnings((prev) =>
@@ -413,6 +446,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     currentFileKeys,
     applyStatementDuplicate,
     clearStatementDuplicate,
+    rejectFreeTierUpload,
   ]);
 
   const validationMatchesFiles = validatedFileKeysRef.current === currentFileKeys;
@@ -432,6 +466,23 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       }),
     );
   }, [uploadMismatch, bankKey, posKey, ecommerceKey]);
+
+  useEffect(() => {
+    if (!validationMatchesFiles || anySlotChecking || validationError) return;
+    if (!hasFreeTierLimitConflict(mergedValidation)) {
+      if (mergedValidation && batchValidationPasses(mergedValidation)) {
+        setPersistentFreeTierNotice(null);
+      }
+      return;
+    }
+    rejectFreeTierUpload(freeTierLimitNotice(mergedValidation));
+  }, [
+    validationMatchesFiles,
+    anySlotChecking,
+    validationError,
+    mergedValidation,
+    rejectFreeTierUpload,
+  ]);
 
   const slotFileKeys = useMemo(
     () => ({ bank: bankKey, pos: posKey, ecommerce: ecommerceKey }),
@@ -481,7 +532,19 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     [ecommerceFile, activeValidation, slotWarnings, slotChecking.ecommerce, validationFailed],
   );
 
+  const freeTierNotice = useMemo(() => {
+    if (persistentFreeTierNotice) return persistentFreeTierNotice;
+    if (!validationMatchesFiles || anySlotChecking) return null;
+    const fromValidation = freeTierLimitNotice(mergedValidation);
+    if (fromValidation) return fromValidation;
+    if (error && (error.toLowerCase().includes('free plan') || error.toLowerCase().includes('upgrade to add'))) {
+      return { storedLabel: null, newLabel: null, message: error };
+    }
+    return null;
+  }, [persistentFreeTierNotice, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
+
   const headerNotice = useMemo(() => {
+    if (freeTierNotice) return null;
     if (statementDuplicate?.message) {
       return statementDuplicate.message;
     }
@@ -490,7 +553,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     if (fromValidation) return fromValidation;
     if (error && isAlreadyStoredMessage(error)) return error;
     return null;
-  }, [statementDuplicate, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
+  }, [freeTierNotice, statementDuplicate, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
 
   const savedStatementId = useMemo(() => {
     if (statementDuplicate?.statementId) return statementDuplicate.statementId;
@@ -529,12 +592,16 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     batchValidationPasses(validation) &&
     !validationError &&
     validatedFileKeysRef.current === currentFileKeys;
+  const hasFreeTierConflict =
+    Boolean(persistentFreeTierNotice)
+    || (validationSettled && hasFreeTierLimitConflict(mergedValidation));
   const canSubmitAnalyze =
     uploadedCount >= 1 &&
     !loading &&
     !anySlotChecking &&
     !validationError &&
     !hasStoredConflict &&
+    !hasFreeTierConflict &&
     !hasBoxWarnings &&
     validationReady;
 
@@ -677,7 +744,11 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       </div>
 
       <div className={styles.page}>
-        <div className={`wrap ${styles.pageInner} ${showPreviousReports ? styles.pageInnerScroll : ''}`}>
+        <div
+          className={`wrap ${styles.pageInner} ${embedded ? styles.pageInnerEmbedded : ''} ${
+            showPreviousReports ? styles.pageInnerScroll : ''
+          }`}
+        >
           <div className={styles.previousReportsTop}>
             <button
               type="button"
@@ -707,7 +778,19 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             <p className={styles.pageSub}>
               Upload your Bank, Pos, and Ecom statements. Same period will give best results
             </p>
-            {headerNotice ? (
+            {freeTierNotice ? (
+              <div className={styles.freeTierBanner} role="alert">
+                <p className={styles.freeTierTitle}>Free plan: one month on file</p>
+                <p className={styles.freeTierMessage}>{freeTierNotice.message}</p>
+                <button
+                  type="button"
+                  className={styles.freeTierUpgradeBtn}
+                  onClick={goToPricing}
+                >
+                  Upgrade to Paid
+                </button>
+              </div>
+            ) : headerNotice ? (
               <div className={styles.duplicateBanner} role="alert">
                 <p className={styles.duplicateMessage}>{headerNotice}</p>
                 {savedStatementId ? (
@@ -752,6 +835,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
 
           <div className={styles.uploadGrid}>
             <FileDropZone
+              key={`bank-${uploadFormKey}`}
               name="bank"
               label="Bank statement"
               uploadState={bankState}
@@ -768,6 +852,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
               register={register}
             />
             <FileDropZone
+              key={`pos-${uploadFormKey}`}
               name="pos"
               label="POS export"
               uploadState={posState}
@@ -783,6 +868,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
               register={register}
             />
             <FileDropZone
+              key={`ecommerce-${uploadFormKey}`}
               name="ecommerce"
               label="Ecommerce"
               uploadState={ecommerceState}
@@ -821,7 +907,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             </div>
           )}
 
-          {error && !headerNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) && (
+          {error && !headerNotice && !freeTierNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) && (
             <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 16 }}>
               {error}
             </div>

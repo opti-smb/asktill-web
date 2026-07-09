@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
 import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
@@ -15,6 +15,8 @@ import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
 import ProfilePage from '../pages/ProfilePage';
+import PricingPage from '../pages/PricingPage';
+import CheckoutPage from '../pages/CheckoutPage';
 import DashboardNav from '../components/layout/DashboardNav';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
@@ -35,6 +37,22 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/sso-callback" element={<LoginOAuthCallback />} />
         <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />
+        <Route
+          path="/pricing/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pricing"
+          element={
+            <ProtectedRoute>
+              <PricingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/onboarding"
           element={
@@ -67,15 +85,11 @@ function AppRoutes() {
 }
 
 export default function AppRouter() {
-  return (
-    <BrowserRouter>
-      {isClerkEnabled() ? (
-        <ClerkAuthProvider>
-          <AppRoutes />
-        </ClerkAuthProvider>
-      ) : (
-        <AppRoutes />
-      )}
-    </BrowserRouter>
+  return isClerkEnabled() ? (
+    <ClerkAuthProvider>
+      <AppRoutes />
+    </ClerkAuthProvider>
+  ) : (
+    <AppRoutes />
   );
 }

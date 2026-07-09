@@ -4,6 +4,22 @@
   min-height: calc(100vh - 88px);
 }
 
+.card {
+  background: #fff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.scrollViewport {
+  background: var(--bg-soft);
+  max-height: min(85vh, 920px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+}
+
 .sectionSub {
   font-size: 12px;
   color: var(--body);

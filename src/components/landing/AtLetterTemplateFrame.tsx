@@ -9,13 +9,33 @@ type Props = {
   emptyMessage?: string;
 };
 
+function lockIframeScroll(doc: Document | null | undefined) {
+  if (!doc) return;
+  const root = doc.documentElement;
+  const body = doc.body;
+  if (root) {
+    root.style.overflow = 'hidden';
+    root.style.height = 'auto';
+  }
+  if (body) {
+    body.style.overflow = 'hidden';
+    body.style.height = 'auto';
+    body.style.margin = '0';
+  }
+}
+
 function resizeFrame(frame: HTMLIFrameElement | null) {
   if (!frame) return;
   try {
     const doc = frame.contentDocument;
-    const height = doc?.documentElement?.scrollHeight ?? doc?.body?.scrollHeight;
-    if (height && height > 0) {
-      frame.style.height = `${height}px`;
+    lockIframeScroll(doc);
+    const height = Math.max(
+      doc?.documentElement?.scrollHeight ?? 0,
+      doc?.body?.scrollHeight ?? 0,
+    );
+    if (height > 0) {
+      // Slight buffer avoids a 1px native iframe scrollbar under the letter box.
+      frame.style.height = `${height + 2}px`;
     }
   } catch {
     frame.style.height = '720px';
@@ -24,15 +44,33 @@ function resizeFrame(frame: HTMLIFrameElement | null) {
 
 export default function AtLetterTemplateFrame({ html, loading, empty, emptyMessage }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
 
-  const onLoad = useCallback(() => {
-    resizeFrame(frameRef.current);
+  const syncFrame = useCallback(() => {
+    const frame = frameRef.current;
+    resizeFrame(frame);
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    const body = frame?.contentDocument?.body;
+    if (!body || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => resizeFrame(frame));
+    observer.observe(body);
+    observerRef.current = observer;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
     if (!html) return;
-    const timer = window.setTimeout(() => resizeFrame(frameRef.current), 120);
-    return () => window.clearTimeout(timer);
+    const timers = [120, 400, 1000].map((ms) =>
+      window.setTimeout(() => resizeFrame(frameRef.current), ms),
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
   }, [html]);
 
   if (loading) {
@@ -73,7 +111,8 @@ export default function AtLetterTemplateFrame({ html, loading, empty, emptyMessa
         className={styles.letterTemplateFrame}
         srcDoc={html}
         sandbox="allow-same-origin"
-        onLoad={onLoad}
+        scrolling="no"
+        onLoad={syncFrame}
       />
     </div>
   );

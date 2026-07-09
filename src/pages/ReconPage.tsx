@@ -30,8 +30,12 @@ export default function ReconPage() {
       />
       <div className={styles.main}>
         <div className="wrap">
-          <ReconSummary reconciliation={reconciliation} />
-          <FlaggedTable reconciliation={reconciliation} />
+          <div className={styles.card}>
+            <div className={styles.scrollViewport}>
+              <ReconSummary reconciliation={reconciliation} />
+              <FlaggedTable reconciliation={reconciliation} />
+            </div>
+          </div>
         </div>
       </div>
     </>

@@ -14,11 +14,12 @@ import {
   CLASSIC_PIPELINE_STEP_MS,
   type AnalyzeProgressEvent,
 } from './analyzeProgress';
-import type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
-import { getAnalyzeAnalysis } from './analyzeResponse';
+import { normalizeTier, tierDisplayLabel } from './subscription';
+import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickPrimarySavedReport } from './atLetterStatement';
-
-export { formatAskResponseForChat } from './analyzeResponse';
+export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
+export type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
+export { normalizeTier, tierDisplayLabel } from './subscription';
 
 const TOKEN_KEY =
   import.meta.env.TOKEN_STORAGE_KEY ?? 'asktill_access_token';
@@ -282,6 +283,14 @@ export interface UploadValidationResult {
     period_label?: string;
     statement_id?: string | null;
   }>;
+  free_tier_limit_warnings?: Array<{
+    slot: string;
+    filename: string;
+    message: string;
+    period_label?: string | null;
+    stored_period_label?: string | null;
+    code?: string;
+  }>;
   detected_periods: Partial<Record<'bank' | 'pos' | 'ecommerce', string>>;
   upload_continuity?: import('./uploadContinuity').UploadContinuityView | null;
 }
@@ -407,6 +416,87 @@ export function hasStoredPeriodConflict(result: UploadValidationResult | null): 
   return Boolean((result?.stored_period_warnings?.length ?? 0) > 0);
 }
 
+export function hasFreeTierLimitConflict(result: UploadValidationResult | null): boolean {
+  return Boolean((result?.free_tier_limit_warnings?.length ?? 0) > 0);
+}
+
+export function freeTierLimitMessage(result: UploadValidationResult | null): string | null {
+  const notice = freeTierLimitNotice(result);
+  return notice?.message ?? null;
+}
+
+export interface FreeTierLimitNotice {
+  storedLabel: string | null;
+  newLabel: string | null;
+  message: string;
+}
+
+export function freeTierLimitNotice(
+  result: UploadValidationResult | null,
+): FreeTierLimitNotice | null {
+  const warnings = result?.free_tier_limit_warnings ?? [];
+  if (!warnings.length) return null;
+  const warning = warnings.find((w) => w.message?.trim()) ?? warnings[0];
+  const storedLabel = warning.stored_period_label?.trim() || null;
+  const newLabel = warning.period_label?.trim() || null;
+  const message = warning.message?.trim() ?? '';
+  if (storedLabel && newLabel) {
+    return {
+      storedLabel,
+      newLabel,
+      message: `You have ${storedLabel} on file. Upgrade to add ${newLabel}.`,
+    };
+  }
+  return { storedLabel, newLabel, message };
+}
+
+function freeTierNoticeFromDetail(data: unknown): FreeTierLimitNotice | null {
+  const d = unwrapErrorDetail(data);
+  if (!d) return null;
+  if (String(d.code ?? '') !== 'free_tier_month_limit') return null;
+  const storedLabels = Array.isArray(d.storedPeriodLabels)
+    ? d.storedPeriodLabels.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+    : [];
+  const storedLabel = storedLabels[0]?.trim()
+    ?? (typeof d.storedPeriodLabel === 'string' ? d.storedPeriodLabel.trim() : null)
+    ?? null;
+  const newLabel =
+    (typeof d.newPeriodLabel === 'string' ? d.newPeriodLabel.trim() : null) || null;
+  const message = String(d.message ?? '').trim();
+  if (storedLabel && newLabel) {
+    return {
+      storedLabel,
+      newLabel,
+      message: `You have ${storedLabel} on file. Upgrade to add ${newLabel}.`,
+    };
+  }
+  return {
+    storedLabel,
+    newLabel,
+    message: message || 'Free plan covers one statement month. Upgrade to add another month.',
+  };
+}
+
+export function extractFreeTierLimit(err: unknown): string | null {
+  return freeTierLimitNoticeFromError(err)?.message ?? null;
+}
+
+export function freeTierLimitNoticeFromError(err: unknown): FreeTierLimitNotice | null {
+  const axiosErr = err as AxiosError<{ detail?: unknown }>;
+  if (axiosErr?.response?.status === 403) {
+    const notice = freeTierNoticeFromDetail(axiosErr.response.data);
+    if (notice) return notice;
+  }
+  const wrapped = err as Error & { response?: { status?: number; data?: unknown } };
+  if (wrapped?.response?.status === 403) {
+    return freeTierNoticeFromDetail(wrapped.response.data);
+  }
+  if (wrapped?.response?.data) {
+    return freeTierNoticeFromDetail(wrapped.response.data);
+  }
+  return null;
+}
+
 /** Validation response received for the current files (ignores ok flag — used for duplicate UX). */
 export function validationSettledForFiles(
   result: UploadValidationResult | null,
@@ -526,6 +616,9 @@ export function mergeUploadValidationResults(
       ...(live.format_warnings ?? []),
       ...(fromAnalyze.format_warnings ?? []),
     ]),
+    free_tier_limit_warnings: (live.free_tier_limit_warnings?.length ?? 0) > 0
+      ? live.free_tier_limit_warnings
+      : (fromAnalyze.free_tier_limit_warnings ?? []),
     detected_periods: { ...fromAnalyze.detected_periods, ...live.detected_periods },
   };
 }
@@ -555,6 +648,7 @@ export function batchValidationPasses(result: UploadValidationResult | null): bo
   if ((result.slot_mismatches?.length ?? 0) > 0) return false;
   if ((result.period_mismatches?.length ?? 0) > 0) return false;
   if (hasStoredPeriodConflict(result)) return false;
+  if (hasFreeTierLimitConflict(result)) return false;
   const w = warningsBySlot(result);
   return !(w.bank || w.pos || w.ecommerce);
 }
@@ -814,7 +908,7 @@ export function normalizeUser(data: unknown): AuthUser | null {
     email,
     name: fullName?.trim() || businessName?.trim() || null,
     businessName: businessName?.trim() || null,
-    tier: u.tier as string | undefined,
+    tier: normalizeTier(u.tier as string | undefined),
     roles: u.roles as string[] | undefined,
     industry: (u.industry as string | undefined) ?? null,
     country: (u.country as string | undefined) ?? null,
