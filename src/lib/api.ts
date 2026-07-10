@@ -97,13 +97,13 @@ function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
         const isLogin = url.includes('/api/auth/login');
         const token = getToken();
         const isMe = url.includes('/api/auth/me');
-        const backendProtected =
-          isBackendApiRequest(err)
-          && (url.includes('/api/reports/') || url.includes('/api/analyze'));
+        // Only force re-login when /me fails or the JWT is actually expired.
+        // Report/analyze routes retry transient 401/503 on cold Render — do not
+        // dispatch session-expired here or open/download previous reports breaks.
         if (
           !isLogin
           && token
-          && (isMe || isTokenExpired(token) || backendProtected)
+          && (isMe || isTokenExpired(token))
         ) {
           dispatchSessionExpiredOnce();
         }
