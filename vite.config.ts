@@ -12,6 +12,7 @@ export default defineConfig({
       '/health': { target: 'http://localhost:8002', changeOrigin: true },
       '/api/register': { target: 'http://localhost:8003', changeOrigin: true },
       '/api/auth': { target: 'http://localhost:8002', changeOrigin: true },
+      '/api/checkout': { target: 'http://localhost:8006', changeOrigin: true },
       '/api/ask': { target: 'http://localhost:8000', changeOrigin: true },
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
     },

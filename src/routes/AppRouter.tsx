@@ -17,8 +17,10 @@ import SourcesPage from '../pages/SourcesPage';
 import ProfilePage from '../pages/ProfilePage';
 import PricingPage from '../pages/PricingPage';
 import CheckoutPage from '../pages/CheckoutPage';
+import SubscriptionActivatingPage from '../pages/SubscriptionActivatingPage';
 import DashboardNav from '../components/layout/DashboardNav';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
+import PostPaymentRoute from '../components/auth/PostPaymentRoute';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
 import { useAuth } from '../context/AuthContext';
 
@@ -43,6 +45,14 @@ function AppRoutes() {
             <ProtectedRoute>
               <CheckoutPage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pricing/activating"
+          element={
+            <PostPaymentRoute>
+              <SubscriptionActivatingPage />
+            </PostPaymentRoute>
           }
         />
         <Route

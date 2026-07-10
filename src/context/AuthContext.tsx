@@ -41,6 +41,8 @@ interface AuthContextValue {
   establishSessionFromResponse: (data: unknown, fallbackEmail?: string) => void;
   loginWithClerkSession: (sessionId: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
+  patchUserTier: (tier: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -275,12 +277,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearSession({ expired: false });
   }, [clearExpiryTimer, clearSession]);
 
+  const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
+    const stored = getToken();
+    if (!stored || isTokenExpired(stored)) return null;
+    try {
+      const { data } = await fetchCurrentUser();
+      const profile = normalizeUser(data);
+      if (profile) {
+        setUser(profile);
+        return profile;
+      }
+    } catch {
+      /* keep existing user on transient errors */
+    }
+    return user;
+  }, [user]);
+
+  const patchUserTier = useCallback((tier: string) => {
+    setUser((prev) => (prev ? { ...prev, tier } : prev));
+  }, []);
+
   const isAuth =
     ready && !!token && !!user?.userId && !isTokenExpired(token);
 
   return (
     <AuthContext.Provider
-      value={{ token, user, isAuth, ready, sessionExpired, login, establishSessionFromResponse, loginWithClerkSession, logout }}
+      value={{ token, user, isAuth, ready, sessionExpired, login, establishSessionFromResponse, loginWithClerkSession, logout, refreshUser, patchUserTier }}
     >
       {children}
     </AuthContext.Provider>

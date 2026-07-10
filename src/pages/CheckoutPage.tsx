@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
+import { createCheckoutSession, getApiError } from '../lib/api';
 import { getPlanById } from '../lib/plans';
 import { isPaidTier } from '../lib/subscription';
 import styles from './CheckoutPage.module.css';
-
-type CheckoutPhase = 'review' | 'payment' | 'complete';
 
 function resolveReturnPath(raw: string | null): string {
   if (!raw?.trim()) return '/dashboard/sources';
@@ -17,21 +16,14 @@ function resolveReturnPath(raw: string | null): string {
   return path;
 }
 
-function phaseToStep(phase: CheckoutPhase): number {
-  if (phase === 'review') return 2;
-  if (phase === 'payment') return 2;
-  return 3;
-}
-
 export default function CheckoutPage() {
   const { user, isAuth } = useAuth();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const plan = useMemo(() => getPlanById(params.get('plan')), [params]);
   const returnTo = resolveReturnPath(params.get('from'));
   const pricingHref = `/pricing?from=${encodeURIComponent(returnTo)}`;
-  const [phase, setPhase] = useState<CheckoutPhase>('review');
-  const activeStep = phaseToStep(phase);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!plan) {
     return <Navigate to={pricingHref} replace />;
@@ -41,13 +33,16 @@ export default function CheckoutPage() {
     return <Navigate to={returnTo} replace />;
   }
 
-  const onContinue = () => {
-    if (phase === 'review') {
-      setPhase('payment');
-      return;
-    }
-    if (phase === 'payment') {
-      setPhase('complete');
+  const onPayWithStripe = async () => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const checkoutUrl = await createCheckoutSession(plan.id, returnTo);
+      window.location.assign(checkoutUrl);
+    } catch (err) {
+      setError(getApiError(err, 'Could not start checkout. Try again in a moment.'));
+      setLoading(false);
     }
   };
 
@@ -69,7 +64,7 @@ export default function CheckoutPage() {
         <div className={`wrap ${styles.mainInner}`}>
           <h1 className={styles.title}>Complete your subscription</h1>
           <p className={styles.subtitle}>
-            Here&apos;s exactly what happens after you subscribe to {plan.name}.
+            You&apos;ll pay on Stripe, then return here with Paid access unlocked.
           </p>
 
           <div className={styles.stepper} aria-label="Checkout progress">
@@ -78,12 +73,12 @@ export default function CheckoutPage() {
               <span className={styles.stepLabel}>Choose plan</span>
             </div>
             <div className={styles.stepDivider} />
-            <div className={`${styles.step} ${activeStep === 2 ? styles.stepActive : ''} ${activeStep > 2 ? styles.stepDone : ''}`}>
-              <span className={styles.stepNum}>{activeStep > 2 ? '✓' : '2'}</span>
+            <div className={`${styles.step} ${styles.stepActive}`}>
+              <span className={styles.stepNum}>2</span>
               <span className={styles.stepLabel}>Pay securely</span>
             </div>
             <div className={styles.stepDivider} />
-            <div className={`${styles.step} ${activeStep === 3 ? styles.stepActive : ''}`}>
+            <div className={styles.step}>
               <span className={styles.stepNum}>3</span>
               <span className={styles.stepLabel}>Start uploading</span>
             </div>
@@ -114,75 +109,48 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div
-                  className={`${styles.flowStep} ${
-                    phase === 'payment' ? styles.flowStepCurrent : phase === 'complete' ? styles.flowStepDone : ''
-                  }`}
-                >
-                  <span className={styles.flowStepNum}>{phase === 'complete' ? '✓' : '2'}</span>
+                <div className={`${styles.flowStep} ${styles.flowStepCurrent}`}>
+                  <span className={styles.flowStepNum}>2</span>
                   <div className={styles.flowStepBody}>
                     <h3>Secure payment on Stripe</h3>
                     <p>
-                      You&apos;ll be redirected to Stripe to enter card details. Asktill never stores
-                      your card — billing is handled by Stripe.
+                      Stripe opens in a new page for card entry. Asktill never stores your card —
+                      billing is handled by Stripe.
                     </p>
-                    {phase === 'payment' ? (
-                      <div className={styles.paymentPanel}>
-                        <p className={styles.paymentPanelTitle}>Payment step (connecting next)</p>
-                        <p>
-                          Stripe Checkout will open here for {plan.price}/{plan.period.replace('per ', '')}.
-                          After successful payment, Stripe notifies Asktill automatically.
-                        </p>
-                      </div>
-                    ) : null}
+                    <p>Use test card <strong>4242 4242 4242 4242</strong> in test mode.</p>
                   </div>
                 </div>
 
-                <div
-                  className={`${styles.flowStep} ${phase === 'complete' ? styles.flowStepCurrent : ''}`}
-                >
+                <div className={styles.flowStep}>
                   <span className={styles.flowStepNum}>3</span>
                   <div className={styles.flowStepBody}>
-                    <h3>Account upgrades instantly</h3>
+                    <h3>Account upgrades automatically</h3>
                     <p>
-                      Your tier switches to Paid. You can upload multiple statement months right away
-                      and return to upload with no free-plan block.
+                      After payment, you&apos;ll see a short activation screen, then land on upload
+                      with multi-month access unlocked.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {phase === 'complete' ? (
-                <div className={styles.notice}>
-                  Payment is not connected yet. When Stripe goes live, this page will redirect to
-                  checkout and step 3 will happen automatically after you pay.
+              {error ? (
+                <div className={styles.notice} role="alert">
+                  {error}
                 </div>
               ) : null}
 
               <div className={styles.actions}>
-                {phase === 'complete' ? (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.btnPrimary}
-                      onClick={() => navigate(returnTo)}
-                    >
-                      Back to upload
-                    </button>
-                    <Link to={pricingHref} className={styles.btnSecondary}>
-                      View all plans
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className={styles.btnPrimary} onClick={onContinue}>
-                      {phase === 'review' ? 'Continue to payment' : 'Simulate successful payment'}
-                    </button>
-                    <Link to={pricingHref} className={styles.btnSecondary}>
-                      Change plan
-                    </Link>
-                  </>
-                )}
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  onClick={() => void onPayWithStripe()}
+                  disabled={loading}
+                >
+                  {loading ? 'Opening Stripe…' : `Pay with Stripe — ${plan.price}/${plan.period.replace('per ', '')}`}
+                </button>
+                <Link to={pricingHref} className={styles.btnSecondary}>
+                  Change plan
+                </Link>
               </div>
             </section>
           </div>

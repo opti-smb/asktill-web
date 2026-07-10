@@ -9,6 +9,7 @@ import UploadContinuityNudge from '../components/upload/UploadContinuityNudge';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import {
   duplicateInfoFromValidation,
   downloadMonthlyReportPdf,
@@ -210,6 +211,13 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     getLastStreamStatementId,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
+  const { isPaid } = useSubscription();
+
+  useEffect(() => {
+    if (isPaid) {
+      setPersistentFreeTierNotice(null);
+    }
+  }, [isPaid]);
 
   const goToPricing = useCallback(() => {
     const from = encodeURIComponent(location.pathname);
@@ -242,6 +250,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
 
   const rejectFreeTierUpload = useCallback(
     (notice: FreeTierLimitNotice | null) => {
+      if (isPaid) return;
       if (notice) setPersistentFreeTierNotice(notice);
       validationRequestRef.current += 1;
       setValidation(null);
@@ -251,7 +260,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
       setUploadFormKey((key) => key + 1);
     },
-    [resetForm],
+    [resetForm, isPaid],
   );
 
   useEffect(() => {
@@ -533,6 +542,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   );
 
   const freeTierNotice = useMemo(() => {
+    if (isPaid) return null;
     if (persistentFreeTierNotice) return persistentFreeTierNotice;
     if (!validationMatchesFiles || anySlotChecking) return null;
     const fromValidation = freeTierLimitNotice(mergedValidation);
@@ -541,7 +551,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       return { storedLabel: null, newLabel: null, message: error };
     }
     return null;
-  }, [persistentFreeTierNotice, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
+  }, [isPaid, persistentFreeTierNotice, mergedValidation, error, validationMatchesFiles, anySlotChecking]);
 
   const headerNotice = useMemo(() => {
     if (freeTierNotice) return null;
@@ -593,8 +603,11 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     !validationError &&
     validatedFileKeysRef.current === currentFileKeys;
   const hasFreeTierConflict =
-    Boolean(persistentFreeTierNotice)
-    || (validationSettled && hasFreeTierLimitConflict(mergedValidation));
+    !isPaid
+    && (
+      Boolean(persistentFreeTierNotice)
+      || (validationSettled && hasFreeTierLimitConflict(mergedValidation))
+    );
   const canSubmitAnalyze =
     uploadedCount >= 1 &&
     !loading &&
