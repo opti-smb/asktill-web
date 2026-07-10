@@ -1146,29 +1146,34 @@ export async function fetchSavedReportWithRetry(statementId: string): Promise<An
   }
   const request = () =>
     mainApi.get<AnalyzeResult>(`/api/reports/${encodeURIComponent(id)}`, {
-      timeout: 120_000,
+      timeout: 90_000,
     });
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  // Cap retries: each open rebuilds UI views on the backend. Spam + 8×404 retries
+  // was OOM-killing Render's 512Mi free instance when previous reports failed to open.
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const { data } = await request();
       return data as AnalyzeResult;
     } catch (err) {
       const axiosErr = err as AxiosError;
       const status = axiosErr?.response?.status;
+      // Do not retry 404 — missing report will not appear after waiting.
       const retryable =
         status === 503
         || status === 401
-        || status === 404
+        || status === 502
+        || status === 504
         || axiosErr?.code === 'ECONNABORTED'
         || axiosErr?.message === 'Network Error'
         || !axiosErr?.response;
-      if (!retryable || attempt >= 7) {
+      if (!retryable || attempt >= maxAttempts - 1) {
         throw err;
       }
-      await ensureAuthServiceReady(attempt >= 2 ? 45_000 : 15_000);
+      await ensureAuthServiceReady(attempt >= 1 ? 30_000 : 15_000);
       warmupBackend();
-      await new Promise((resolve) => window.setTimeout(resolve, 1200 * (attempt + 1)));
+      await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
     }
   }
   throw new Error('Could not load saved report.');
