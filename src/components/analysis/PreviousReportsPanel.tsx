@@ -94,21 +94,29 @@ export default function PreviousReportsPanel({
   }, [reports, excludePeriodKey]);
 
   const openReport = useCallback(async (row: SavedReportSummaryApi) => {
+    // One open/download at a time — spam-clicks stack heavy report loads and OOM Render (512Mi).
+    if (busyId) return;
     setBusyId(row.statement_id);
     setActionError(null);
     try {
       const { data } = await fetchSavedReport(row.statement_id);
       onLoadReport?.(data as AnalyzeResult);
-      navigate(DEFAULT_DASHBOARD_PATH);
+      // Upload-page "previous reconciliation reports" should land on Reconciliation, not AT Letter.
+      navigate(variant === 'upload' ? '/dashboard/reconciliation' : DEFAULT_DASHBOARD_PATH);
     } catch (err) {
-      setActionError(await getApiErrorAsync(err, 'Could not open saved report.'));
+      setActionError(
+        await getApiErrorAsync(
+          err,
+          'Could not open saved report. Wait a few seconds and try once — do not keep clicking.',
+        ),
+      );
     } finally {
       setBusyId(null);
     }
-  }, [navigate, onLoadReport]);
+  }, [busyId, navigate, onLoadReport, variant]);
 
   const downloadMonthlyReport = useCallback(async (row: SavedReportSummaryApi) => {
-    if (!row.statement_id) return;
+    if (!row.statement_id || busyId) return;
     setBusyId(row.statement_id);
     setActionError(null);
     const label = row.period_label?.replace(/\s+/g, '_') ?? 'Reconciliation';
@@ -127,11 +135,16 @@ export default function PreviousReportsPanel({
         },
       });
     } catch (err) {
-      setActionError(await getApiErrorAsync(err, 'Could not download monthly report.'));
+      setActionError(
+        await getApiErrorAsync(
+          err,
+          'Could not download monthly report. Wait a few seconds and try once — do not keep clicking.',
+        ),
+      );
     } finally {
       setBusyId(null);
     }
-  }, []);
+  }, [busyId]);
 
   if (!active) return null;
   if (loading) {
@@ -191,11 +204,25 @@ export default function PreviousReportsPanel({
                 <td>{fmtMoney(row.difference)}</td>
                 <td>{fmtDate(row.uploaded_at)}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button type="button" className={postmanStyles.linkBtn} disabled={busyId === row.statement_id} onClick={() => void openReport(row)}>Open</button>
+                  <button
+                    type="button"
+                    className={postmanStyles.linkBtn}
+                    disabled={busyId != null}
+                    onClick={() => void openReport(row)}
+                  >
+                    {busyId === row.statement_id ? 'Opening…' : 'Open'}
+                  </button>
                   {row.has_pdf !== false ? (
                     <>
                       {' · '}
-                      <button type="button" className={postmanStyles.linkBtn} disabled={busyId === row.statement_id} onClick={() => void downloadMonthlyReport(row)}>Download</button>
+                      <button
+                        type="button"
+                        className={postmanStyles.linkBtn}
+                        disabled={busyId != null}
+                        onClick={() => void downloadMonthlyReport(row)}
+                      >
+                        {busyId === row.statement_id ? 'Working…' : 'Download'}
+                      </button>
                     </>
                   ) : null}
                 </td>
