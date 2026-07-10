@@ -126,6 +126,10 @@ const registerApi = axios.create({
   baseURL: devBase() ?? import.meta.env.VITE_REGISTER_API_URL,
   timeout: 90_000,
 });
+const subscriptionApi = axios.create({
+  baseURL: devBase() ?? import.meta.env.VITE_SUBSCRIPTION_API_URL ?? 'http://localhost:8005',
+  timeout: 60_000,
+});
 
 export function getApiError(err: unknown, fallback = 'Request failed.'): string {
   return formatApiError(extractApiErrorPayload(err), fallback, err);
@@ -161,7 +165,15 @@ function extractApiErrorPayload(
 function isBackendApiRequest(err: AxiosError): boolean {
   const url = String(err.config?.url ?? '');
   const base = String(err.config?.baseURL ?? '');
-  if (url.includes('/api/reports/') || url.includes('/api/analyze')) {
+  const path = url.split('?')[0] ?? '';
+  if (path.includes('/api/auth') || path.includes('/api/register') || path.includes('/api/checkout')) {
+    return false;
+  }
+  if (
+    path.includes('/api/reports')
+    || path.includes('/api/analyze')
+    || path.includes('/api/validate-uploads')
+  ) {
     return true;
   }
   if (import.meta.env.DEV) {
@@ -170,7 +182,7 @@ function isBackendApiRequest(err: AxiosError): boolean {
       return true;
     }
     if (!base || base === window.location.origin) {
-      return url.startsWith('/api/reports') || url.startsWith('/api/analyze');
+      return path.startsWith('/api/');
     }
   }
   const backendBase = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -210,6 +222,11 @@ function formatApiError(
     return 'Your session expired or could not be verified. Please sign in again.';
   }
   if (axiosErr.response.status === 503) {
+    const detail = d?.detail ?? d?.message ?? d?.error;
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      const msg = (detail as { message?: string }).message;
+      if (msg?.trim()) return msg.trim();
+    }
     const detailText =
       typeof d?.detail === 'string'
         ? d.detail
@@ -219,6 +236,7 @@ function formatApiError(
     if (detailText?.toLowerCase().includes('authentication service')) {
       return 'Sign-in service is waking up. Wait 30 seconds and try again.';
     }
+    if (detailText) return detailText;
   }
   if (axiosErr.response.status >= 500) {
     const detailText =
@@ -891,8 +909,10 @@ const attachBearer = (cfg: InternalAxiosRequestConfig) => {
 
 mainApi.interceptors.request.use(attachBearer);
 authApi.interceptors.request.use(attachBearer);
+subscriptionApi.interceptors.request.use(attachBearer);
 attachAuthInterceptor(mainApi);
 attachAuthInterceptor(authApi);
+attachAuthInterceptor(subscriptionApi);
 
 export function normalizeUser(data: unknown): AuthUser | null {
   const root = data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
@@ -919,6 +939,37 @@ export function normalizeUser(data: unknown): AuthUser | null {
 
 export const login = (email: string, password: string) =>
   authApi.post('/api/auth/login', { email, password });
+
+export interface CheckoutSessionResponse {
+  checkoutUrl: string;
+}
+
+export interface ConfirmCheckoutResponse {
+  tier: string;
+  tierLabel: string;
+  message: string;
+}
+
+/** Start Stripe Checkout for a paid plan (requires Bearer JWT). */
+export async function createCheckoutSession(planId: string, returnPath: string): Promise<string> {
+  const { data } = await subscriptionApi.post<CheckoutSessionResponse>('/api/checkout/session', {
+    planId,
+    returnPath,
+  });
+  const url = data?.checkoutUrl?.trim();
+  if (!url) throw new Error('Checkout URL missing from server response');
+  return url;
+}
+
+/** Confirm payment after Stripe redirect (fallback when webhook is delayed). */
+export async function confirmCheckoutSession(sessionId: string): Promise<ConfirmCheckoutResponse> {
+  const { data } = await subscriptionApi.post<ConfirmCheckoutResponse>(
+    '/api/checkout/confirm-session',
+    { sessionId },
+    { timeout: 10_000 },
+  );
+  return data;
+}
 
 export const clerkLogin = (sessionId: string) =>
   authApi.post('/api/auth/clerk-login', { sessionId }, { timeout: 12_000 });
