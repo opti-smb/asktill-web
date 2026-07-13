@@ -106,7 +106,9 @@ export default function FileDropZone({
             </div>
             {isChecking ? (
               <p className={styles.checkingHint}>
-                Opening file, mapping to templates, and checking the statement month…
+                {uploadState.statusLine?.includes('waiting')
+                  ? 'Queued — will check file type and statement month next…'
+                  : 'Uploading to the server, mapping templates, and checking the statement month…'}
               </p>
             ) : null}
             {uploadState.warning ? (

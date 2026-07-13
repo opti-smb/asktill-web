@@ -92,6 +92,7 @@ function uploadStateFromFile(
   checking: boolean,
   validationFailed: boolean,
   verifyErrorMessage?: string | null,
+  validationCurrent: boolean = true,
 ): FileUploadState {
   if (!file) return { uploaded: false };
   const period = validation?.detected_periods?.[slot];
@@ -123,11 +124,11 @@ function uploadStateFromFile(
       sizeLabel: size,
       periodLabel: filenamePeriod,
       statusLine: filenamePeriod
-        ? `Likely ${filenamePeriod} — confirming file type & month…`
-        : 'Reading file type and statement month…',
+        ? `Likely ${filenamePeriod} — uploading & confirming…`
+        : 'Uploading file and checking statement month…',
       detail: filenamePeriod
         ? `${size} · ${filenamePeriod} · verifying…`
-        : `${size} · verifying file type & month…`,
+        : `${size} · uploading & verifying…`,
     };
   }
 
@@ -145,6 +146,24 @@ function uploadStateFromFile(
         verifyErrorMessage?.trim() ||
         'Server is still waking up. Your file is kept — tap Retry below.',
       detail: `${size} · verification delayed`,
+    };
+  }
+
+  // File changed but validate request not started yet (debounce) — don't show Ready.
+  if (!validationCurrent) {
+    return {
+      uploaded: true,
+      checking: true,
+      status: 'checking',
+      fileName: file.name,
+      sizeLabel: size,
+      periodLabel: filenamePeriod,
+      statusLine: filenamePeriod
+        ? `Likely ${filenamePeriod} — waiting to verify…`
+        : 'Waiting to verify file type & month…',
+      detail: filenamePeriod
+        ? `${size} · ${filenamePeriod} · queued…`
+        : `${size} · queued…`,
     };
   }
 
@@ -393,16 +412,24 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     const requestId = ++validationRequestRef.current;
 
     setSlotChecking({
-      bank: Boolean(bankKey),
-      pos: Boolean(posKey),
-      ecommerce: Boolean(ecommerceKey),
+      bank: false,
+      pos: false,
+      ecommerce: false,
     });
     setValidationError(null);
     // Warm in background; validateUploadsWithRetry also waits for auth + backend.
 
     // Debounce so picking bank/pos/ecom quickly only validates once (prod parse is slow).
+    // Do not flip checking=true until the request actually starts — otherwise the UI
+    // claims "Opening file…" during idle debounce time.
     const timer = window.setTimeout(() => {
       void (async () => {
+        if (cancelled || validationRequestRef.current !== requestId) return;
+        setSlotChecking({
+          bank: Boolean(bankKey),
+          pos: Boolean(posKey),
+          ecommerce: Boolean(ecommerceKey),
+        });
         try {
           const files = uploadFilesRef.current;
           const { data } = await validateUploadsWithRetry({
@@ -522,8 +549,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotChecking.bank,
         validationFailed,
         validationError,
+        validationMatchesFiles,
       ),
-    [bankFile, activeValidation, slotWarnings, slotChecking.bank, validationFailed, validationError],
+    [bankFile, activeValidation, slotWarnings, slotChecking.bank, validationFailed, validationError, validationMatchesFiles],
   );
   const posState = useMemo(
     () =>
@@ -535,8 +563,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotChecking.pos,
         validationFailed,
         validationError,
+        validationMatchesFiles,
       ),
-    [posFile, activeValidation, slotWarnings, slotChecking.pos, validationFailed, validationError],
+    [posFile, activeValidation, slotWarnings, slotChecking.pos, validationFailed, validationError, validationMatchesFiles],
   );
   const ecommerceState = useMemo(
     () =>
@@ -548,6 +577,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotChecking.ecommerce,
         validationFailed,
         validationError,
+        validationMatchesFiles,
       ),
     [
       ecommerceFile,
@@ -556,6 +586,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       slotChecking.ecommerce,
       validationFailed,
       validationError,
+      validationMatchesFiles,
     ],
   );
 
