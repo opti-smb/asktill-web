@@ -29,9 +29,11 @@ import {
 } from '../lib/api';
 import {
   periodKeyFromLabel,
-  sessionAnalyzeIsLatest,
+  resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
+import { getActiveStatementViewId } from '../lib/activeStatementView';
 import { type AnalyzeResult } from '../lib/analyzeResponse';
+import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 
 function initialLandingSource(): 'user' | 'sample' {
   if (loadLandingAtLetterCache()) return 'user';
@@ -129,20 +131,37 @@ export function useAtLetterPreview(): {
     };
   }, [ready, isAuth, tick]);
 
-  // Logged-in: reuse report sync — fetch full detail only when summary is not enough.
+  // Logged-in: load the pinned / session month, not always chronologically newest.
   useEffect(() => {
-    if (!ready || !isAuth || !primaryReport?.statement_id) {
+    if (!ready || !isAuth) {
       setSavedReport(null);
       setDetailLoading(false);
       return undefined;
     }
 
-    const sessionPeriodKey = periodKeyFromLabel(sessionResult?.analysis?.period_label);
-    const sessionIsLatest = sessionAnalyzeIsLatest({
-      sessionPeriodKey,
-      primaryReport,
+    const activeViewId = getActiveStatementViewId();
+    const sessionId = sessionResult?.statement_id?.trim() || null;
+    const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
+    const targetId = resolveAtLetterStatementId({
+      sessionStatementId: sessionId,
+      sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
+      primaryReport: historyReady ? primaryReport : null,
+      historyReady,
+      preferSession: hasRecentAnalyzeSession() || Boolean(activeViewId),
+      activeViewId,
     });
-    if (sessionPreview?.mode === 'live' && sessionIsLatest) {
+
+    if (!targetId) {
+      setSavedReport(null);
+      setDetailLoading(false);
+      return undefined;
+    }
+
+    if (
+      sessionPreview?.mode === 'live'
+      && sessionId === targetId
+      && (hasRecentAnalyzeSession() || activeViewId === sessionId)
+    ) {
       setSavedReport(null);
       setDetailLoading(false);
       return undefined;
@@ -152,14 +171,17 @@ export function useAtLetterPreview(): {
     setDetailLoading(true);
     setError(null);
 
-    fetchSavedReport(primaryReport.statement_id)
+    fetchSavedReport(targetId)
       .then(({ data }) => {
         if (cancelled) return;
         setSavedReport(data);
         if (user?.userId) {
           const preview = buildAtLetterPreview(data, user, {
-            statementId: primaryReport.statement_id,
-            hasPdf: Boolean(primaryReport.has_pdf),
+            statementId: targetId,
+            hasPdf: Boolean(
+              (primaryReport?.statement_id === targetId && primaryReport.has_pdf)
+              || data.statement_id,
+            ),
           });
           if (preview?.mode === 'live') {
             saveAtLetterCache(user.userId, preview);
@@ -185,6 +207,7 @@ export function useAtLetterPreview(): {
     primaryReport?.statement_id,
     primaryReport?.period_label,
     primaryReport?.has_pdf,
+    historyReady,
     sessionResult?.statement_id,
     sessionResult?.analysis?.period_label,
     sessionPreview?.mode,
@@ -193,6 +216,15 @@ export function useAtLetterPreview(): {
 
   const sessionPeriodKey = periodKeyFromLabel(sessionResult?.analysis?.period_label);
   const hasServerReports = historyReady && savedCount > 0;
+  const activeViewId = getActiveStatementViewId();
+  const resolvedStatementId = resolveAtLetterStatementId({
+    sessionStatementId: sessionResult?.statement_id,
+    sessionPeriodKey,
+    primaryReport: historyReady ? primaryReport : null,
+    historyReady,
+    preferSession: hasRecentAnalyzeSession() || Boolean(activeViewId),
+    activeViewId,
+  });
 
   const letter = useMemo((): AtLetterPreview => {
     if (!ready) {
@@ -208,7 +240,14 @@ export function useAtLetterPreview(): {
       return SAMPLE_AT_LETTER;
     }
 
-    if (sessionPreview?.mode === 'live' && (hasRecentAnalyzeSession() || !historyReady)) {
+    if (
+      sessionPreview?.mode === 'live'
+      && (
+        hasRecentAnalyzeSession()
+        || !historyReady
+        || (resolvedStatementId && sessionResult?.statement_id === resolvedStatementId)
+      )
+    ) {
       return sessionPreview;
     }
 
@@ -217,11 +256,11 @@ export function useAtLetterPreview(): {
     }
 
     if (!historyReady) {
+      if (sessionPreview?.mode === 'live') return sessionPreview;
       if (primaryReport) {
         return buildAtLetterFromSummary(primaryReport, user);
       }
       if (cachedAuthLetter) return cachedAuthLetter;
-      if (sessionPreview?.mode === 'live') return sessionPreview;
       return buildEmptyAtLetterPreview(user);
     }
 
@@ -229,21 +268,23 @@ export function useAtLetterPreview(): {
       return buildEmptyAtLetterPreview(user);
     }
 
-    const sessionIsLatest = sessionAnalyzeIsLatest({
-      sessionPeriodKey,
-      primaryReport,
-    });
-
-    if (sessionPreview && sessionIsLatest && primaryReport) {
-      return sessionPreview;
-    }
-
     const fromSaved = buildAtLetterPreview(savedReport, user, {
-      statementId: primaryReport?.statement_id,
+      statementId: resolvedStatementId ?? primaryReport?.statement_id,
       hasPdf: Boolean(primaryReport?.has_pdf),
     });
     if (fromSaved) return fromSaved;
-    if (primaryReport) return buildAtLetterFromSummary(primaryReport, user);
+
+    if (
+      sessionPreview?.mode === 'live'
+      && resolvedStatementId
+      && sessionResult?.statement_id === resolvedStatementId
+    ) {
+      return sessionPreview;
+    }
+
+    if (primaryReport && primaryReport.statement_id === resolvedStatementId) {
+      return buildAtLetterFromSummary(primaryReport, user);
+    }
     if (cachedAuthLetter) return cachedAuthLetter;
 
     return buildEmptyAtLetterPreview(user);
@@ -259,16 +300,24 @@ export function useAtLetterPreview(): {
     primaryReport,
     cachedAuthLetter,
     landingSource,
+    resolvedStatementId,
+    sessionResult?.statement_id,
   ]);
 
   const letterWithMeta = useMemo((): AtLetterPreview => {
-    const statementId = primaryReport?.statement_id ?? letter.statementId;
-    const hasPdf = Boolean(primaryReport?.has_pdf ?? letter.hasPdf);
+    const statementId = resolvedStatementId ?? letter.statementId;
+    const hasPdf = Boolean(
+      (primaryReport?.statement_id === statementId && primaryReport?.has_pdf)
+      || letter.hasPdf,
+    );
     if (hasServerReports && statementId && !letter.statementId) {
       return { ...letter, statementId, hasPdf: hasPdf || true };
     }
+    if (statementId && letter.statementId !== statementId) {
+      return { ...letter, statementId, hasPdf };
+    }
     return letter;
-  }, [letter, primaryReport, hasServerReports]);
+  }, [letter, primaryReport, hasServerReports, resolvedStatementId]);
 
   const authCanShow =
     Boolean(cachedAuthLetter)

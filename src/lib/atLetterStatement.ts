@@ -66,8 +66,10 @@ export function pickMostRecentlyUploadedReport(
 }
 
 /**
- * Pick the statement id for AT Letter — anchor on newest saved month once history is loaded.
- * Fresh analyze wins during grace, when its period is newer, or when the same month was re-uploaded.
+ * Pick the statement id for dashboard / AT Letter.
+ *
+ * Priority: explicit pin (upload or opened report) → fresh analyze session →
+ * chronologically newest saved month (fresh login / no pin).
  */
 export function resolveAtLetterStatementId(options: {
   sessionStatementId?: string | null;
@@ -87,7 +89,12 @@ export function resolveAtLetterStatementId(options: {
   const historyReady = options.historyReady !== false;
   const activeViewId = options.activeViewId?.trim();
 
-  if (sessionId && (options.preferSession || activeViewId === sessionId)) {
+  // Pin always wins — set on analyze finish / open saved report; cleared on logout.
+  if (activeViewId) {
+    return activeViewId;
+  }
+
+  if (sessionId && options.preferSession) {
     return sessionId;
   }
 
@@ -95,8 +102,10 @@ export function resolveAtLetterStatementId(options: {
     if (sessionId) {
       if (sessionKey && historyKey) {
         const periodCmp = comparePeriodKeys(sessionKey, historyKey);
+        // Session newer than primary, or same month re-upload.
         if (periodCmp < 0) return sessionId;
         if (periodCmp === 0 && sessionId !== historyId) return sessionId;
+        // Older backfill without a pin should still keep the session while preferSession.
       } else if (!historyKey || !sessionKey) {
         return sessionId;
       }

@@ -223,7 +223,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setError(null);
     setUploadMismatch(null);
     clearAtLetterHtmlCache();
-    clearActiveStatementView();
+    // Keep prior pin until finishWithResult replaces it — clearing early lets
+    // history sync jump to chronologically newest mid-upload.
     lastStreamStatementIdRef.current = null;
     setLastStreamStatementId(null);
 
@@ -287,6 +288,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         if (sid) {
           lastStreamStatementIdRef.current = sid;
           setLastStreamStatementId(sid);
+          pinActiveStatementView(sid);
           if (event.stage === 'done' || event.stage === 'result') {
             void prefetchAtLetterHtml(sid, { monthOnly: true });
           }

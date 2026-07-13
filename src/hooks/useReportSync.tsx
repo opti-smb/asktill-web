@@ -220,39 +220,16 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             ?? sessionReport?.period_key
             ?? null;
           const inAnalyzeGrace = hasRecentAnalyzeSession();
-          const primaryKey =
-            primary?.period_key?.trim()
-            || periodKeyFromLabel(primary?.period_label)
-            || null;
-          const statementIdsDiffer =
-            Boolean(effectiveSessionId && primary?.statement_id)
-            && effectiveSessionId !== primary?.statement_id;
-          const sessionIsOlderBackfill =
-            Boolean(sessionKey && primaryKey)
-            && comparePeriodKeys(sessionKey, primaryKey) > 0;
-          const pinnedView = Boolean(
-            activeViewId
-            && (activeViewId === sessionStatementId || inAnalyzeGrace),
+          const pinnedId = activeViewId || (inAnalyzeGrace ? sessionStatementId : null);
+          const keepPinnedView = Boolean(
+            pinnedId
+            && primary?.statement_id
+            && pinnedId !== primary.statement_id,
           );
-          // Keep an explicit pin / fresh analyze. For backfills (Feb while Aug is
-          // newest), keep the uploaded older month. Otherwise preserve old behavior:
-          // empty sessions still hydrate to chronologically latest primary.
-          const keepPinnedUpload =
-            Boolean(
-              activeViewId
-              && primary?.statement_id
-              && activeViewId !== primary.statement_id
-              && (inAnalyzeGrace || Boolean(sessionAnalysis) || analyzeLoadingRef.current),
-            );
           const keepCurrentSessionView = Boolean(
             sessionAnalysis
             && sessionStatementId
-            && (
-              keepPinnedUpload
-              || pinnedView
-              || inAnalyzeGrace
-              || (statementIdsDiffer && sessionIsOlderBackfill)
-            ),
+            && (keepPinnedView || inAnalyzeGrace || pinnedId === sessionStatementId),
           );
 
           const statementId = resolveAtLetterStatementId({
@@ -260,33 +237,34 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
-            preferSession: inAnalyzeGrace || pinnedView || keepPinnedUpload || keepCurrentSessionView,
-            activeViewId,
+            preferSession: inAnalyzeGrace || keepPinnedView || keepCurrentSessionView,
+            activeViewId: pinnedId,
           });
           if (statementId) {
             void prefetchAtLetterHtml(statementId, { monthOnly: true });
             void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
-          if (keepPinnedUpload || keepCurrentSessionView || ((inAnalyzeGrace || pinnedView) && effectiveSessionId)) {
+          // Pinned / just-uploaded month must never be replaced by chronologically newest.
+          if (pinnedId) {
             const needsHydrate =
               !sessionAnalysis
-              || (activeViewId && sessionStatementId && activeViewId !== sessionStatementId);
-            if (needsHydrate && effectiveSessionId && hydratedStatementIdRef.current !== effectiveSessionId) {
-              hydratedStatementIdRef.current = effectiveSessionId;
+              || (sessionStatementId && pinnedId !== sessionStatementId)
+              || (sessionAnalysis && sessionStatementId !== pinnedId);
+            if (needsHydrate && hydratedStatementIdRef.current !== pinnedId) {
+              hydratedStatementIdRef.current = pinnedId;
               try {
-                const { data: saved } = await fetchSavedReport(effectiveSessionId);
+                const { data: saved } = await fetchSavedReport(pinnedId);
                 if (!cancelled) loadSavedReport(saved);
               } catch {
                 /* keep partial session payload */
               }
             }
-          } else if (!keepPinnedUpload && !keepCurrentSessionView) {
-            // Old landing behavior: chronologically latest when dashboard has no active analysis.
+          } else if (!keepCurrentSessionView) {
+            // Fresh login / no pin: chronologically latest month.
             const shouldHydrateFromServer =
               primary
               && !analyzeLoadingRef.current
-              && !pinnedView
               && !sessionResult?.analysis;
 
             if (
