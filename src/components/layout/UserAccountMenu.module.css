@@ -92,3 +92,132 @@
 .menuItemDanger:hover {
   background: #fef2f2;
 }
+
+.manageBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.manageDialog {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 28px 24px 22px;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+}
+
+.manageTitle {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.manageLead {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+.manageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.manageRowTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.manageRowSub {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.manageCancelBtn {
+  flex-shrink: 0;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: #fef2f2;
+  color: var(--neg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.manageCancelBtn:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.manageCancelBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.managePrimaryBtn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: var(--brand);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.managePrimaryBtn:hover {
+  background: var(--brand-deep);
+}
+
+.manageActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.manageCloseBtn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: var(--bg-soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.manageCloseBtn:hover:not(:disabled) {
+  background: var(--rule);
+}
+
+.manageError {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--neg);
+}
+
+.manageSuccess {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--pos, #15803d);
+}

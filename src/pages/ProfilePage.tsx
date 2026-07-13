@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import ConfirmDialog from '../components/common/ConfirmDialog';
 import SectionHeader from '../components/layout/SectionHeader';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
@@ -135,7 +134,6 @@ export default function ProfilePage() {
   const { isPaid } = useSubscription();
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [cancelOpen, setCancelOpen] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState('');
   const [billingMessage, setBillingMessage] = useState('');
@@ -214,25 +212,6 @@ export default function ProfilePage() {
       reset();
     } catch (err) {
       setPasswordError(getApiError(err, 'Could not update password.'));
-    }
-  };
-
-  const handleCancelRenewal = async () => {
-    setBillingBusy(true);
-    setBillingError('');
-    setBillingMessage('');
-    try {
-      const result = await setAutoRenewalEnabled(false);
-      await refreshUser();
-      setCancelOpen(false);
-      setBillingMessage(
-        result.message ||
-          'Auto-renewal turned off. You keep access until the current period ends.',
-      );
-    } catch (err) {
-      setBillingError(getApiError(err, 'Could not cancel renewal. Try again.'));
-    } finally {
-      setBillingBusy(false);
     }
   };
 
@@ -489,28 +468,6 @@ export default function ProfilePage() {
             </div>
           ) : null}
 
-          {paid && renewalsOn ? (
-            <div className={styles.billingBlock}>
-              <div className={styles.billingBlockHead}>
-                <h3 className={styles.billingBlockTitle}>Cancellation</h3>
-              </div>
-              <div className={styles.billingRow}>
-                <div className={styles.billingPrimary}>Cancel plan</div>
-                <button
-                  type="button"
-                  className={styles.cancelPlanBtn}
-                  disabled={billingBusy}
-                  onClick={() => {
-                    setBillingError('');
-                    setBillingMessage('');
-                    setCancelOpen(true);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : null}
         </section>
 
         <section className={styles.card}>
@@ -628,20 +585,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={cancelOpen}
-        title="Cancel subscription?"
-        message="You'll keep Paid access until the end of your current billing period."
-        confirmLabel={billingBusy ? 'Canceling…' : 'Cancel'}
-        cancelLabel="Keep plan"
-        confirming={billingBusy}
-        onConfirm={() => {
-          void handleCancelRenewal();
-        }}
-        onCancel={() => {
-          if (!billingBusy) setCancelOpen(false);
-        }}
-      />
     </>
   );
 }
