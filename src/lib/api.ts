@@ -760,11 +760,10 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Validate immediately; only spend long warm time on cold-start retries. */
+/** Validate immediately; only warm backend/auth on cold-start retries. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  // Kick wakes in the background — do not block the first validate attempt.
+  // Entitlements are evaluated in-process on the backend now — no remote wake.
   void ensureBackendReady(15_000);
-  void ensureEntitlementsReady(15_000);
   void ensureAuthServiceReady(10_000);
 
   const maxAttempts = 3;
@@ -772,13 +771,11 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (attempt > 0) {
-      // Cold-start path only: allow longer wake, then retry validate.
       await Promise.all([
-        ensureAuthServiceReady(30_000),
-        ensureBackendReady(45_000),
-        ensureEntitlementsReady(45_000),
+        ensureAuthServiceReady(25_000),
+        ensureBackendReady(35_000),
       ]);
-      await new Promise((resolve) => window.setTimeout(resolve, 400 * attempt));
+      await new Promise((resolve) => window.setTimeout(resolve, 300 * attempt));
     }
     try {
       return await validateUploads(files);
@@ -843,7 +840,6 @@ async function ensureEntitlementsReady(probeTimeoutMs = 45_000): Promise<boolean
 
 export function warmupBackend() {
   void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
-  void probeServiceHealth(`${entitlementsOrigin()}/health`, 15_000);
 }
 
 type BackendHealthPayload = {
