@@ -4,7 +4,6 @@ import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
 import {
   atLetterFooterMeta,
-  comparePeriodKeys,
   periodKeyFromLabel,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
@@ -87,29 +86,28 @@ export function useAtLetterTemplate(): {
   const periodLabel = useMemo(() => {
     const sessionLabel = sessionAnalysis?.period_label;
     const historyLabel = primaryReport?.period_label;
-    const sessionKey = periodKeyFromLabel(sessionLabel);
-    const historyKey = periodKeyFromLabel(historyLabel);
     const activeViewId = getActiveStatementViewId();
+    // Pinned / just-analyzed month wins over chronologically newest primary.
     if (activeViewId && sessionStatementId === activeViewId && sessionLabel) {
+      return sessionLabel;
+    }
+    if (statementId && sessionStatementId === statementId && sessionLabel) {
       return sessionLabel;
     }
     if (hasRecentAnalyzeSession() && sessionLabel) {
       return sessionLabel;
     }
-    if (historyReady && historyLabel && primaryReport) {
-      if (sessionLabel && sessionKey && historyKey && comparePeriodKeys(sessionKey, historyKey) < 0) {
-        return sessionLabel;
-      }
-      if (sessionLabel && sessionKey && historyKey && sessionKey === historyKey) {
-        return sessionLabel;
-      }
+    if (statementId && primaryReport?.statement_id === statementId && historyLabel) {
       return historyLabel;
     }
-    if (sessionLabel && historyLabel && sessionKey && historyKey) {
-      return comparePeriodKeys(sessionKey, historyKey) <= 0 ? sessionLabel : historyLabel;
-    }
-    return historyLabel ?? sessionLabel ?? null;
-  }, [sessionAnalysis?.period_label, primaryReport, historyReady]);
+    return sessionLabel ?? historyLabel ?? null;
+  }, [
+    sessionAnalysis?.period_label,
+    primaryReport,
+    historyReady,
+    statementId,
+    sessionStatementId,
+  ]);
 
   const footerMeta = useMemo(() => {
     if (activeReport && statementId === activeReport.statement_id) {
