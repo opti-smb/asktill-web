@@ -220,15 +220,23 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             ?? sessionReport?.period_key
             ?? null;
           const inAnalyzeGrace = hasRecentAnalyzeSession();
+          const primaryKey =
+            primary?.period_key?.trim()
+            || periodKeyFromLabel(primary?.period_label)
+            || null;
           const statementIdsDiffer =
             Boolean(effectiveSessionId && primary?.statement_id)
             && effectiveSessionId !== primary?.statement_id;
+          const sessionIsOlderBackfill =
+            Boolean(sessionKey && primaryKey)
+            && comparePeriodKeys(sessionKey, primaryKey) > 0;
           const pinnedView = Boolean(
             activeViewId
             && (activeViewId === sessionStatementId || inAnalyzeGrace),
           );
-          // Keep the statement the user just uploaded/opened — even if an older
-          // calendar month (backfill Feb while Aug is still the newest on file).
+          // Keep an explicit pin / fresh analyze. For backfills (Feb while Aug is
+          // newest), keep the uploaded older month. Otherwise preserve old behavior:
+          // empty sessions still hydrate to chronologically latest primary.
           const keepPinnedUpload =
             Boolean(
               activeViewId
@@ -239,7 +247,12 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const keepCurrentSessionView = Boolean(
             sessionAnalysis
             && sessionStatementId
-            && (keepPinnedUpload || pinnedView || inAnalyzeGrace || statementIdsDiffer),
+            && (
+              keepPinnedUpload
+              || pinnedView
+              || inAnalyzeGrace
+              || (statementIdsDiffer && sessionIsOlderBackfill)
+            ),
           );
 
           const statementId = resolveAtLetterStatementId({
@@ -269,7 +282,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
               }
             }
           } else if (!keepPinnedUpload && !keepCurrentSessionView) {
-            // Only auto-load chronologically-latest when dashboard has no active view.
+            // Old landing behavior: chronologically latest when dashboard has no active analysis.
             const shouldHydrateFromServer =
               primary
               && !analyzeLoadingRef.current
