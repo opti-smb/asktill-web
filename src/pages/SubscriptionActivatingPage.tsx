@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
 import Logo from '../components/common/Logo';
@@ -8,8 +8,8 @@ import { confirmCheckoutSession } from '../lib/api';
 import { TIER_PAID } from '../lib/subscription';
 import styles from './SubscriptionActivatingPage.module.css';
 
-const READY_MS = 350;
-const NAVIGATE_MS = 700;
+const READY_MS = 80;
+const NAVIGATE_MS = 180;
 
 const confirmedSessions = new Set<string>();
 
@@ -25,25 +25,35 @@ export default function SubscriptionActivatingPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const sessionId = params.get('session_id')?.trim() ?? '';
-  const returnTo = useMemo(() => resolveReturnPath(params.get('from')), [params]);
+  const fromParam = params.get('from');
+  const returnTo = useMemo(() => resolveReturnPath(fromParam), [fromParam]);
   const [ready, setReady] = useState(false);
+  const navigatedRef = useRef(false);
+
+  // Keep latest callbacks without re-arming timers on every AuthContext render.
+  const patchUserTierRef = useRef(patchUserTier);
+  const refreshUserRef = useRef(refreshUser);
+  patchUserTierRef.current = patchUserTier;
+  refreshUserRef.current = refreshUser;
 
   useEffect(() => {
-    if (!sessionId) return undefined;
+    if (!sessionId || navigatedRef.current) return undefined;
 
-    patchUserTier(TIER_PAID);
+    patchUserTierRef.current(TIER_PAID);
 
     if (!confirmedSessions.has(sessionId)) {
       confirmedSessions.add(sessionId);
       void confirmCheckoutSession(sessionId)
         .catch(() => undefined)
         .finally(() => {
-          void refreshUser();
+          void refreshUserRef.current();
         });
     }
 
     const readyTimer = window.setTimeout(() => setReady(true), READY_MS);
     const navTimer = window.setTimeout(() => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
       navigate(returnTo, { replace: true });
     }, NAVIGATE_MS);
 
@@ -51,7 +61,7 @@ export default function SubscriptionActivatingPage() {
       window.clearTimeout(readyTimer);
       window.clearTimeout(navTimer);
     };
-  }, [sessionId, patchUserTier, refreshUser, navigate, returnTo]);
+  }, [sessionId, returnTo, navigate]);
 
   if (!sessionId) {
     return <Navigate to="/pricing" replace />;
@@ -121,6 +131,17 @@ export default function SubscriptionActivatingPage() {
                 <span className={styles.dot} />
               </div>
             ) : null}
+
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={() => {
+                navigatedRef.current = true;
+                navigate(returnTo, { replace: true });
+              }}
+            >
+              Continue to upload
+            </button>
           </section>
         </div>
       </main>

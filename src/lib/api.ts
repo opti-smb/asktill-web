@@ -49,6 +49,15 @@ export interface AuthUser {
   industry?: string | null;
   country?: string | null;
   mfaEnabled?: boolean;
+  autoRenewalEnabled?: boolean | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionPlanId?: string | null;
+  subscriptionPaidAt?: string | null;
+  cardBrand?: string | null;
+  cardLast4?: string | null;
+  cardExpMonth?: number | null;
+  cardExpYear?: number | null;
   createdAt?: string | null;
 }
 
@@ -224,7 +233,14 @@ function formatApiError(
   if (axiosErr.response.status === 503) {
     const detail = d?.detail ?? d?.message ?? d?.error;
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
-      const msg = (detail as { message?: string }).message;
+      const obj = detail as { message?: string; code?: string };
+      if (obj.code === 'entitlements_unavailable') {
+        return (
+          obj.message?.trim() ||
+          'Upload check is waking up. Keep your file selected — retry in a moment.'
+        );
+      }
+      const msg = obj.message;
       if (msg?.trim()) return msg.trim();
     }
     const detailText =
@@ -234,7 +250,7 @@ function formatApiError(
           ? d.message
           : null;
     if (detailText?.toLowerCase().includes('authentication service')) {
-      return 'Sign-in service is waking up. Wait 30 seconds and try again.';
+      return 'Sign-in service is waking up. Keep your file selected — retry in a moment.';
     }
     if (detailText) return detailText;
   }
@@ -249,10 +265,19 @@ function formatApiError(
             : null;
     if (detailText) return detailText;
     const backend = isBackendApiRequest(axiosErr);
+    const url = String(axiosErr.config?.url ?? '');
+    const base = String(axiosErr.config?.baseURL ?? '');
+    const subscription =
+      url.includes('/api/checkout') ||
+      url.includes('/api/billing') ||
+      url.includes('/api/webhooks/stripe') ||
+      base.includes('8006');
     return import.meta.env.DEV
       ? backend
         ? `Server error (${axiosErr.response.status}). Check Backend logs on port 8000.`
-        : `Server error (${axiosErr.response.status}). Check Authentication Service logs on port 8002.`
+        : subscription
+          ? `Server error (${axiosErr.response.status}). Check Subscription Service logs on port 8006.`
+          : `Server error (${axiosErr.response.status}). Check Authentication Service logs on port 8002.`
       : backend
         ? 'Server error — wait 30 seconds and try again.'
         : 'Sign-in server error — wait 30 seconds and try again. If it persists, use Forgot password or register again.';
@@ -708,34 +733,63 @@ export const validateUploads = (files: UploadFiles) => {
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
   return mainApi.post<UploadValidationResult>('/api/validate-uploads', form, {
-    timeout: 120_000,
+    timeout: 180_000,
   });
 };
 
-/** Validate uploads; warm auth/backend first, retry once on cold-start auth failures. */
+function isRetryableValidateError(err: unknown): boolean {
+  const axiosErr = err as AxiosError;
+  const status = axiosErr?.response?.status;
+  const detail = axiosErr?.response?.data as { detail?: { code?: string } | string } | undefined;
+  const code =
+    detail && typeof detail.detail === 'object' && detail.detail
+      ? detail.detail.code
+      : undefined;
+  return (
+    axiosErr?.code === 'ECONNABORTED'
+    || axiosErr?.message === 'Network Error'
+    || !axiosErr?.response
+    || status === 401
+    || status === 408
+    || status === 425
+    || status === 429
+    || status === 502
+    || status === 503
+    || status === 504
+    || code === 'entitlements_unavailable'
+  );
+}
+
+/** Validate uploads after warming auth + backend; retry cold-start failures. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  warmupBackend();
-  await ensureAuthServiceReady(8_000);
+  // Wait for services (local is instant; Render free tier may need a wake).
+  await Promise.all([
+    ensureAuthServiceReady(20_000),
+    ensureBackendReady(60_000),
+  ]);
 
-  const attempt = () => validateUploads(files);
+  const maxAttempts = 3;
+  let lastErr: unknown;
 
-  try {
-    return await attempt();
-  } catch (err) {
-    const axiosErr = err as AxiosError;
-    const status = axiosErr?.response?.status;
-    const retryable =
-      axiosErr?.code === 'ECONNABORTED'
-      || axiosErr?.message === 'Network Error'
-      || !axiosErr?.response
-      || status === 503
-      || status === 401;
-    if (!retryable) throw err;
-    await ensureAuthServiceReady(45_000);
-    warmupBackend();
-    await new Promise((resolve) => window.setTimeout(resolve, 2000));
-    return attempt();
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0) {
+      await Promise.all([
+        ensureAuthServiceReady(45_000),
+        ensureBackendReady(60_000),
+      ]);
+      await new Promise((resolve) => window.setTimeout(resolve, 1500 * attempt));
+    }
+    try {
+      return await validateUploads(files);
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableValidateError(err) || attempt === maxAttempts - 1) {
+        throw err;
+      }
+    }
   }
+
+  throw lastErr;
 }
 
 /** Wake Render services before login or upload (no-op when already warm). */
@@ -765,6 +819,11 @@ async function probeServiceHealth(url: string, timeoutMs: number): Promise<boole
   } catch {
     return false;
   }
+}
+
+async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
+  const url = `${serviceOrigin('VITE_API_BASE_URL')}/api/health`;
+  return probeServiceHealth(url, probeTimeoutMs);
 }
 
 export function warmupBackend() {
@@ -933,6 +992,29 @@ export function normalizeUser(data: unknown): AuthUser | null {
     industry: (u.industry as string | undefined) ?? null,
     country: (u.country as string | undefined) ?? null,
     mfaEnabled: (u.mfaEnabled ?? u.mfa_enabled) as boolean | undefined,
+    autoRenewalEnabled: (() => {
+      const raw = u.autoRenewalEnabled ?? u.auto_renewal_enabled;
+      if (raw === null || raw === undefined) return null;
+      return Boolean(raw);
+    })(),
+    stripeCustomerId: ((u.stripeCustomerId ?? u.stripe_customer_id) as string | undefined) ?? null,
+    stripeSubscriptionId: ((u.stripeSubscriptionId ?? u.stripe_subscription_id) as string | undefined) ?? null,
+    subscriptionPlanId: ((u.subscriptionPlanId ?? u.subscription_plan_id) as string | undefined) ?? null,
+    subscriptionPaidAt: ((u.subscriptionPaidAt ?? u.subscription_paid_at) as string | undefined) ?? null,
+    cardBrand: ((u.cardBrand ?? u.card_brand) as string | undefined) ?? null,
+    cardLast4: ((u.cardLast4 ?? u.card_last4) as string | undefined) ?? null,
+    cardExpMonth: (() => {
+      const raw = u.cardExpMonth ?? u.card_exp_month;
+      if (raw === null || raw === undefined || raw === '') return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    })(),
+    cardExpYear: (() => {
+      const raw = u.cardExpYear ?? u.card_exp_year;
+      if (raw === null || raw === undefined || raw === '') return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    })(),
     createdAt: (u.createdAt ?? u.created_at) as string | undefined ?? null,
   };
 }
@@ -969,6 +1051,78 @@ export async function confirmCheckoutSession(sessionId: string): Promise<Confirm
     { timeout: 10_000 },
   );
   return data;
+}
+
+export interface AutoRenewalResponse {
+  enabled: boolean;
+  stripeUpdated: boolean;
+  message: string;
+  user?: unknown;
+}
+
+export interface BillingInvoice {
+  id: string;
+  number?: string | null;
+  description?: string | null;
+  status: string;
+  amountCents: number;
+  currency: string;
+  createdAt?: string | null;
+  hostedInvoiceUrl?: string | null;
+  invoicePdfUrl?: string | null;
+}
+
+export interface BillingInvoicesResponse {
+  invoices: BillingInvoice[];
+}
+
+/** List Stripe invoices for the signed-in user (Claude-style Billing → Invoices). */
+export async function fetchBillingInvoices(): Promise<BillingInvoice[]> {
+  const { data } = await subscriptionApi.get<BillingInvoicesResponse>('/api/billing/invoices', {
+    timeout: 20_000,
+  });
+  return Array.isArray(data?.invoices) ? data.invoices : [];
+}
+
+/** Open Stripe Customer Portal to update card (Claude-style Payment method → Update). */
+export async function createBillingPortalSession(
+  returnPath = '/dashboard/profile',
+): Promise<string> {
+  const { data } = await subscriptionApi.post<{ url: string }>(
+    '/api/billing/portal',
+    { returnPath },
+    { timeout: 20_000 },
+  );
+  const url = data?.url?.trim();
+  if (!url) throw new Error('Billing portal URL missing from server response');
+  return url;
+}
+
+/** Persist auto-renewal preference in Auth + Stripe (cancel_at_period_end). */
+export async function setAutoRenewalEnabled(enabled: boolean): Promise<AutoRenewalResponse> {
+  try {
+    const { data } = await subscriptionApi.post<AutoRenewalResponse>(
+      '/api/billing/auto-renewal',
+      { enabled },
+      { timeout: 20_000 },
+    );
+    return data;
+  } catch {
+    // Billing service down — still save preference in Auth.
+    const { data: profile } = await authApi.patch(
+      '/api/auth/auto-renewal',
+      { enabled },
+      { timeout: 8_000 },
+    );
+    return {
+      enabled,
+      stripeUpdated: false,
+      message: enabled
+        ? 'Auto-renewal enabled. Your plan will renew each billing period.'
+        : 'Auto-renewal turned off. You keep access until the current period ends.',
+      user: profile,
+    };
+  }
 }
 
 export const clerkLogin = (sessionId: string) =>

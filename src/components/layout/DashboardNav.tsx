@@ -19,10 +19,18 @@ export default function DashboardNav() {
   const isReconRoute = pathname.startsWith('/dashboard/reconciliation');
   const isOverviewRoute = pathname.startsWith('/dashboard/analysis');
   const isReportsRoute = pathname.startsWith('/dashboard/reports');
-  // Same dual-scroll pattern as Cash Flow / Overview / Reports:
-  // outer page scroll (sticky nav) + inner capped viewport scroll.
+  const isProfileRoute = pathname.startsWith('/dashboard/profile');
+  const isSourcesRoute = pathname.startsWith('/dashboard/sources');
+  // Same dual-scroll pattern as Cash Flow / Overview / Reports / Profile:
+  // outer page shell + inner capped viewport scroll.
   const usePageScrollShell =
-    isAtLetterRoute || isCashFlowRoute || isReconRoute || isOverviewRoute || isReportsRoute;
+    isAtLetterRoute ||
+    isCashFlowRoute ||
+    isReconRoute ||
+    isOverviewRoute ||
+    isReportsRoute ||
+    isProfileRoute ||
+    isSourcesRoute;
 
   return (
 
