@@ -91,6 +91,7 @@ function uploadStateFromFile(
   slotWarnings: ReturnType<typeof warningsBySlot>,
   checking: boolean,
   validationFailed: boolean,
+  verifyErrorMessage?: string | null,
 ): FileUploadState {
   if (!file) return { uploaded: false };
   const period = validation?.detected_periods?.[slot];
@@ -138,11 +139,12 @@ function uploadStateFromFile(
       fileName: file.name,
       sizeLabel: size,
       periodLabel: filenamePeriod,
-      statusLine: 'Server could not verify yet',
+      statusLine: 'Verification delayed',
       issueKind: 'verify',
       warning:
-        'Server could not verify this file yet. Wait 30 seconds and select the file again.',
-      detail: `${size} · server could not verify yet`,
+        verifyErrorMessage?.trim() ||
+        'Server is still waking up. Your file is kept — tap Retry below.',
+      detail: `${size} · verification delayed`,
     };
   }
 
@@ -236,6 +238,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     ecommerce: false,
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationRetryKey, setValidationRetryKey] = useState(0);
   const [uploadPrompt, setUploadPrompt] = useState<string | null>(null);
   const [continuityDismissed, setContinuityDismissed] = useState(false);
   const [postAnalyzeContinuity, setPostAnalyzeContinuity] = useState<UploadContinuityView | null>(
@@ -395,7 +398,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       ecommerce: Boolean(ecommerceKey),
     });
     setValidationError(null);
-    warmupBackend();
+    // Warm in background; validateUploadsWithRetry also waits for auth + backend.
 
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -433,7 +436,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
           if (cancelled || validationRequestRef.current !== requestId) return;
           if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
           setValidationError(
-            getApiError(err, 'Could not verify uploads. Wait 30 seconds and try again.'),
+            getApiError(
+              err,
+              'Upload check is taking longer than usual. Your file is still selected — tap Retry.',
+            ),
           );
         } finally {
           if (!cancelled && validationRequestRef.current === requestId) {
@@ -453,6 +459,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     ecommerceKey,
     uploadedCount,
     currentFileKeys,
+    validationRetryKey,
     applyStatementDuplicate,
     clearStatementDuplicate,
     rejectFreeTierUpload,
@@ -513,8 +520,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotWarnings,
         slotChecking.bank,
         validationFailed,
+        validationError,
       ),
-    [bankFile, activeValidation, slotWarnings, slotChecking.bank, validationFailed],
+    [bankFile, activeValidation, slotWarnings, slotChecking.bank, validationFailed, validationError],
   );
   const posState = useMemo(
     () =>
@@ -525,8 +533,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotWarnings,
         slotChecking.pos,
         validationFailed,
+        validationError,
       ),
-    [posFile, activeValidation, slotWarnings, slotChecking.pos, validationFailed],
+    [posFile, activeValidation, slotWarnings, slotChecking.pos, validationFailed, validationError],
   );
   const ecommerceState = useMemo(
     () =>
@@ -537,8 +546,16 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotWarnings,
         slotChecking.ecommerce,
         validationFailed,
+        validationError,
       ),
-    [ecommerceFile, activeValidation, slotWarnings, slotChecking.ecommerce, validationFailed],
+    [
+      ecommerceFile,
+      activeValidation,
+      slotWarnings,
+      slotChecking.ecommerce,
+      validationFailed,
+      validationError,
+    ],
   );
 
   const freeTierNotice = useMemo(() => {
@@ -732,7 +749,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         <div className="wrap">
           <div className={styles.navInner}>
             <Logo to={DEFAULT_DASHBOARD_PATH} />
-            <UserAccountMenu showName showProfile={false} />
+            <UserAccountMenu showName />
           </div>
         </div>
       </nav>
@@ -909,7 +926,19 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
 
           {validationError && (
             <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 12 }}>
-              {validationError}
+              <div>{validationError}</div>
+              <button
+                type="button"
+                className={styles.retryBtn}
+                disabled={anySlotChecking}
+                onClick={() => {
+                  setValidationError(null);
+                  setValidationRetryKey((n) => n + 1);
+                }}
+                style={{ marginTop: 8 }}
+              >
+                {anySlotChecking ? 'Retrying…' : 'Retry verification'}
+              </button>
             </div>
           )}
 
