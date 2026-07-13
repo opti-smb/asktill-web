@@ -218,12 +218,12 @@ function formatApiError(
     if (axiosErr?.message === 'Network Error') {
       return import.meta.env.DEV
         ? 'Cannot reach the API. Ensure Auth (8002) and Backend (8000) are running, then refresh.'
-        : 'Cannot reach the server. It may be waking up — wait 30 seconds and try again.';
+        : 'Cannot reach the server. It may be waking up — keep your files selected and tap Retry.';
     }
     if (isLikelyTimeoutError(err)) {
       return import.meta.env.DEV
         ? 'Request timed out. Ensure backend services are running, then try again.'
-        : 'Request timed out while the server was waking up. Wait 30 seconds and try again.';
+        : 'Upload check is still running or the server is waking up. Keep your files selected — tap Retry (no need to re-pick).';
     }
     return axiosErr?.message ?? fallback;
   }
@@ -279,8 +279,8 @@ function formatApiError(
           ? `Server error (${axiosErr.response.status}). Check Subscription Service logs on port 8006.`
           : `Server error (${axiosErr.response.status}). Check Authentication Service logs on port 8002.`
       : backend
-        ? 'Server error — wait 30 seconds and try again.'
-        : 'Sign-in server error — wait 30 seconds and try again. If it persists, use Forgot password or register again.';
+        ? 'Server error — keep your files selected and tap Retry.'
+        : 'Sign-in server error — tap Retry. If it persists, use Forgot password or register again.';
   }
   if (axiosErr.response.status === 404 && (!d?.detail || d.detail === 'Not Found')) {
     const url = String(axiosErr.config?.url ?? '');
@@ -564,7 +564,10 @@ export function periodLabelFromFilename(filename: string | null | undefined): st
   return `${monthName} ${year}`;
 }
 
-/** One message per box: wrong statement type first, then month mismatch. */
+/** One message per box: wrong statement type first, then month mismatch.
+ * Format/column mapping is exception-driven on the backend — do not treat
+ * soft format_warnings as user-facing errors (blocks Continue incorrectly).
+ */
 export function primaryWarningForSlot(
   result: UploadValidationResult | null,
   slot: UploadSlotId,
@@ -578,7 +581,6 @@ export function primaryWarningForSlot(
   };
   return (
     pick(result.slot_mismatches)
-    || pick(result.format_warnings ?? [])
     || pick(result.period_mismatches)
     || pick(result.missing_period_warnings ?? [])
   );
@@ -666,7 +668,7 @@ export function mergeUploadValidationResults(
   };
 }
 
-/** True when this upload box has a slot, period, or missing-month issue in the API payload. */
+/** True when this upload box has a hard slot/period issue (not soft format mapping). */
 export function slotIssuesInResult(
   result: UploadValidationResult | null,
   slot: UploadSlotId,
@@ -674,7 +676,6 @@ export function slotIssuesInResult(
   if (!result) return false;
   const lists = [
     result.slot_mismatches,
-    result.format_warnings ?? [],
     result.period_mismatches,
     result.missing_period_warnings ?? [],
   ];
@@ -685,7 +686,7 @@ export function slotIssuesInResult(
   );
 }
 
-/** Safe gate for Continue — ok flag plus any per-box warning text. */
+/** Safe gate for Continue — hard blockers only (slot/period/stored/free-tier). */
 export function batchValidationPasses(result: UploadValidationResult | null): boolean {
   if (!result?.ok) return false;
   if ((result.slot_mismatches?.length ?? 0) > 0) return false;
@@ -733,7 +734,8 @@ export const validateUploads = (files: UploadFiles) => {
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
   return mainApi.post<UploadValidationResult>('/api/validate-uploads', form, {
-    timeout: 180_000,
+    // Free-tier cold + PDF slot/format can exceed 3 minutes; keep files and retry.
+    timeout: 600_000,
   });
 };
 
@@ -763,19 +765,19 @@ function isRetryableValidateError(err: unknown): boolean {
 /** Validate immediately; only warm backend/auth on cold-start retries. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
   // Entitlements are evaluated in-process on the backend now — no remote wake.
-  void ensureBackendReady(15_000);
-  void ensureAuthServiceReady(10_000);
+  void ensureBackendReady(30_000);
+  void ensureAuthServiceReady(20_000);
 
-  const maxAttempts = 3;
+  const maxAttempts = 4;
   let lastErr: unknown;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (attempt > 0) {
       await Promise.all([
-        ensureAuthServiceReady(25_000),
-        ensureBackendReady(35_000),
+        ensureAuthServiceReady(45_000),
+        ensureBackendReady(60_000),
       ]);
-      await new Promise((resolve) => window.setTimeout(resolve, 300 * attempt));
+      await new Promise((resolve) => window.setTimeout(resolve, 1_000 * attempt));
     }
     try {
       return await validateUploads(files);
