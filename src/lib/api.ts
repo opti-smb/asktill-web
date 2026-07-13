@@ -760,12 +760,13 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Validate uploads after warming auth + backend; retry cold-start failures. */
+/** Validate uploads after warming auth + backend + entitlements; retry cold-start failures. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
   // Wait for services (local is instant; Render free tier may need a wake).
   await Promise.all([
     ensureAuthServiceReady(20_000),
     ensureBackendReady(60_000),
+    ensureEntitlementsReady(60_000),
   ]);
 
   const maxAttempts = 3;
@@ -776,6 +777,7 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
       await Promise.all([
         ensureAuthServiceReady(45_000),
         ensureBackendReady(60_000),
+        ensureEntitlementsReady(60_000),
       ]);
       await new Promise((resolve) => window.setTimeout(resolve, 1500 * attempt));
     }
@@ -803,6 +805,15 @@ function serviceOrigin(envKey: 'VITE_API_BASE_URL' | 'VITE_AUTH_API_URL' | 'VITE
   return 'http://localhost:8003';
 }
 
+function entitlementsOrigin(): string {
+  const raw = import.meta.env.VITE_ENTITLEMENTS_API_URL;
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw.trim().replace(/\/$/, '');
+  }
+  if (import.meta.env.DEV) return 'http://localhost:8004';
+  return 'https://asktill-entitlements.onrender.com';
+}
+
 function isHealthyServicePayload(data: unknown): boolean {
   return Boolean(
     data &&
@@ -826,8 +837,14 @@ async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
   return probeServiceHealth(url, probeTimeoutMs);
 }
 
+async function ensureEntitlementsReady(probeTimeoutMs = 45_000): Promise<boolean> {
+  const url = `${entitlementsOrigin()}/health`;
+  return probeServiceHealth(url, probeTimeoutMs);
+}
+
 export function warmupBackend() {
   void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
+  void probeServiceHealth(`${entitlementsOrigin()}/health`, 15_000);
 }
 
 type BackendHealthPayload = {
