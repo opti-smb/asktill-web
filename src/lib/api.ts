@@ -801,15 +801,6 @@ function serviceOrigin(envKey: 'VITE_API_BASE_URL' | 'VITE_AUTH_API_URL' | 'VITE
   return 'http://localhost:8003';
 }
 
-function entitlementsOrigin(): string {
-  const raw = import.meta.env.VITE_ENTITLEMENTS_API_URL;
-  if (typeof raw === 'string' && raw.trim()) {
-    return raw.trim().replace(/\/$/, '');
-  }
-  if (import.meta.env.DEV) return 'http://localhost:8004';
-  return 'https://asktill-entitlements.onrender.com';
-}
-
 function isHealthyServicePayload(data: unknown): boolean {
   return Boolean(
     data &&
@@ -830,11 +821,6 @@ async function probeServiceHealth(url: string, timeoutMs: number): Promise<boole
 
 async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
   const url = `${serviceOrigin('VITE_API_BASE_URL')}/api/health`;
-  return probeServiceHealth(url, probeTimeoutMs);
-}
-
-async function ensureEntitlementsReady(probeTimeoutMs = 45_000): Promise<boolean> {
-  const url = `${entitlementsOrigin()}/health`;
   return probeServiceHealth(url, probeTimeoutMs);
 }
 
