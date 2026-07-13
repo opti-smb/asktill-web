@@ -144,7 +144,7 @@ function uploadStateFromFile(
       issueKind: 'verify',
       warning:
         verifyErrorMessage?.trim() ||
-        'Server is still waking up. Your file is kept — tap Retry below.',
+        'Verification is taking longer than usual. Your file is kept — tap Retry below.',
       detail: `${size} · verification delayed`,
     };
   }
