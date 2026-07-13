@@ -760,25 +760,12 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Validate uploads quickly; only spend long warm time on cold-start retries. */
+/** Validate immediately; only spend long warm time on cold-start retries. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  const localDev = import.meta.env.DEV;
-  // Warm in background (do not block the first attempt for long).
-  void ensureBackendReady(localDev ? 3_000 : 15_000);
-  void ensureEntitlementsReady(localDev ? 3_000 : 15_000);
-  void ensureAuthServiceReady(localDev ? 3_000 : 10_000);
-
-  // Short gate only — when services are warm this is ~instant like local.
-  await Promise.race([
-    Promise.all([
-      ensureAuthServiceReady(localDev ? 2_000 : 6_000),
-      ensureBackendReady(localDev ? 2_000 : 6_000),
-      ensureEntitlementsReady(localDev ? 2_000 : 6_000),
-    ]),
-    new Promise<boolean>((resolve) => {
-      window.setTimeout(() => resolve(false), localDev ? 2_000 : 6_000);
-    }),
-  ]);
+  // Kick wakes in the background — do not block the first validate attempt.
+  void ensureBackendReady(15_000);
+  void ensureEntitlementsReady(15_000);
+  void ensureAuthServiceReady(10_000);
 
   const maxAttempts = 3;
   let lastErr: unknown;
@@ -791,7 +778,7 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
         ensureBackendReady(45_000),
         ensureEntitlementsReady(45_000),
       ]);
-      await new Promise((resolve) => window.setTimeout(resolve, 800 * attempt));
+      await new Promise((resolve) => window.setTimeout(resolve, 400 * attempt));
     }
     try {
       return await validateUploads(files);

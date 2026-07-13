@@ -400,6 +400,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     setValidationError(null);
     // Warm in background; validateUploadsWithRetry also waits for auth + backend.
 
+    // Debounce so picking bank/pos/ecom quickly only validates once (prod parse is slow).
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
@@ -447,7 +448,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
           }
         }
       })();
-    }, 50);
+    }, 400);
 
     return () => {
       cancelled = true;
