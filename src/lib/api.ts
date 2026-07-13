@@ -760,13 +760,24 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Validate uploads after warming auth + backend + entitlements; retry cold-start failures. */
+/** Validate uploads quickly; only spend long warm time on cold-start retries. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  // Wait for services (local is instant; Render free tier may need a wake).
-  await Promise.all([
-    ensureAuthServiceReady(20_000),
-    ensureBackendReady(60_000),
-    ensureEntitlementsReady(60_000),
+  const localDev = import.meta.env.DEV;
+  // Warm in background (do not block the first attempt for long).
+  void ensureBackendReady(localDev ? 3_000 : 15_000);
+  void ensureEntitlementsReady(localDev ? 3_000 : 15_000);
+  void ensureAuthServiceReady(localDev ? 3_000 : 10_000);
+
+  // Short gate only — when services are warm this is ~instant like local.
+  await Promise.race([
+    Promise.all([
+      ensureAuthServiceReady(localDev ? 2_000 : 6_000),
+      ensureBackendReady(localDev ? 2_000 : 6_000),
+      ensureEntitlementsReady(localDev ? 2_000 : 6_000),
+    ]),
+    new Promise<boolean>((resolve) => {
+      window.setTimeout(() => resolve(false), localDev ? 2_000 : 6_000);
+    }),
   ]);
 
   const maxAttempts = 3;
@@ -774,12 +785,13 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (attempt > 0) {
+      // Cold-start path only: allow longer wake, then retry validate.
       await Promise.all([
-        ensureAuthServiceReady(45_000),
-        ensureBackendReady(60_000),
-        ensureEntitlementsReady(60_000),
+        ensureAuthServiceReady(30_000),
+        ensureBackendReady(45_000),
+        ensureEntitlementsReady(45_000),
       ]);
-      await new Promise((resolve) => window.setTimeout(resolve, 1500 * attempt));
+      await new Promise((resolve) => window.setTimeout(resolve, 800 * attempt));
     }
     try {
       return await validateUploads(files);
