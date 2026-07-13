@@ -55,6 +55,16 @@ export function pickPrimarySavedReport(
   })[0];
 }
 
+/** Most recently uploaded report (by uploaded_at) — use after analyze/backfill recovery. */
+export function pickMostRecentlyUploadedReport(
+  reports: SavedReportSummaryApi[],
+): SavedReportSummaryApi | null {
+  if (!reports.length) return null;
+  return [...reports].sort(
+    (a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime(),
+  )[0];
+}
+
 /**
  * Pick the statement id for AT Letter — anchor on newest saved month once history is loaded.
  * Fresh analyze wins during grace, when its period is newer, or when the same month was re-uploaded.

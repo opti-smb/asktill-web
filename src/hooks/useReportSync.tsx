@@ -219,13 +219,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             periodKeyFromLabel(sessionAnalysis?.period_label)
             ?? sessionReport?.period_key
             ?? null;
-          const primaryKey = periodKeyFromLabel(primary?.period_label);
           const inAnalyzeGrace = hasRecentAnalyzeSession();
-          const primaryIsNewerThanSession =
-            Boolean(sessionKey && primaryKey)
-            && comparePeriodKeys(sessionKey, primaryKey) > 0;
-          const primaryIsNewerOrSame =
-            !sessionKey || !primaryKey || comparePeriodKeys(sessionKey, primaryKey) >= 0;
           const statementIdsDiffer =
             Boolean(effectiveSessionId && primary?.statement_id)
             && effectiveSessionId !== primary?.statement_id;
@@ -233,6 +227,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             activeViewId
             && (activeViewId === sessionStatementId || inAnalyzeGrace),
           );
+          // Keep the statement the user just uploaded/opened — even if an older
+          // calendar month (backfill Feb while Aug is still the newest on file).
           const keepPinnedUpload =
             Boolean(
               activeViewId
@@ -240,13 +236,18 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
               && activeViewId !== primary.statement_id
               && (inAnalyzeGrace || Boolean(sessionAnalysis) || analyzeLoadingRef.current),
             );
+          const keepCurrentSessionView = Boolean(
+            sessionAnalysis
+            && sessionStatementId
+            && (keepPinnedUpload || pinnedView || inAnalyzeGrace || statementIdsDiffer),
+          );
 
           const statementId = resolveAtLetterStatementId({
             sessionStatementId: effectiveSessionId,
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
-            preferSession: inAnalyzeGrace || pinnedView || keepPinnedUpload,
+            preferSession: inAnalyzeGrace || pinnedView || keepPinnedUpload || keepCurrentSessionView,
             activeViewId,
           });
           if (statementId) {
@@ -254,7 +255,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
-          if (keepPinnedUpload || ((inAnalyzeGrace || pinnedView) && effectiveSessionId)) {
+          if (keepPinnedUpload || keepCurrentSessionView || ((inAnalyzeGrace || pinnedView) && effectiveSessionId)) {
             const needsHydrate =
               !sessionAnalysis
               || (activeViewId && sessionStatementId && activeViewId !== sessionStatementId);
@@ -267,16 +268,13 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
                 /* keep partial session payload */
               }
             }
-          } else if (!keepPinnedUpload) {
+          } else if (!keepPinnedUpload && !keepCurrentSessionView) {
+            // Only auto-load chronologically-latest when dashboard has no active view.
             const shouldHydrateFromServer =
               primary
               && !analyzeLoadingRef.current
               && !pinnedView
-              && (
-                !sessionResult?.analysis
-                || primaryIsNewerThanSession
-                || (statementIdsDiffer && primaryIsNewerOrSame)
-              );
+              && !sessionResult?.analysis;
 
             if (
               shouldHydrateFromServer

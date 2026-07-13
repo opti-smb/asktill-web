@@ -16,7 +16,7 @@ import {
 } from './analyzeProgress';
 import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
-import { periodKeyFromLabel, pickPrimarySavedReport } from './atLetterStatement';
+import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from './atLetterStatement';
 export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
 export type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
 export { normalizeTier, tierDisplayLabel } from './subscription';
@@ -1368,8 +1368,8 @@ async function recoverLatestSavedAnalyzeResult(): Promise<AnalyzeResult | null> 
     await ensureAuthServiceReady(attempt >= 2 ? 45_000 : 15_000);
     try {
       const { data: history } = await fetchReportHistory();
-      const primary = pickPrimarySavedReport(history.reports ?? []);
-      const latestId = primary?.statement_id;
+      const recent = pickMostRecentlyUploadedReport(history.reports ?? []);
+      const latestId = recent?.statement_id;
       if (latestId) {
         return await fetchSavedReportWithRetry(latestId);
       }

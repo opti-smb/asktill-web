@@ -35,7 +35,7 @@ import {
   type UploadValidationResult,
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
-import { pickPrimarySavedReport } from '../lib/atLetterStatement';
+import { pickMostRecentlyUploadedReport } from '../lib/atLetterStatement';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import type { FileUploadState } from '../types';
@@ -710,8 +710,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         const { data } = await fetchReportHistory();
         const count = data.reports?.length ?? 0;
         setSavedReportCount(count);
-        const primary = pickPrimarySavedReport(data.reports ?? []);
-        const latestId = primary?.statement_id;
+        const recent = pickMostRecentlyUploadedReport(data.reports ?? []);
+        const latestId = recent?.statement_id;
         if (latestId && (streamId || count > reportsBefore || force)) {
           await openSavedReport(streamId ?? latestId);
           return;
