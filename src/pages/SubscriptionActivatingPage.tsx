@@ -46,24 +46,19 @@ export default function SubscriptionActivatingPage() {
     const startedAt = Date.now();
     let cancelled = false;
 
-    // Wake auth + backend (and real /me hops) before Upload — validate-uploads
-    // needs Auth /me via the backend; health-only wake left that cold.
+    // Confirm payment first so tier is paid before warm /me (avoids caching free tier).
+    // Then wake backend (local JWT path) before Upload.
     void (async () => {
-      const confirmPromise = confirmedSessions.has(sessionId)
-        ? Promise.resolve()
-        : (async () => {
-            confirmedSessions.add(sessionId);
-            try {
-              await confirmCheckoutSession(sessionId);
-            } catch {
-              /* webhook may already have applied tier */
-            }
-          })();
-
-      await Promise.all([
-        primeServicesAfterCheckout(),
-        confirmPromise.then(() => refreshUserRef.current()),
-      ]);
+      if (!confirmedSessions.has(sessionId)) {
+        confirmedSessions.add(sessionId);
+        try {
+          await confirmCheckoutSession(sessionId);
+        } catch {
+          /* webhook may already have applied tier */
+        }
+      }
+      await refreshUserRef.current();
+      await primeServicesAfterCheckout();
 
       if (cancelled || navigatedRef.current) return;
       const elapsed = Date.now() - startedAt;
