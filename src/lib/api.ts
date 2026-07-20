@@ -871,6 +871,12 @@ export function warmupBackend() {
   void ensureBackendReady(15_000);
 }
 
+/** Clear warm TTLs so the next ensure* actually probes (e.g. after Stripe return). */
+export function invalidateServiceWarmCache() {
+  backendWarmUntil = 0;
+  authWarmUntil = 0;
+}
+
 type BackendHealthPayload = {
   compact_pdf_engine?: string;
   compact_pdf_playwright_ready?: boolean;
@@ -980,23 +986,34 @@ export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<bo
 }
 
 /**
- * After Stripe return: wake backend + auth, then hit real /me paths.
- * Health alone is not enough — validate-uploads calls Auth /me via the backend.
+ * After Stripe return: wake backend + auth, then hard-require authenticated
+ * /api/me and /api/warm-upload (preloads PDF/Excel parsers health does not).
  */
 export async function primeServicesAfterCheckout(): Promise<void> {
+  invalidateServiceWarmCache();
   await Promise.all([
     ensureBackendReady(90_000),
     ensureAuthServiceReady(90_000),
   ]);
-  try {
-    await fetchCurrentUser();
-  } catch {
-    /* auth may still be settling; backend /me below retries the hop */
+
+  const deadline = Date.now() + 90_000;
+  let attempt = 0;
+  while (Date.now() < deadline) {
+    attempt += 1;
+    try {
+      await fetchCurrentUser();
+      await mainApi.get('/api/me', { timeout: 60_000 });
+      await mainApi.get('/api/warm-upload', { timeout: 90_000 });
+      return;
+    } catch {
+      await new Promise((r) => window.setTimeout(r, Math.min(2_000, 400 * attempt)));
+    }
   }
+  // Budget exhausted — one last warm attempt; Upload validate will retry if needed.
   try {
-    await mainApi.get('/api/me', { timeout: 60_000 });
+    await mainApi.get('/api/warm-upload', { timeout: 90_000 });
   } catch {
-    /* best-effort — upload validate will retry */
+    /* ignore */
   }
 }
 
