@@ -1003,13 +1003,18 @@ export async function primeServicesAfterCheckout(): Promise<void> {
     try {
       await fetchCurrentUser();
       await mainApi.get('/api/me', { timeout: 60_000 });
-      await mainApi.get('/api/warm-upload', { timeout: 90_000 });
+      try {
+        await mainApi.get('/api/warm-upload', { timeout: 90_000 });
+      } catch (warmErr) {
+        const status = (warmErr as AxiosError)?.response?.status;
+        // Older backend builds lack this route — /me alone is still enough to proceed.
+        if (status !== 404) throw warmErr;
+      }
       return;
     } catch {
       await new Promise((r) => window.setTimeout(r, Math.min(2_000, 400 * attempt)));
     }
   }
-  // Budget exhausted — one last warm attempt; Upload validate will retry if needed.
   try {
     await mainApi.get('/api/warm-upload', { timeout: 90_000 });
   } catch {
