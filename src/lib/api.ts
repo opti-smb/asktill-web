@@ -762,23 +762,16 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Wake backend/auth first, then validate — avoids racing a cold Render instance. */
+/** Wake backend first, then validate — Auth is not required (backend verifies JWT locally). */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  // Same gates as before; only wait for services to be up before the first POST.
-  await Promise.all([
-    ensureBackendReady(45_000),
-    ensureAuthServiceReady(45_000),
-  ]);
+  await ensureBackendReady(45_000);
 
   const maxAttempts = 4;
   let lastErr: unknown;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (attempt > 0) {
-      await Promise.all([
-        ensureAuthServiceReady(45_000),
-        ensureBackendReady(60_000),
-      ]);
+      await ensureBackendReady(60_000);
       await new Promise((resolve) => window.setTimeout(resolve, 1_000 * attempt));
     }
     try {
@@ -965,7 +958,7 @@ export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<bo
   if (authWarmupInFlight) return authWarmupInFlight;
 
   authWarmupInFlight = (async () => {
-    const deadline = Date.now() + Math.max(probeTimeoutMs, 30_000);
+    const deadline = Date.now() + Math.max(probeTimeoutMs, 5_000);
     let attempt = 0;
     while (Date.now() < deadline) {
       attempt += 1;
@@ -986,28 +979,25 @@ export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<bo
 }
 
 /**
- * After Stripe return: wake backend + auth, then hard-require authenticated
- * /api/me and /api/warm-upload (preloads PDF/Excel parsers health does not).
+ * After Stripe return: wake backend only (JWT is verified locally — do not wait on Auth).
+ * Hits /api/me + /api/warm-upload so parsers/DB are ready before Upload.
  */
 export async function primeServicesAfterCheckout(): Promise<void> {
   invalidateServiceWarmCache();
-  await Promise.all([
-    ensureBackendReady(90_000),
-    ensureAuthServiceReady(90_000),
-  ]);
+  // Auth warm is background-only — upload no longer depends on Auth /me.
+  void ensureAuthServiceReady(15_000);
+  await ensureBackendReady(90_000);
 
   const deadline = Date.now() + 90_000;
   let attempt = 0;
   while (Date.now() < deadline) {
     attempt += 1;
     try {
-      await fetchCurrentUser();
       await mainApi.get('/api/me', { timeout: 60_000 });
       try {
         await mainApi.get('/api/warm-upload', { timeout: 90_000 });
       } catch (warmErr) {
         const status = (warmErr as AxiosError)?.response?.status;
-        // Older backend builds lack this route — /me alone is still enough to proceed.
         if (status !== 404) throw warmErr;
       }
       return;
