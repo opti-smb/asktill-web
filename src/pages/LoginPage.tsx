@@ -14,8 +14,8 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 import { useAuth } from '../context/AuthContext';
 
-import { emailFieldRules, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
-import { extractNotRegistered, getApiError, warmupServices } from '../lib/api';
+import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
+import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 import { getPostLoginRedirect } from '../lib/pendingPdfDownload';
 
@@ -146,22 +146,11 @@ export default function LoginPage() {
 
       const notRegistered = extractNotRegistered(err);
 
-      if (notRegistered) {
-
-        setServerError(notRegistered.message);
-
-        setEmailHighlight(true);
-
-        focusEmailInput('login-email');
-
-        return;
-
-      }
-
-      if (isLoginEmailFailure(err)) {
+      if (notRegistered || isLoginEmailFailure(err)) {
 
         setServerError(
-          "No account for this email. Check the address or register first.",
+          notRegistered?.message
+            ?? 'No account for this email. Check the address or register first.',
         );
 
         setEmailHighlight(true);
@@ -172,7 +161,17 @@ export default function LoginPage() {
 
       }
 
-      setServerError(loginCredentialErrorMessage(err) || getApiError(err, 'Invalid email or password.'));
+      setServerError(
+        loginCredentialErrorMessage(err) || 'Wrong password. Try again.',
+      );
+
+      if (isInvalidPasswordFailure(err)) {
+        setEmailHighlight(false);
+        window.setTimeout(() => {
+          passwordInputRef.current?.focus();
+          passwordInputRef.current?.select();
+        }, 0);
+      }
 
     }
 
