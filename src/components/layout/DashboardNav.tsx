@@ -19,6 +19,7 @@ export default function DashboardNav() {
   const isReconRoute = pathname.startsWith('/dashboard/reconciliation');
   const isOverviewRoute = pathname.startsWith('/dashboard/analysis');
   const isReportsRoute = pathname.startsWith('/dashboard/reports');
+  const isCalculatorsRoute = pathname.startsWith('/dashboard/calculators');
   const isProfileRoute = pathname.startsWith('/dashboard/profile');
   const isSourcesRoute = pathname.startsWith('/dashboard/sources');
   // Same dual-scroll pattern as Cash Flow / Overview / Reports / Profile:
@@ -29,6 +30,7 @@ export default function DashboardNav() {
     isReconRoute ||
     isOverviewRoute ||
     isReportsRoute ||
+    isCalculatorsRoute ||
     isProfileRoute ||
     isSourcesRoute;
 
@@ -123,6 +125,22 @@ export default function DashboardNav() {
               >
 
                 Reports
+
+              </NavLink>
+
+              <NavLink
+
+                to="/dashboard/calculators"
+
+                className={({ isActive }) =>
+
+                  `${styles.navTab} ${isActive ? styles.active : ''}`
+
+                }
+
+              >
+
+                Calculators
 
               </NavLink>
 

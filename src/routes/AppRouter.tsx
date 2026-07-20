@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
 import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
+import CalculatorsPage from '../pages/CalculatorsPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -33,6 +34,11 @@ function AppRoutes() {
   return (
     <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/calculators" element={<Navigate to="/dashboard/calculators" replace />} />
+        <Route
+          path="/calculators/:slug"
+          element={<Navigate to="/dashboard/calculators" replace />}
+        />
         <Route path="/signup" element={<Navigate to="/register" replace />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -86,6 +92,8 @@ function AppRoutes() {
           <Route path="reconciliation" element={<ReconPage />} />
           <Route path="at-letter" element={<AtLetterPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="calculators" element={<CalculatorsPage />} />
+          <Route path="calculators/:slug" element={<CalculatorsPage />} />
           <Route path="sources" element={<SourcesPage />} />
           <Route path="rewards" element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
           <Route path="profile" element={<ProfilePage />} />

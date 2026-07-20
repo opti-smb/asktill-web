@@ -67,10 +67,20 @@ export default function ReportsPage() {
       !sessionPeriodKey || !weekPeriodKey || sessionPeriodKey === weekPeriodKey;
 
     if (analysisWeekCount > 0 && weekPeriodMatches) {
-      setWeekReports(fromAnalysis ?? null);
-      setWeekLoading(false);
-      setWeekError(null);
-      return;
+      const weeks = fromAnalysis?.weeks ?? [];
+      const hasPosWeek = weeks.some(
+        (w) => (w.pos?.gross_sales ?? 0) > 0 || (w.pos?.net_to_bank ?? 0) > 0,
+      );
+      const monthlyPos =
+        (analysis?.channel_breakdown?.pos?.gross_sales ?? 0) > 0 ||
+        (analysis?.channel_breakdown?.pos?.net_to_bank ?? 0) > 0;
+      // Stale snapshot: monthly POS exists but week POS is empty (weekday Batch Date bug).
+      if (!(monthlyPos && !hasPosWeek)) {
+        setWeekReports(fromAnalysis ?? null);
+        setWeekLoading(false);
+        setWeekError(null);
+        return;
+      }
     }
 
     const seq = ++weekLoadSeq.current;

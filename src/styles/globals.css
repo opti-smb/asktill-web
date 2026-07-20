@@ -35,14 +35,18 @@
   --radius-sm: 8px;
 }
 
-.wrap {
-  max-width: var(--max);
-  margin: 0 auto;
-  padding: 0 36px;
+/* Keep desktop layout on phones: same canvas width, scroll sideways if needed. */
+html,
+body,
+#root {
+  min-width: var(--max);
+  overflow-x: auto;
 }
 
-@media (max-width: 600px) {
-  .wrap {
-    padding: 0 20px;
-  }
+.wrap {
+  max-width: var(--max);
+  min-width: var(--max);
+  width: var(--max);
+  margin: 0 auto;
+  padding: 0 36px;
 }
