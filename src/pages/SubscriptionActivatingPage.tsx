@@ -3,13 +3,14 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
+import { markPostPaymentSignInRequired } from '../components/upload/PostPaymentSignInModal';
 import { useAuth } from '../context/AuthContext';
 import { confirmCheckoutSession, primeServicesAfterCheckout } from '../lib/api';
 import { TIER_PAID } from '../lib/subscription';
 import styles from './SubscriptionActivatingPage.module.css';
 
 const READY_MS = 80;
-const MIN_NAVIGATE_MS = 400;
+const MIN_NAVIGATE_MS = 600;
 
 const confirmedSessions = new Set<string>();
 
@@ -31,7 +32,6 @@ export default function SubscriptionActivatingPage() {
   const [continuing, setContinuing] = useState(false);
   const navigatedRef = useRef(false);
 
-  // Keep latest callbacks without re-arming timers on every AuthContext render.
   const patchUserTierRef = useRef(patchUserTier);
   const refreshUserRef = useRef(refreshUser);
   patchUserTierRef.current = patchUserTier;
@@ -41,14 +41,15 @@ export default function SubscriptionActivatingPage() {
     if (!sessionId || navigatedRef.current) return undefined;
 
     patchUserTierRef.current(TIER_PAID);
+    markPostPaymentSignInRequired();
 
     const readyTimer = window.setTimeout(() => setReady(true), READY_MS);
     const startedAt = Date.now();
     let cancelled = false;
 
-    // Start backend prime immediately — do not wait on subscription confirm (cold service).
     void (async () => {
-      const primePromise = primeServicesAfterCheckout();
+      // Warm in background; upload page asks for email/password to finish activate.
+      void primeServicesAfterCheckout();
 
       if (!confirmedSessions.has(sessionId)) {
         confirmedSessions.add(sessionId);
@@ -60,8 +61,6 @@ export default function SubscriptionActivatingPage() {
       } else {
         void refreshUserRef.current();
       }
-
-      await primePromise;
 
       if (cancelled || navigatedRef.current) return;
       const elapsed = Date.now() - startedAt;
@@ -97,7 +96,7 @@ export default function SubscriptionActivatingPage() {
           <span className={styles.eyebrow}>Subscription</span>
           <h1 className={styles.title}>Setting up your account</h1>
           <p className={styles.subtitle}>
-            One last step — we&apos;re unlocking multi-month uploads on your account.
+            One last step — confirm sign-in on the upload screen to activate your Paid plan.
           </p>
 
           <div className={styles.stepper} aria-label="Checkout progress">
@@ -118,7 +117,7 @@ export default function SubscriptionActivatingPage() {
             <div className={styles.stepDivider} />
             <div className={`${styles.step} ${ready ? styles.stepActive : ''}`}>
               <span className={styles.stepNum}>4</span>
-              <span>Upload</span>
+              <span>Sign in</span>
             </div>
           </div>
 
@@ -138,7 +137,7 @@ export default function SubscriptionActivatingPage() {
             </h2>
             <p className={styles.cardHint}>
               {ready
-                ? 'Preparing upload — waking your workspace…'
+                ? 'Next: confirm your email and password on upload…'
                 : 'Activating your Paid plan…'}
             </p>
 
@@ -157,15 +156,12 @@ export default function SubscriptionActivatingPage() {
               onClick={() => {
                 if (continuing || navigatedRef.current) return;
                 setContinuing(true);
-                void (async () => {
-                  await primeServicesAfterCheckout();
-                  if (navigatedRef.current) return;
-                  navigatedRef.current = true;
-                  navigate(returnTo, { replace: true });
-                })();
+                markPostPaymentSignInRequired();
+                navigatedRef.current = true;
+                navigate(returnTo, { replace: true });
               }}
             >
-              {continuing ? 'Preparing upload…' : 'Continue to upload'}
+              {continuing ? 'Opening upload…' : 'Continue to upload'}
             </button>
           </section>
         </div>

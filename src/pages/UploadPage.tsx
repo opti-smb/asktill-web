@@ -6,6 +6,9 @@ import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
 import UploadContinuityNudge from '../components/upload/UploadContinuityNudge';
+import PostPaymentSignInModal, {
+  isPostPaymentSignInRequired,
+} from '../components/upload/PostPaymentSignInModal';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
@@ -235,6 +238,15 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
   const { isPaid } = useSubscription();
+  const [needPostPaymentSignIn, setNeedPostPaymentSignIn] = useState(() =>
+    isPostPaymentSignInRequired(),
+  );
+
+  useEffect(() => {
+    if (isPostPaymentSignInRequired()) {
+      setNeedPostPaymentSignIn(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isPaid) {
@@ -409,6 +421,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   }, [authReady, isAuth, anySlotChecking]);
 
   useEffect(() => {
+    if (needPostPaymentSignIn) {
+      setSlotChecking({ bank: false, pos: false, ecommerce: false });
+      return undefined;
+    }
     if (uploadedCount < 1) {
       setValidation(null);
       setPinnedSlotWarnings({});
@@ -500,6 +516,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       window.clearTimeout(timer);
     };
   }, [
+    needPostPaymentSignIn,
     bankKey,
     posKey,
     ecommerceKey,
@@ -780,6 +797,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
 
   return (
     <div className={`${styles.pageBg} ${embedded ? styles.pageBgEmbedded : ''}`}>
+      <PostPaymentSignInModal
+        open={needPostPaymentSignIn}
+        onActivated={() => setNeedPostPaymentSignIn(false)}
+      />
       {analyzeProgress && <AnalyzeProgressOverlay progress={analyzeProgress} />}
       {showValidationContinuityNudge && validationContinuity ? (
         <UploadContinuityNudge
