@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
-import { confirmCheckoutSession } from '../lib/api';
+import { confirmCheckoutSession, warmupBackend } from '../lib/api';
 import { TIER_PAID } from '../lib/subscription';
 import styles from './SubscriptionActivatingPage.module.css';
 
@@ -38,6 +38,9 @@ export default function SubscriptionActivatingPage() {
 
   useEffect(() => {
     if (!sessionId || navigatedRef.current) return undefined;
+
+    // Wake backend during activation so the next upload validate isn't cold.
+    warmupBackend();
 
     patchUserTierRef.current(TIER_PAID);
 
