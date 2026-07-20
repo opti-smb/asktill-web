@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
-import { createCheckoutSession, getApiError } from '../lib/api';
+import { createCheckoutSession, getApiError, warmupBackend } from '../lib/api';
 import { getPlanById } from '../lib/plans';
 import { isPaidTier } from '../lib/subscription';
 import styles from './CheckoutPage.module.css';
@@ -25,6 +25,11 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Start waking backend while user is on checkout (before Stripe redirect).
+  useEffect(() => {
+    warmupBackend();
+  }, []);
+
   if (!plan) {
     return <Navigate to={pricingHref} replace />;
   }
@@ -38,6 +43,7 @@ export default function CheckoutPage() {
     setError(null);
     setLoading(true);
     try {
+      warmupBackend();
       const checkoutUrl = await createCheckoutSession(plan.id, returnTo);
       window.location.assign(checkoutUrl);
     } catch (err) {

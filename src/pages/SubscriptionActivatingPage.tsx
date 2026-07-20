@@ -4,12 +4,12 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
-import { confirmCheckoutSession, warmupBackend } from '../lib/api';
+import { confirmCheckoutSession, ensureBackendServiceReady } from '../lib/api';
 import { TIER_PAID } from '../lib/subscription';
 import styles from './SubscriptionActivatingPage.module.css';
 
 const READY_MS = 80;
-const NAVIGATE_MS = 180;
+const MIN_NAVIGATE_MS = 400;
 
 const confirmedSessions = new Set<string>();
 
@@ -28,6 +28,7 @@ export default function SubscriptionActivatingPage() {
   const fromParam = params.get('from');
   const returnTo = useMemo(() => resolveReturnPath(fromParam), [fromParam]);
   const [ready, setReady] = useState(false);
+  const [continuing, setContinuing] = useState(false);
   const navigatedRef = useRef(false);
 
   // Keep latest callbacks without re-arming timers on every AuthContext render.
@@ -38,9 +39,6 @@ export default function SubscriptionActivatingPage() {
 
   useEffect(() => {
     if (!sessionId || navigatedRef.current) return undefined;
-
-    // Wake backend during activation so the next upload validate isn't cold.
-    warmupBackend();
 
     patchUserTierRef.current(TIER_PAID);
 
@@ -54,15 +52,25 @@ export default function SubscriptionActivatingPage() {
     }
 
     const readyTimer = window.setTimeout(() => setReady(true), READY_MS);
-    const navTimer = window.setTimeout(() => {
-      if (navigatedRef.current) return;
-      navigatedRef.current = true;
-      navigate(returnTo, { replace: true });
-    }, NAVIGATE_MS);
+    const startedAt = Date.now();
+    let cancelled = false;
+
+    // Wait for backend wake here (not on Upload under the validate spinner).
+    void (async () => {
+      await ensureBackendServiceReady(90_000);
+      if (cancelled || navigatedRef.current) return;
+      const elapsed = Date.now() - startedAt;
+      const waitMore = Math.max(0, MIN_NAVIGATE_MS - elapsed);
+      window.setTimeout(() => {
+        if (cancelled || navigatedRef.current) return;
+        navigatedRef.current = true;
+        navigate(returnTo, { replace: true });
+      }, waitMore);
+    })();
 
     return () => {
+      cancelled = true;
       window.clearTimeout(readyTimer);
-      window.clearTimeout(navTimer);
     };
   }, [sessionId, returnTo, navigate]);
 
@@ -124,7 +132,9 @@ export default function SubscriptionActivatingPage() {
               {ready ? 'Plan activated' : 'Payment successful'}
             </h2>
             <p className={styles.cardHint}>
-              {ready ? 'Taking you to upload…' : 'Activating your Paid plan…'}
+              {ready
+                ? 'Preparing upload — waking your workspace…'
+                : 'Activating your Paid plan…'}
             </p>
 
             {!ready ? (
@@ -138,12 +148,19 @@ export default function SubscriptionActivatingPage() {
             <button
               type="button"
               className={styles.btnPrimary}
+              disabled={continuing}
               onClick={() => {
-                navigatedRef.current = true;
-                navigate(returnTo, { replace: true });
+                if (continuing || navigatedRef.current) return;
+                setContinuing(true);
+                void (async () => {
+                  await ensureBackendServiceReady(90_000);
+                  if (navigatedRef.current) return;
+                  navigatedRef.current = true;
+                  navigate(returnTo, { replace: true });
+                })();
               }}
             >
-              Continue to upload
+              {continuing ? 'Preparing upload…' : 'Continue to upload'}
             </button>
           </section>
         </div>
