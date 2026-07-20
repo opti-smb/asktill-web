@@ -149,6 +149,34 @@ export function emailFieldRules() {
 }
 
 export function isLoginEmailFailure(err: unknown): boolean {
+  // Only treat structured "not registered" / missing account as an email problem.
+  // Wrong password is also 401 — do not map that to an email-typo message.
+  const notRegistered = (err as { response?: { data?: unknown } })?.response?.data;
+  if (notRegistered && typeof notRegistered === 'object') {
+    const detail = (notRegistered as { detail?: unknown }).detail;
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      const code = String((detail as { code?: string }).code ?? '');
+      if (code === 'not_registered') return true;
+    }
+  }
   const status = (err as { response?: { status?: number } })?.response?.status;
-  return status === 401 || status === 404 || status === 400;
+  return status === 404;
+}
+
+/** Friendly message for failed password login (not "session expired"). */
+export function loginCredentialErrorMessage(err: unknown): string {
+  const status = (err as { response?: { status?: number; data?: unknown } })?.response?.status;
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (status === 401 || status === 400) {
+    if (data && typeof data === 'object') {
+      const detail = (data as { detail?: unknown }).detail;
+      if (typeof detail === 'string' && detail.trim()) return detail.trim();
+      if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+        const msg = (detail as { message?: string }).message;
+        if (msg?.trim()) return msg.trim();
+      }
+    }
+    return 'Invalid email or password.';
+  }
+  return 'Sign in failed. Check your email and password, then try again.';
 }

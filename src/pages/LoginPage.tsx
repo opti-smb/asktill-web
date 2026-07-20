@@ -14,12 +14,10 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 import { useAuth } from '../context/AuthContext';
 
+import { emailFieldRules, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
 import { extractNotRegistered, getApiError, warmupServices } from '../lib/api';
-
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 import { getPostLoginRedirect } from '../lib/pendingPdfDownload';
-
-import { emailFieldRules, isLoginEmailFailure } from '../lib/emailValidation';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
 
@@ -163,20 +161,18 @@ export default function LoginPage() {
       if (isLoginEmailFailure(err)) {
 
         setServerError(
-
-          "We couldn't sign in with that email. Check for typos in the address or domain, then try again.",
-
+          "No account for this email. Check the address or register first.",
         );
 
         setEmailHighlight(true);
 
         focusEmailInput('login-email');
 
-      } else {
-
-        setServerError(getApiError(err, 'Sign in failed.'));
+        return;
 
       }
+
+      setServerError(loginCredentialErrorMessage(err) || getApiError(err, 'Invalid email or password.'));
 
     }
 

@@ -228,6 +228,24 @@ function formatApiError(
     return axiosErr?.message ?? fallback;
   }
   if (axiosErr.response.status === 401) {
+    const url = String(axiosErr.config?.url ?? '');
+    const isAuthLogin =
+      url.includes('/api/auth/login')
+      || url.includes('/api/auth/clerk-login');
+    const detail = d?.detail ?? d?.message ?? d?.error;
+    if (typeof detail === 'string' && detail.trim()) {
+      // Login / credential failures — show server message, not "session expired".
+      if (isAuthLogin || /invalid email or password/i.test(detail)) {
+        return detail.trim();
+      }
+    }
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      const obj = detail as { message?: string; code?: string };
+      if (obj.message?.trim()) return obj.message.trim();
+    }
+    if (isAuthLogin) {
+      return 'Invalid email or password.';
+    }
     return 'Your session expired or could not be verified. Please sign in again.';
   }
   if (axiosErr.response.status === 503) {
