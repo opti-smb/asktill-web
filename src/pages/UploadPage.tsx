@@ -30,6 +30,7 @@ import {
   validateUploadsWithRetry,
   ensureAuthServiceReady,
   ensureBackendServiceReady,
+  warmupBackend,
   warningsBySlot,
   type FreeTierLimitNotice,
   type UploadValidationResult,
