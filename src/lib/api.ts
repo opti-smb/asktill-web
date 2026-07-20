@@ -767,7 +767,7 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
   // Same gates as before; only wait for services to be up before the first POST.
   await Promise.all([
     ensureBackendReady(45_000),
-    ensureAuthServiceReady(20_000),
+    ensureAuthServiceReady(45_000),
   ]);
 
   const maxAttempts = 4;
@@ -953,28 +953,51 @@ function markAuthServiceWarm() {
   authWarmUntil = Date.now() + AUTH_WARM_TTL_MS;
 }
 
-/** Probe auth health; cache success so repeat sign-ins skip cold-start waits. */
+/** Probe auth health; retry until budget — same pattern as backend (Render cold starts). */
 export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<boolean> {
   if (isAuthServiceWarm()) return true;
   if (authWarmupInFlight) return authWarmupInFlight;
 
   authWarmupInFlight = (async () => {
-    try {
-      const ok = await probeAuthHealth(probeTimeoutMs);
+    const deadline = Date.now() + Math.max(probeTimeoutMs, 30_000);
+    let attempt = 0;
+    while (Date.now() < deadline) {
+      attempt += 1;
+      const slice = Math.min(20_000, Math.max(4_000, deadline - Date.now()));
+      const ok = await probeAuthHealth(slice);
       if (ok) {
         markAuthServiceWarm();
         return true;
       }
-      void probeAuthHealth(60_000).then((warm) => {
-        if (warm) markAuthServiceWarm();
-      });
-      return false;
-    } finally {
-      authWarmupInFlight = null;
+      await new Promise((r) => window.setTimeout(r, Math.min(2_000, 400 * attempt)));
     }
-  })();
+    return false;
+  })().finally(() => {
+    authWarmupInFlight = null;
+  });
 
   return authWarmupInFlight;
+}
+
+/**
+ * After Stripe return: wake backend + auth, then hit real /me paths.
+ * Health alone is not enough — validate-uploads calls Auth /me via the backend.
+ */
+export async function primeServicesAfterCheckout(): Promise<void> {
+  await Promise.all([
+    ensureBackendReady(90_000),
+    ensureAuthServiceReady(90_000),
+  ]);
+  try {
+    await fetchCurrentUser();
+  } catch {
+    /* auth may still be settling; backend /me below retries the hop */
+  }
+  try {
+    await mainApi.get('/api/me', { timeout: 60_000 });
+  } catch {
+    /* best-effort — upload validate will retry */
+  }
 }
 
 /** @deprecated Prefer ensureAuthServiceReady */
