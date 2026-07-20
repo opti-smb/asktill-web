@@ -46,19 +46,22 @@ export default function SubscriptionActivatingPage() {
     const startedAt = Date.now();
     let cancelled = false;
 
-    // Confirm payment, then wake backend only (do not block on Auth — JWT is local).
+    // Start backend prime immediately — do not wait on subscription confirm (cold service).
     void (async () => {
+      const primePromise = primeServicesAfterCheckout();
+
       if (!confirmedSessions.has(sessionId)) {
         confirmedSessions.add(sessionId);
-        try {
-          await confirmCheckoutSession(sessionId);
-        } catch {
-          /* webhook may already have applied tier */
-        }
+        void confirmCheckoutSession(sessionId)
+          .catch(() => undefined)
+          .finally(() => {
+            void refreshUserRef.current();
+          });
+      } else {
+        void refreshUserRef.current();
       }
-      // Refresh profile in background; upload path no longer waits on Auth.
-      void refreshUserRef.current();
-      await primeServicesAfterCheckout();
+
+      await primePromise;
 
       if (cancelled || navigatedRef.current) return;
       const elapsed = Date.now() - startedAt;

@@ -821,14 +821,17 @@ async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
   if (backendWarmupInFlight) return backendWarmupInFlight;
 
   backendWarmupInFlight = (async () => {
-    const url = `${serviceOrigin('VITE_API_BASE_URL')}/api/health`;
-    // Render cold starts often need several probes — keep trying until budget runs out.
+    // Prefer lightweight /api/ready — full /api/health loads Playwright and is slow on cold start.
+    const base = serviceOrigin('VITE_API_BASE_URL');
     const deadline = Date.now() + Math.max(probeTimeoutMs, 60_000);
     let attempt = 0;
     while (Date.now() < deadline) {
       attempt += 1;
       const slice = Math.min(20_000, Math.max(4_000, deadline - Date.now()));
-      const ok = await probeServiceHealth(url, slice);
+      // /api/ready is cheap; fall back to full /api/health for older deploys.
+      const ok =
+        (await probeServiceHealth(`${base}/api/ready`, Math.min(slice, 10_000)))
+        || (await probeServiceHealth(`${base}/api/health`, slice));
       if (ok) {
         markBackendServiceWarm();
         return true;
@@ -984,7 +987,6 @@ export async function ensureAuthServiceReady(probeTimeoutMs = 4_000): Promise<bo
  */
 export async function primeServicesAfterCheckout(): Promise<void> {
   invalidateServiceWarmCache();
-  // Auth warm is background-only — upload no longer depends on Auth /me.
   void ensureAuthServiceReady(15_000);
   await ensureBackendReady(90_000);
 
@@ -1000,6 +1002,11 @@ export async function primeServicesAfterCheckout(): Promise<void> {
         const status = (warmErr as AxiosError)?.response?.status;
         if (status !== 404) throw warmErr;
       }
+      try {
+        sessionStorage.setItem('asktill_backend_primed_at', String(Date.now()));
+      } catch {
+        /* private mode */
+      }
       return;
     } catch {
       await new Promise((r) => window.setTimeout(r, Math.min(2_000, 400 * attempt)));
@@ -1009,6 +1016,32 @@ export async function primeServicesAfterCheckout(): Promise<void> {
     await mainApi.get('/api/warm-upload', { timeout: 90_000 });
   } catch {
     /* ignore */
+  }
+}
+
+/** Pre-Stripe: load parsers while user is still on checkout (survives if Render stays up). */
+export async function primeBackendBeforeCheckout(): Promise<void> {
+  void ensureBackendReady(30_000);
+  try {
+    await mainApi.get('/api/warm-upload', { timeout: 45_000 });
+    try {
+      sessionStorage.setItem('asktill_backend_primed_at', String(Date.now()));
+    } catch {
+      /* private mode */
+    }
+  } catch {
+    /* best-effort — activating page will warm again */
+  }
+}
+
+/** True when checkout/activating already primed backend recently. */
+export function wasBackendRecentlyPrimed(withinMs = 3 * 60 * 1000): boolean {
+  try {
+    const raw = sessionStorage.getItem('asktill_backend_primed_at');
+    const at = raw ? Number(raw) : 0;
+    return Number.isFinite(at) && Date.now() - at < withinMs;
+  } catch {
+    return false;
   }
 }
 
