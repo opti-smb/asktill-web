@@ -1,14 +1,18 @@
 .shell {
   height: 100dvh;
   max-height: 100dvh;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bg-soft);
+  min-width: var(--max);
 }
 
 .shellAtLetter {
   min-height: 100dvh;
+  min-width: var(--max);
+  overflow-x: auto;
   background: var(--bg-soft);
 }
 
@@ -155,10 +159,4 @@
 
 .userMenuItem.danger:hover {
   background: #fef2f2;
-}
-
-@media (max-width: 600px) {
-  .navTabs {
-    display: none;
-  }
 }
