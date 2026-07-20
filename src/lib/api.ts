@@ -829,9 +829,20 @@ async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
 
   backendWarmupInFlight = (async () => {
     const url = `${serviceOrigin('VITE_API_BASE_URL')}/api/health`;
-    const ok = await probeServiceHealth(url, probeTimeoutMs);
-    if (ok) markBackendServiceWarm();
-    return ok;
+    // Render cold starts often need several probes — keep trying until budget runs out.
+    const deadline = Date.now() + Math.max(probeTimeoutMs, 60_000);
+    let attempt = 0;
+    while (Date.now() < deadline) {
+      attempt += 1;
+      const slice = Math.min(20_000, Math.max(4_000, deadline - Date.now()));
+      const ok = await probeServiceHealth(url, slice);
+      if (ok) {
+        markBackendServiceWarm();
+        return true;
+      }
+      await new Promise((r) => window.setTimeout(r, Math.min(2_000, 400 * attempt)));
+    }
+    return false;
   })().finally(() => {
     backendWarmupInFlight = null;
   });

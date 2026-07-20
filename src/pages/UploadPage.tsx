@@ -427,6 +427,14 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     const timer = window.setTimeout(() => {
       void (async () => {
         if (cancelled || validationRequestRef.current !== requestId) return;
+        // Wake backend BEFORE showing "Uploading…" so cold-start isn't under that spinner.
+        await Promise.all([
+          ensureBackendServiceReady(90_000),
+          ensureAuthServiceReady(20_000),
+        ]);
+        if (cancelled || validationRequestRef.current !== requestId) return;
+        if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
+
         setSlotChecking({
           bank: Boolean(bankKey),
           pos: Boolean(posKey),
