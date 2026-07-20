@@ -46,8 +46,7 @@ export default function SubscriptionActivatingPage() {
     const startedAt = Date.now();
     let cancelled = false;
 
-    // Confirm payment first so tier is paid before warm /me (avoids caching free tier).
-    // Then wake backend (local JWT path) before Upload.
+    // Confirm payment, then wake backend only (do not block on Auth — JWT is local).
     void (async () => {
       if (!confirmedSessions.has(sessionId)) {
         confirmedSessions.add(sessionId);
@@ -57,7 +56,8 @@ export default function SubscriptionActivatingPage() {
           /* webhook may already have applied tier */
         }
       }
-      await refreshUserRef.current();
+      // Refresh profile in background; upload path no longer waits on Auth.
+      void refreshUserRef.current();
       await primeServicesAfterCheckout();
 
       if (cancelled || navigatedRef.current) return;

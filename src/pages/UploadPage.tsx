@@ -287,9 +287,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   );
 
   useEffect(() => {
-    // Wake both services — validate-uploads needs Auth /me via the backend.
+    // Backend verifies JWT locally — only wake backend for upload validate.
     void ensureBackendServiceReady(45_000);
-    void ensureAuthServiceReady(45_000);
   }, []);
 
   useEffect(() => {
@@ -427,11 +426,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     const timer = window.setTimeout(() => {
       void (async () => {
         if (cancelled || validationRequestRef.current !== requestId) return;
-        // Wake backend BEFORE showing "Uploading…" so cold-start isn't under that spinner.
-        await Promise.all([
-          ensureBackendServiceReady(90_000),
-          ensureAuthServiceReady(90_000),
-        ]);
+        // Wake backend BEFORE showing "Uploading…" (JWT is local — skip Auth wait).
+        await ensureBackendServiceReady(90_000);
         if (cancelled || validationRequestRef.current !== requestId) return;
         if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
 
