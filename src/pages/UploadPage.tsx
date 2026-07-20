@@ -29,7 +29,7 @@ import {
   periodLabelFromFilename,
   validateUploadsWithRetry,
   ensureAuthServiceReady,
-  warmupBackend,
+  ensureBackendServiceReady,
   warningsBySlot,
   type FreeTierLimitNotice,
   type UploadValidationResult,
@@ -286,7 +286,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   );
 
   useEffect(() => {
-    warmupBackend();
+    // Start warming as soon as Upload opens (same as first-visit warm path).
+    void ensureBackendServiceReady(45_000);
     void ensureAuthServiceReady(8_000);
   }, []);
 

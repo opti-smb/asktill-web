@@ -762,11 +762,13 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Validate immediately; only warm backend/auth on cold-start retries. */
+/** Wake backend/auth first, then validate — avoids racing a cold Render instance. */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  // Entitlements are evaluated in-process on the backend now — no remote wake.
-  void ensureBackendReady(30_000);
-  void ensureAuthServiceReady(20_000);
+  // Same gates as before; only wait for services to be up before the first POST.
+  await Promise.all([
+    ensureBackendReady(45_000),
+    ensureAuthServiceReady(20_000),
+  ]);
 
   const maxAttempts = 4;
   let lastErr: unknown;
@@ -822,12 +824,40 @@ async function probeServiceHealth(url: string, timeoutMs: number): Promise<boole
 }
 
 async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
-  const url = `${serviceOrigin('VITE_API_BASE_URL')}/api/health`;
-  return probeServiceHealth(url, probeTimeoutMs);
+  if (isBackendServiceWarm()) return true;
+  if (backendWarmupInFlight) return backendWarmupInFlight;
+
+  backendWarmupInFlight = (async () => {
+    const url = `${serviceOrigin('VITE_API_BASE_URL')}/api/health`;
+    const ok = await probeServiceHealth(url, probeTimeoutMs);
+    if (ok) markBackendServiceWarm();
+    return ok;
+  })().finally(() => {
+    backendWarmupInFlight = null;
+  });
+
+  return backendWarmupInFlight;
+}
+
+/** Awaitable wake — use before upload validate so we don't race a cold backend. */
+export async function ensureBackendServiceReady(probeTimeoutMs = 45_000): Promise<boolean> {
+  return ensureBackendReady(probeTimeoutMs);
+}
+
+const BACKEND_WARM_TTL_MS = 3 * 60 * 1000;
+let backendWarmUntil = 0;
+let backendWarmupInFlight: Promise<boolean> | null = null;
+
+export function isBackendServiceWarm(): boolean {
+  return Date.now() < backendWarmUntil;
+}
+
+function markBackendServiceWarm() {
+  backendWarmUntil = Date.now() + BACKEND_WARM_TTL_MS;
 }
 
 export function warmupBackend() {
-  void probeServiceHealth(`${serviceOrigin('VITE_API_BASE_URL')}/api/health`, 15_000);
+  void ensureBackendReady(15_000);
 }
 
 type BackendHealthPayload = {
