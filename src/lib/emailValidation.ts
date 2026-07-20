@@ -163,6 +163,20 @@ export function isLoginEmailFailure(err: unknown): boolean {
   return status === 404;
 }
 
+export function isInvalidPasswordFailure(err: unknown): boolean {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (data && typeof data === 'object') {
+    const detail = (data as { detail?: unknown }).detail;
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      return String((detail as { code?: string }).code ?? '') === 'invalid_password';
+    }
+    if (typeof detail === 'string' && /invalid email or password/i.test(detail)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Friendly message for failed password login (not "session expired"). */
 export function loginCredentialErrorMessage(err: unknown): string {
   const status = (err as { response?: { status?: number; data?: unknown } })?.response?.status;
