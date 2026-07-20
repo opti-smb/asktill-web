@@ -170,13 +170,25 @@ export function loginCredentialErrorMessage(err: unknown): string {
   if (status === 401 || status === 400) {
     if (data && typeof data === 'object') {
       const detail = (data as { detail?: unknown }).detail;
-      if (typeof detail === 'string' && detail.trim()) return detail.trim();
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
-        const msg = (detail as { message?: string }).message;
-        if (msg?.trim()) return msg.trim();
+        const obj = detail as { code?: string; message?: string };
+        const code = String(obj.code ?? '');
+        if (code === 'invalid_password') {
+          return obj.message?.trim() || 'Wrong password. Try again.';
+        }
+        if (code === 'not_registered') {
+          return obj.message?.trim() || 'No account for this email. Please register first.';
+        }
+        if (obj.message?.trim()) return obj.message.trim();
+      }
+      if (typeof detail === 'string' && detail.trim()) {
+        if (/invalid email or password/i.test(detail)) {
+          return 'Wrong password. Try again.';
+        }
+        return detail.trim();
       }
     }
-    return 'Invalid email or password.';
+    return 'Wrong password. Try again.';
   }
   return 'Sign in failed. Check your email and password, then try again.';
 }
