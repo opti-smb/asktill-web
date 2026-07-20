@@ -241,10 +241,16 @@ function formatApiError(
     }
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
       const obj = detail as { message?: string; code?: string };
+      if (obj.code === 'invalid_password') {
+        return obj.message?.trim() || 'Wrong password. Try again.';
+      }
+      if (obj.code === 'not_registered') {
+        return obj.message?.trim() || 'No account for this email. Please register first.';
+      }
       if (obj.message?.trim()) return obj.message.trim();
     }
     if (isAuthLogin) {
-      return 'Invalid email or password.';
+      return 'Wrong password. Try again.';
     }
     return 'Your session expired or could not be verified. Please sign in again.';
   }

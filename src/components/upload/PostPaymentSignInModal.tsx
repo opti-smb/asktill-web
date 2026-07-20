@@ -1,8 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
-import { ensureBackendServiceReady, getApiError, warmupBackend } from '../../lib/api';
-import { loginCredentialErrorMessage } from '../../lib/emailValidation';
+import {
+  ensureBackendServiceReady,
+  extractNotRegistered,
+  getApiError,
+  warmupBackend,
+} from '../../lib/api';
+import { loginCredentialErrorMessage, validateEmailInput } from '../../lib/emailValidation';
 import styles from './PostPaymentSignInModal.module.css';
 
 export const POST_PAYMENT_SIGNIN_KEY = 'asktill_need_post_payment_signin';
@@ -58,20 +63,38 @@ export default function PostPaymentSignInModal({ open, onActivated }: Props) {
     e.preventDefault();
     if (submitting) return;
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed || password.length < 8) {
-      setError('Enter your email and password to activate uploads.');
+    const emailCheck = validateEmailInput(trimmed);
+    if (!emailCheck.ok) {
+      setError(emailCheck.message ?? 'Enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setError('Enter your password.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
     setSubmitting(true);
     setError('');
     try {
+      // Hits Auth /login — verifies password against identity.users.passwordHash in DB.
       await login(trimmed, password);
       warmupBackend();
       void ensureBackendServiceReady(45_000);
       clearPostPaymentSignInRequired();
       onActivated();
     } catch (err) {
-      setError(loginCredentialErrorMessage(err) || getApiError(err, 'Invalid email or password.'));
+      const notRegistered = extractNotRegistered(err);
+      if (notRegistered) {
+        setError(notRegistered.message);
+        return;
+      }
+      setError(
+        loginCredentialErrorMessage(err)
+          || getApiError(err, 'Wrong password. Try again.'),
+      );
     } finally {
       setSubmitting(false);
     }
