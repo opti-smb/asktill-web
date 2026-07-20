@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
-import { confirmCheckoutSession, ensureBackendServiceReady } from '../lib/api';
+import { confirmCheckoutSession, primeServicesAfterCheckout } from '../lib/api';
 import { TIER_PAID } from '../lib/subscription';
 import styles from './SubscriptionActivatingPage.module.css';
 
@@ -42,22 +42,29 @@ export default function SubscriptionActivatingPage() {
 
     patchUserTierRef.current(TIER_PAID);
 
-    if (!confirmedSessions.has(sessionId)) {
-      confirmedSessions.add(sessionId);
-      void confirmCheckoutSession(sessionId)
-        .catch(() => undefined)
-        .finally(() => {
-          void refreshUserRef.current();
-        });
-    }
-
     const readyTimer = window.setTimeout(() => setReady(true), READY_MS);
     const startedAt = Date.now();
     let cancelled = false;
 
-    // Wait for backend wake here (not on Upload under the validate spinner).
+    // Wake auth + backend (and real /me hops) before Upload — validate-uploads
+    // needs Auth /me via the backend; health-only wake left that cold.
     void (async () => {
-      await ensureBackendServiceReady(90_000);
+      const confirmPromise = confirmedSessions.has(sessionId)
+        ? Promise.resolve()
+        : (async () => {
+            confirmedSessions.add(sessionId);
+            try {
+              await confirmCheckoutSession(sessionId);
+            } catch {
+              /* webhook may already have applied tier */
+            }
+          })();
+
+      await Promise.all([
+        primeServicesAfterCheckout(),
+        confirmPromise.then(() => refreshUserRef.current()),
+      ]);
+
       if (cancelled || navigatedRef.current) return;
       const elapsed = Date.now() - startedAt;
       const waitMore = Math.max(0, MIN_NAVIGATE_MS - elapsed);
@@ -153,7 +160,7 @@ export default function SubscriptionActivatingPage() {
                 if (continuing || navigatedRef.current) return;
                 setContinuing(true);
                 void (async () => {
-                  await ensureBackendServiceReady(90_000);
+                  await primeServicesAfterCheckout();
                   if (navigatedRef.current) return;
                   navigatedRef.current = true;
                   navigate(returnTo, { replace: true });

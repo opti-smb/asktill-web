@@ -287,9 +287,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   );
 
   useEffect(() => {
-    // Start warming as soon as Upload opens (same as first-visit warm path).
+    // Wake both services — validate-uploads needs Auth /me via the backend.
     void ensureBackendServiceReady(45_000);
-    void ensureAuthServiceReady(8_000);
+    void ensureAuthServiceReady(45_000);
   }, []);
 
   useEffect(() => {
@@ -430,7 +430,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         // Wake backend BEFORE showing "Uploading…" so cold-start isn't under that spinner.
         await Promise.all([
           ensureBackendServiceReady(90_000),
-          ensureAuthServiceReady(20_000),
+          ensureAuthServiceReady(90_000),
         ]);
         if (cancelled || validationRequestRef.current !== requestId) return;
         if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
