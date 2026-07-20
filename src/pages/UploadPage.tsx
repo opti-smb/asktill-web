@@ -30,6 +30,7 @@ import {
   validateUploadsWithRetry,
   ensureAuthServiceReady,
   ensureBackendServiceReady,
+  wasBackendRecentlyPrimed,
   warmupBackend,
   warningsBySlot,
   type FreeTierLimitNotice,
@@ -291,22 +292,6 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     void ensureBackendServiceReady(45_000);
   }, []);
 
-  useEffect(() => {
-    if (!authReady || !isAuth) {
-      setSavedReportCount(isAuth ? null : 0);
-      return undefined;
-    }
-    let cancelled = false;
-    fetchReportHistory()
-      .then(({ data }) => {
-        if (!cancelled) setSavedReportCount((data.reports ?? []).length);
-      })
-      .catch(() => {
-        if (!cancelled) setSavedReportCount(null);
-      });
-    return () => { cancelled = true; };
-  }, [authReady, isAuth]);
-
   const openSavedReport = useCallback(
     async (statementId: string) => {
       setDuplicateBusy(true);
@@ -399,6 +384,31 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const anySlotChecking = slotChecking.bank || slotChecking.pos || slotChecking.ecommerce;
 
   useEffect(() => {
+    if (!authReady || !isAuth) {
+      setSavedReportCount(isAuth ? null : 0);
+      return undefined;
+    }
+    // Defer history until uploads are idle — competing with validate on free Render
+    // makes the first post-payment check feel stuck.
+    if (anySlotChecking) return undefined;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      fetchReportHistory()
+        .then(({ data }) => {
+          if (!cancelled) setSavedReportCount((data.reports ?? []).length);
+        })
+        .catch(() => {
+          if (!cancelled) setSavedReportCount(null);
+        });
+    }, 800);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [authReady, isAuth, anySlotChecking]);
+
+  useEffect(() => {
     if (uploadedCount < 1) {
       setValidation(null);
       setPinnedSlotWarnings({});
@@ -426,8 +436,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     const timer = window.setTimeout(() => {
       void (async () => {
         if (cancelled || validationRequestRef.current !== requestId) return;
-        // Wake backend BEFORE showing "Uploading…" (JWT is local — skip Auth wait).
-        await ensureBackendServiceReady(90_000);
+        // Wake backend BEFORE showing "Uploading…" (skip long wait if activating just primed).
+        if (!wasBackendRecentlyPrimed()) {
+          await ensureBackendServiceReady(90_000);
+        }
         if (cancelled || validationRequestRef.current !== requestId) return;
         if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
 
