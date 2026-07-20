@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
 import { ensureBackendServiceReady, getApiError, warmupBackend } from '../../lib/api';
+import { loginCredentialErrorMessage } from '../../lib/emailValidation';
 import styles from './PostPaymentSignInModal.module.css';
 
 export const POST_PAYMENT_SIGNIN_KEY = 'asktill_need_post_payment_signin';
@@ -70,7 +71,7 @@ export default function PostPaymentSignInModal({ open, onActivated }: Props) {
       clearPostPaymentSignInRequired();
       onActivated();
     } catch (err) {
-      setError(getApiError(err, 'Could not confirm sign-in. Check your email and password.'));
+      setError(loginCredentialErrorMessage(err) || getApiError(err, 'Invalid email or password.'));
     } finally {
       setSubmitting(false);
     }
