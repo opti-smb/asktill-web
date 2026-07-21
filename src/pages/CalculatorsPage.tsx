@@ -1735,55 +1735,59 @@ export default function CalculatorsPage() {
 
               {monthSwitcher}
 
-              <div className={styles.groups}>
-                {CALCULATOR_GROUPS.map((group) => {
-                  const open = openGroupIds.includes(group.id);
-                  const items = calculatorsInGroup(group);
-                  return (
-                    <div key={group.id} className={styles.group}>
-                      <button
-                        type="button"
-                        className={`${styles.groupHeading} ${open ? styles.groupHeadingOpen : ''}`}
-                        aria-expanded={open}
-                        onClick={() => toggleGroup(group.id, group.calculatorIds)}
-                      >
-                        <span className={styles.groupTitle}>{group.title}</span>
-                        <span className={styles.groupMeta}>{items.length}</span>
-                        <span className={styles.groupChevron} aria-hidden>
-                          {open ? '−' : '+'}
-                        </span>
-                      </button>
-                      {open ? (
-                        <div className={styles.gridStmt}>
-                          {items.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              className={`${styles.card} ${active?.id === c.id ? styles.cardActive : ''}`}
-                              onClick={() => openCalculator(c.id)}
-                            >
-                              <div className={styles.cat}>{c.category}</div>
-                              <div className={styles.cardTitle}>{c.name}</div>
-                              <div className={styles.cardQ}>{c.question}</div>
-                            </button>
-                          ))}
+              <div className={`${styles.workbench} ${active ? styles.workbenchSplit : ''}`}>
+                <div className={styles.groupsPane}>
+                  <div className={styles.groups}>
+                    {CALCULATOR_GROUPS.map((group) => {
+                      const open = openGroupIds.includes(group.id);
+                      const items = calculatorsInGroup(group);
+                      return (
+                        <div key={group.id} className={styles.group}>
+                          <button
+                            type="button"
+                            className={`${styles.groupHeading} ${open ? styles.groupHeadingOpen : ''}`}
+                            aria-expanded={open}
+                            onClick={() => toggleGroup(group.id, group.calculatorIds)}
+                          >
+                            <span className={styles.groupTitle}>{group.title}</span>
+                            <span className={styles.groupMeta}>{items.length}</span>
+                            <span className={styles.groupChevron} aria-hidden>
+                              {open ? '−' : '+'}
+                            </span>
+                          </button>
+                          {open ? (
+                            <div className={styles.gridStmt}>
+                              {items.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className={`${styles.card} ${active?.id === c.id ? styles.cardActive : ''}`}
+                                  onClick={() => openCalculator(c.id)}
+                                >
+                                  <div className={styles.cat}>{c.category}</div>
+                                  <div className={styles.cardTitle}>{c.name}</div>
+                                  <div className={styles.cardQ}>{c.question}</div>
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-              {active ? (
-                <section className={styles.panel} aria-live="polite">
-                  <h2 className={styles.panelTitle}>{active.name}</h2>
-                  <p className={styles.panelQ}>{active.question}</p>
-                  <form className={styles.form} onSubmit={onSubmit}>
-                    {fields}
-                  </form>
-                  {resultBlock}
-                </section>
-              ) : null}
+                {active ? (
+                  <section className={styles.panel} aria-live="polite">
+                    <h2 className={styles.panelTitle}>{active.name}</h2>
+                    <p className={styles.panelQ}>{active.question}</p>
+                    <form className={styles.form} onSubmit={onSubmit}>
+                      {fields}
+                    </form>
+                    {resultBlock}
+                  </section>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
