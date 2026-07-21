@@ -3,6 +3,7 @@ import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
 import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
 import CalculatorsPage from '../pages/CalculatorsPage';
+import ChannelPartnersPage from '../pages/ChannelPartnersPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -94,6 +95,7 @@ function AppRoutes() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="calculators" element={<CalculatorsPage />} />
           <Route path="calculators/:slug" element={<CalculatorsPage />} />
+          <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
           <Route path="sources" element={<SourcesPage />} />
           <Route path="rewards" element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
           <Route path="profile" element={<ProfilePage />} />

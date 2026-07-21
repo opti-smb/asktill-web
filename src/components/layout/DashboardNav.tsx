@@ -20,6 +20,7 @@ export default function DashboardNav() {
   const isOverviewRoute = pathname.startsWith('/dashboard/analysis');
   const isReportsRoute = pathname.startsWith('/dashboard/reports');
   const isCalculatorsRoute = pathname.startsWith('/dashboard/calculators');
+  const isChannelPartnersRoute = pathname.startsWith('/dashboard/channel-partners');
   const isProfileRoute = pathname.startsWith('/dashboard/profile');
   const isSourcesRoute = pathname.startsWith('/dashboard/sources');
   // Same dual-scroll pattern as Cash Flow / Overview / Reports / Profile:
@@ -31,6 +32,7 @@ export default function DashboardNav() {
     isOverviewRoute ||
     isReportsRoute ||
     isCalculatorsRoute ||
+    isChannelPartnersRoute ||
     isProfileRoute ||
     isSourcesRoute;
 
@@ -141,6 +143,22 @@ export default function DashboardNav() {
               >
 
                 Calculators
+
+              </NavLink>
+
+              <NavLink
+
+                to="/dashboard/channel-partners"
+
+                className={({ isActive }) =>
+
+                  `${styles.navTab} ${isActive ? styles.active : ''}`
+
+                }
+
+              >
+
+                Channel partners
 
               </NavLink>
 
