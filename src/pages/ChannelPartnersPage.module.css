@@ -1,0 +1,21 @@
+.main {
+  padding: 12px 0 28px;
+  background: var(--bg-soft);
+  min-height: calc(100vh - 88px);
+}
+
+.card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.scrollViewport {
+  background: transparent;
+  max-height: min(85vh, 920px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 20px;
+}

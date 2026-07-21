@@ -9,15 +9,22 @@ export default defineConfig({
   plugins: [react()],
   envPrefix: ['VITE_', 'TOKEN_'],
   resolve: {
-    // Vendored calculator package (packages/calculators) — also works on Vercel.
-    dedupe: ['@asktill/calculators'],
+    // Vendored packages — works on Vercel (no sibling-repo dependency).
+    alias: {
+      '@asktill/channel-partners': path.resolve(rootDir, 'packages/channel-partners/src'),
+    },
+    dedupe: ['@asktill/calculators', '@asktill/channel-partners', 'react', 'react-dom', 'react-router-dom'],
   },
   server: {
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
     fs: {
-      allow: [rootDir, path.resolve(rootDir, 'packages/calculators')],
+      allow: [
+        rootDir,
+        path.resolve(rootDir, 'packages/calculators'),
+        path.resolve(rootDir, 'packages/channel-partners'),
+      ],
     },
     // Avoid native file-watcher stack crashes on Windows 11 build 26200 + Node 24.
     watch: {
