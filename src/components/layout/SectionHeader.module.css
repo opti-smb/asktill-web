@@ -17,7 +17,15 @@
   flex-shrink: 0;
 }
 
+.h1 {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 400;
+  font-variation-settings: "opsz" 144, "SOFT" 40;
+}
+
 .periodMeta {
+  font-family: var(--font-sans);
   font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
@@ -26,20 +34,7 @@
   margin-bottom: 4px;
 }
 
-.h1 {
-  font-size: 19px;
-  font-weight: 400;
-  font-variation-settings: "opsz" 144, "SOFT" 40;
-}
-
 .h1 em {
   font-style: italic;
   color: var(--brand);
-}
-
-@media (max-width: 600px) {
-  .headerRow {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }

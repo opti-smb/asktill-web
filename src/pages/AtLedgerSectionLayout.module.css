@@ -1,0 +1,23 @@
+.backBar {
+  padding: 10px 0 0;
+  background: var(--bg-soft, #f8fafc);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none !important;
+}
+
+.backLink:hover {
+  opacity: 0.85;
+}
+
+.backLink:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}

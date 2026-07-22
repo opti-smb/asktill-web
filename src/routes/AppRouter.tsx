@@ -10,6 +10,8 @@ import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import LoginOAuthCallback from '../pages/LoginOAuthCallback';
 import LoginOAuthComplete from '../pages/LoginOAuthComplete';
 import UploadPage from '../pages/UploadPage';
+import AtLedgerPage from '../pages/AtLedgerPage';
+import AtLedgerSectionLayout from '../pages/AtLedgerSectionLayout';
 import AnalysisPage from '../pages/AnalysisPage';
 import CashFlowPage from '../pages/CashFlowPage';
 import ReconPage from '../pages/ReconPage';
@@ -87,12 +89,22 @@ function AppRoutes() {
           }
         >
           <Route index element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
-          <Route path="overview" element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
-          <Route path="analysis" element={<AnalysisPage />} />
-          <Route path="cashflow" element={<CashFlowPage />} />
-          <Route path="reconciliation" element={<ReconPage />} />
+          <Route path="overview" element={<Navigate to="/dashboard/at-ledger/overview" replace />} />
+          <Route path="analysis" element={<Navigate to="/dashboard/at-ledger/overview" replace />} />
+          <Route path="cashflow" element={<Navigate to="/dashboard/at-ledger/cashflow" replace />} />
+          <Route
+            path="reconciliation"
+            element={<Navigate to="/dashboard/at-ledger/reconciliation" replace />}
+          />
+          <Route path="reports" element={<Navigate to="/dashboard/at-ledger/reports" replace />} />
           <Route path="at-letter" element={<AtLetterPage />} />
-          <Route path="reports" element={<ReportsPage />} />
+          <Route path="at-ledger" element={<AtLedgerPage />} />
+          <Route element={<AtLedgerSectionLayout />}>
+            <Route path="at-ledger/cashflow" element={<CashFlowPage />} />
+            <Route path="at-ledger/reconciliation" element={<ReconPage />} />
+            <Route path="at-ledger/overview" element={<AnalysisPage />} />
+            <Route path="at-ledger/reports" element={<ReportsPage />} />
+          </Route>
           <Route path="calculators" element={<CalculatorsPage />} />
           <Route path="calculators/:slug" element={<CalculatorsPage />} />
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
