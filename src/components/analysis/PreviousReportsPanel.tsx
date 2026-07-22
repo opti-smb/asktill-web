@@ -102,7 +102,7 @@ export default function PreviousReportsPanel({
       const { data } = await fetchSavedReport(row.statement_id);
       onLoadReport?.(data as AnalyzeResult);
       // Upload-page "previous reconciliation reports" should land on Reconciliation, not AT Letter.
-      navigate(variant === 'upload' ? '/dashboard/reconciliation' : DEFAULT_DASHBOARD_PATH);
+      navigate(variant === 'upload' ? '/dashboard/at-ledger/reconciliation' : DEFAULT_DASHBOARD_PATH);
     } catch (err) {
       setActionError(
         await getApiErrorAsync(
