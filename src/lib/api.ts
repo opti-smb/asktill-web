@@ -1858,9 +1858,15 @@ export async function downloadSavedWeekReportsPdf(statementId: string) {
   });
 }
 
-export const ask = (question: string, files: UploadFiles = {}) => {
+export const ask = (
+  question: string,
+  files: UploadFiles = {},
+  statementId?: string | null,
+) => {
   const form = new FormData();
   form.append('question', question);
+  const sid = statementId?.trim();
+  if (sid) form.append('statement_id', sid);
   if (files.bank) form.append('bank', files.bank, files.bank.name);
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
@@ -2153,9 +2159,29 @@ export interface RewardsEarnAction {
   description: string;
 }
 
+export interface RewardsSpendAction {
+  code: string;
+  points_cost: number | null;
+  description: string;
+  variable_cost?: boolean;
+  category?: string;
+  unit?: string;
+}
+
 export interface RewardsCatalog {
   conversion_rate: number;
   earn_actions: RewardsEarnAction[];
+  spend_actions?: RewardsSpendAction[];
+}
+
+export interface RewardsRedeemResult {
+  redemption: {
+    txn_id?: string;
+    action_code?: string;
+    points?: number;
+    points_redeemed?: number;
+  };
+  balance: RewardsBalance;
 }
 
 export interface RewardsReferralShare {
@@ -2196,6 +2222,18 @@ export async function fetchRewardsLedger(limit = 50): Promise<{ entries: Rewards
 
 export async function fetchRewardsCatalog(): Promise<RewardsCatalog> {
   const res = await mainApi.get<RewardsCatalog>('/api/rewards/catalog', { timeout: 30_000 });
+  return res.data;
+}
+
+export async function redeemRewards(body: {
+  redemption_code: string;
+  source_ref?: string;
+  points?: number;
+  notes?: string;
+}): Promise<RewardsRedeemResult> {
+  const res = await mainApi.post<RewardsRedeemResult>('/api/rewards/redeem', body, {
+    timeout: 30_000,
+  });
   return res.data;
 }
 

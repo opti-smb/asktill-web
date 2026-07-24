@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import SectionHeader from '../components/layout/SectionHeader';
 import AtLetterTemplateFrame from '../components/landing/AtLetterTemplateFrame';
@@ -10,6 +10,7 @@ import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSy
 import styles from './AtLetterPage.module.css';
 
 const ROLLING_VIEW = 'rolling';
+const HOVER_VIEW_MS = 120;
 
 function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): string {
   const label = periodLabel?.trim();
@@ -35,6 +36,7 @@ export default function AtLetterPage() {
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   /** null = default to latest month only; user picks rolling quarter explicitly. */
   const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const letterStatementId = statementId ?? undefined;
 
@@ -44,6 +46,27 @@ export default function AtLetterPage() {
   const { html, loading, error } = useAtLetterHtml(letterStatementId, { monthOnly });
 
   const showViewFilters = Boolean(letterStatementId);
+
+  const clearHoverTimer = useCallback(() => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+  }, []);
+
+  const selectViewOnHover = useCallback(
+    (mode: 'rolling' | 'month') => {
+      clearHoverTimer();
+      if (mode === 'month' && !letterStatementId) return;
+      const already =
+        mode === ROLLING_VIEW ? activeView === ROLLING_VIEW : activeView !== ROLLING_VIEW;
+      if (already) return;
+      hoverTimer.current = setTimeout(() => {
+        setViewMode(mode);
+      }, HOVER_VIEW_MS);
+    },
+    [activeView, clearHoverTimer, letterStatementId],
+  );
 
   useEffect(() => {
     setViewMode(null);
@@ -55,6 +78,8 @@ export default function AtLetterPage() {
       setViewMode(null);
     }
   }, [letterStatementId, viewMode]);
+
+  useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
@@ -96,10 +121,11 @@ export default function AtLetterPage() {
               <div className={styles.viewTitle}>
                 Letter view
               </div>
-              <div className={styles.viewFilterRow}>
+              <div className={styles.viewFilterRow} onMouseLeave={clearHoverTimer}>
                 <button
                   type="button"
                   className={`${styles.viewFilter} ${activeView === ROLLING_VIEW ? styles.viewFilterActive : ''}`}
+                  onMouseEnter={() => selectViewOnHover('rolling')}
                   onClick={() => setViewMode('rolling')}
                 >
                   Last 3 months
@@ -107,6 +133,7 @@ export default function AtLetterPage() {
                 <button
                   type="button"
                   className={`${styles.viewFilter} ${activeView !== ROLLING_VIEW ? styles.viewFilterActive : ''}`}
+                  onMouseEnter={() => selectViewOnHover('month')}
                   onClick={() => {
                     if (letterStatementId) setViewMode('month');
                   }}

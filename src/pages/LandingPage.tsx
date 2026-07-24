@@ -86,13 +86,7 @@ export default function LandingPage() {
 
                 <>
 
-                  <button type="button" className={`${v2.btnO} ${styles.navHideMobile}`}>
-
-                    For business owners
-
-                  </button>
-
-                  <button type="button" className={`${v2.btnO} ${styles.navHideMobile}`}>
+                  <button type="button" className={v2.btnO}>
 
                     For partners
 

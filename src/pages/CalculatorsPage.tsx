@@ -1737,7 +1737,9 @@ export default function CalculatorsPage() {
 
               <div className={`${styles.workbench} ${active ? styles.workbenchSplit : ''}`}>
                 <div className={styles.groupsPane}>
-                  <div className={styles.groups}>
+                  <div
+                    className={`${styles.groups} ${openGroupIds.length > 0 ? styles.groupsHasOpen : ''}`}
+                  >
                     {CALCULATOR_GROUPS.map((group) => {
                       const open = openGroupIds.includes(group.id);
                       const items = calculatorsInGroup(group);
@@ -1745,7 +1747,7 @@ export default function CalculatorsPage() {
                         <div key={group.id} className={styles.group}>
                           <button
                             type="button"
-                            className={`${styles.groupHeading} ${open ? styles.groupHeadingOpen : ''}`}
+                            className={`${styles.groupHeading} ${open ? styles.groupHeadingOpen : styles.groupHeadingRest}`}
                             aria-expanded={open}
                             onClick={() => toggleGroup(group.id, group.calculatorIds)}
                           >

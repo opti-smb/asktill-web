@@ -499,9 +499,3 @@
   color: var(--muted);
   margin: 8px 0 0;
 }
-
-@media (max-width: 1000px) {
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
-}

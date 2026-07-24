@@ -60,6 +60,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
+  max-width: 100%;
 }
 
 .cardBtn {
@@ -105,6 +106,92 @@
 .cardBtn:focus-visible {
   outline: 2px solid var(--cp-accent);
   outline-offset: 2px;
+}
+
+.categoryCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  text-align: left;
+  padding: 16px 16px 14px;
+  background: var(--cp-card);
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.categoryCard,
+.categoryCard:link,
+.categoryCard:visited,
+.categoryCard:hover,
+.categoryCard:active,
+.categoryCard:focus {
+  text-decoration: none !important;
+  color: inherit;
+}
+
+.categoryCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.categoryCard:focus-visible {
+  outline: 2px solid var(--cp-accent);
+  outline-offset: 2px;
+}
+
+.categoryCardBody {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.categoryCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.categoryChevron {
+  flex: 0 0 auto;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--cp-accent);
+  opacity: 0.85;
+}
+
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--cp-accent) 14%, white);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cp-accent);
+  margin-bottom: 2px;
+}
+
+.cardIconGreen {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.cardIcon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .cardEyebrow {
@@ -580,3 +667,143 @@
 }
 
 /* Legacy mega styles kept unused — prefer loanShelf above */
+
+/* CPAs & Tax Advisors */
+.advisorList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.advisorCard {
+  background: var(--cp-card);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.advisorHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.advisorAvatar {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.advisorHeadText {
+  min-width: 0;
+}
+
+.advisorName {
+  margin: 0 0 2px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--cp-ink);
+}
+
+.advisorFirm {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cp-body);
+}
+
+.advisorMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--cp-muted);
+}
+
+.advisorBlockLabel {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cp-muted);
+}
+
+.advisorTags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.advisorTags li {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--cp-bg);
+  border: 1px solid var(--cp-rule);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cp-body);
+}
+
+.advisorStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.advisorStat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cp-ink);
+}
+
+.advisorAvail {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.advisorAvailToday {
+  color: #059669;
+}
+
+.advisorAvailSoon {
+  color: #0d9488;
+}
+
+.advisorCta {
+  align-self: flex-start;
+  margin: 0;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: var(--cp-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.advisorCta:hover {
+  filter: brightness(1.06);
+}
+
+.advisorCta:focus-visible {
+  outline: 2px solid var(--cp-accent);
+  outline-offset: 2px;
+}

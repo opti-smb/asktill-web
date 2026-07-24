@@ -19,3 +19,103 @@
   -webkit-overflow-scrolling: touch;
   padding: 4px 2px 20px;
 }
+
+/* Wallet + earn box beside Loans / CPAs grid */
+.walletRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.walletBox,
+.earnBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 18px 16px;
+  background: #fff;
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.walletEyebrow,
+.earnEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted, #64748b);
+  font-weight: 600;
+}
+
+.walletStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.walletLbl {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  margin-bottom: 2px;
+}
+
+.walletVal {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.walletHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted, #64748b);
+}
+
+.walletLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand, #1e40af);
+  text-decoration: none;
+  margin-top: 2px;
+}
+
+.walletLink:hover {
+  text-decoration: underline;
+}
+
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  background: var(--brand-tint, #eff6ff);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand, #1e40af);
+  margin-bottom: 2px;
+}
+
+.earnTitle {
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--ink, #0f172a);
+}
+
+.earnBlurb {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--body, #334155);
+}

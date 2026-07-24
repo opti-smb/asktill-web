@@ -636,19 +636,3 @@
   color: var(--muted);
   font-size: 12px;
 }
-
-@media (max-width: 900px) {
-  .how h2,
-  .intelligence h2,
-  .questions h2,
-  .forSection h2 { font-size: 30px; }
-  .intelGrid, .growWrap { grid-template-columns: 1fr; gap: 36px; }
-  .steps, .forGrid, .qGrid { grid-template-columns: 1fr 1fr; gap: 14px; }
-  .signup h2 { font-size: 30px; }
-  .founderQuote { font-size: 20px; }
-}
-
-@media (max-width: 540px) {
-  .steps, .forGrid, .qGrid, .growFeatures { grid-template-columns: 1fr; }
-  .grow h3 { font-size: 22px; }
-}

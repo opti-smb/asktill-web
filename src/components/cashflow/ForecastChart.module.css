@@ -151,15 +151,3 @@
   color: var(--ink);
   margin: 0;
 }
-
-@media (max-width: 1000px) {
-  .heroCard {
-    grid-template-columns: 1fr;
-  }
-  .heroNow {
-    border-right: none;
-    border-bottom: 1px solid var(--rule);
-    padding-right: 0;
-    padding-bottom: 12px;
-  }
-}

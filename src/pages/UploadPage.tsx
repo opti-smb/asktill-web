@@ -235,6 +235,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     loadSavedReport,
     lastStreamStatementId,
     getLastStreamStatementId,
+    setFiles,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
   const { isPaid } = useSubscription();
@@ -379,6 +380,15 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   };
   const uploadedCount = [bankFile, posFile, ecommerceFile].filter(Boolean).length;
   const currentFileKeys = `${bankKey}|${posKey}|${ecommerceKey}`;
+
+  // Keep Ask drawer in sync with AT Uploads slot files (no re-upload in chat).
+  useEffect(() => {
+    setFiles({
+      bank: bankFile,
+      pos: posFile,
+      ecommerce: ecommerceFile,
+    });
+  }, [bankKey, posKey, ecommerceKey, bankFile, posFile, ecommerceFile, setFiles]);
 
   useEffect(() => {
     clearUploadMismatch();

@@ -494,20 +494,3 @@
   color: #B45309;
   line-height: 1;
 }
-
-@media (max-width: 1000px) {
-  .reconHero {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .reconDivider { display: none; }
-  .decomp { grid-template-columns: 1fr; }
-  .buckets { grid-template-columns: 1fr; }
-  .healthFooter {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .healthAvg {
-    align-items: flex-start;
-  }
-}

@@ -71,14 +71,3 @@
   color: var(--brand-light);
   letter-spacing: 0.04em;
 }
-
-@media (max-width: 900px) {
-  .sourcesInner {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .sourceArrow {
-    transform: rotate(90deg);
-    margin: 0 auto;
-  }
-}

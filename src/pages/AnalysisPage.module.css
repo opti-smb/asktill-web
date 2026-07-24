@@ -66,11 +66,3 @@
   gap: 8px;
 }
 
-@media (max-width: 1000px) {
-  .kpiBand { grid-template-columns: 1fr 1fr; }
-  .processorGrid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 600px) {
-  .kpiBand { grid-template-columns: 1fr; }
-}

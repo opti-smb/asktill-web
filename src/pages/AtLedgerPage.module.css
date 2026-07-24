@@ -79,6 +79,23 @@
   outline-offset: 2px;
 }
 
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  background: var(--brand-tint);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  margin-bottom: 2px;
+}
+
+.cardIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .cardEyebrow {
   font-size: 11px;
   letter-spacing: 0.06em;

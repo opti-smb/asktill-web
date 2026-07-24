@@ -26,7 +26,8 @@
   font-size: 15px;
   font-weight: 400;
   color: var(--muted);
-  max-width: 560px;
+  max-width: none;
+  width: 100%;
   line-height: 1.5;
 }
 
@@ -209,11 +210,98 @@
 }
 
 .groupHeading:hover {
-  background: var(--bg);
+  filter: brightness(0.98);
 }
 
 .groupHeadingOpen {
   border-bottom: 1px solid var(--rule);
+  background: var(--bg-soft);
+}
+
+.groupHeadingOpen .groupTitle {
+  color: var(--ink);
+}
+
+.groupHeadingOpen .groupMeta,
+.groupHeadingOpen .groupChevron {
+  color: var(--muted);
+}
+
+/* Colourful closed headings — only while another group is open */
+.groupsHasOpen .groupHeadingRest {
+  border-left: 3px solid transparent;
+}
+
+.groupsHasOpen .group:nth-child(1) .groupHeadingRest {
+  background: #eff6ff;
+  border-left-color: #2563eb;
+}
+.groupsHasOpen .group:nth-child(1) .groupHeadingRest .groupTitle {
+  color: #1e3a8a;
+}
+.groupsHasOpen .group:nth-child(1) .groupHeadingRest .groupMeta,
+.groupsHasOpen .group:nth-child(1) .groupHeadingRest .groupChevron {
+  color: #3b82f6;
+}
+
+.groupsHasOpen .group:nth-child(2) .groupHeadingRest {
+  background: #ecfdf5;
+  border-left-color: #059669;
+}
+.groupsHasOpen .group:nth-child(2) .groupHeadingRest .groupTitle {
+  color: #065f46;
+}
+.groupsHasOpen .group:nth-child(2) .groupHeadingRest .groupMeta,
+.groupsHasOpen .group:nth-child(2) .groupHeadingRest .groupChevron {
+  color: #10b981;
+}
+
+.groupsHasOpen .group:nth-child(3) .groupHeadingRest {
+  background: #fff7ed;
+  border-left-color: #ea580c;
+}
+.groupsHasOpen .group:nth-child(3) .groupHeadingRest .groupTitle {
+  color: #9a3412;
+}
+.groupsHasOpen .group:nth-child(3) .groupHeadingRest .groupMeta,
+.groupsHasOpen .group:nth-child(3) .groupHeadingRest .groupChevron {
+  color: #f97316;
+}
+
+.groupsHasOpen .group:nth-child(4) .groupHeadingRest {
+  background: #fdf2f8;
+  border-left-color: #db2777;
+}
+.groupsHasOpen .group:nth-child(4) .groupHeadingRest .groupTitle {
+  color: #9d174d;
+}
+.groupsHasOpen .group:nth-child(4) .groupHeadingRest .groupMeta,
+.groupsHasOpen .group:nth-child(4) .groupHeadingRest .groupChevron {
+  color: #ec4899;
+}
+
+.groupsHasOpen .group:nth-child(5) .groupHeadingRest {
+  background: #f0fdfa;
+  border-left-color: #0d9488;
+}
+.groupsHasOpen .group:nth-child(5) .groupHeadingRest .groupTitle {
+  color: #115e59;
+}
+.groupsHasOpen .group:nth-child(5) .groupHeadingRest .groupMeta,
+.groupsHasOpen .group:nth-child(5) .groupHeadingRest .groupChevron {
+  color: #14b8a6;
+}
+
+.groupsHasOpen .group:nth-child(6) .groupHeadingRest {
+  background: #fefce8;
+  border-left-color: #ca8a04;
+}
+.groupsHasOpen .group:nth-child(6) .groupHeadingRest .groupTitle {
+  color: #854d0e;
+}
+.groupsHasOpen .group:nth-child(6) .groupHeadingRest .groupMeta,
+.groupsHasOpen .group:nth-child(6) .groupHeadingRest .groupChevron {
+  color: #eab308;
 }
 
 .groupTitle {

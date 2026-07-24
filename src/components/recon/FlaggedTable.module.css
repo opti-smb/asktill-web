@@ -136,10 +136,3 @@
   color: var(--muted);
   margin: 0;
 }
-
-@media (max-width: 1000px) {
-  .txTable th:nth-child(4),
-  .txTable td:nth-child(4) {
-    display: none;
-  }
-}
