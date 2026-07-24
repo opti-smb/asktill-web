@@ -6,13 +6,16 @@ import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
 import { createCheckoutSession, getApiError, primeBackendBeforeCheckout, warmupBackend } from '../lib/api';
 import { getPlanById } from '../lib/plans';
+import { assignStripeRedirect } from '../lib/safeRedirect';
 import { isPaidTier } from '../lib/subscription';
 import styles from './CheckoutPage.module.css';
 
 function resolveReturnPath(raw: string | null): string {
   if (!raw?.trim()) return '/dashboard/sources';
   const path = raw.trim();
-  if (!path.startsWith('/') || path.startsWith('//')) return '/dashboard/sources';
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) {
+    return '/dashboard/sources';
+  }
   return path;
 }
 
@@ -47,7 +50,7 @@ export default function CheckoutPage() {
       void primeBackendBeforeCheckout();
       warmupBackend();
       const checkoutUrl = await createCheckoutSession(plan.id, returnTo);
-      window.location.assign(checkoutUrl);
+      assignStripeRedirect(checkoutUrl);
     } catch (err) {
       setError(getApiError(err, 'Could not start checkout. Try again in a moment.'));
       setLoading(false);

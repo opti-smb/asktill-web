@@ -13,6 +13,7 @@ import {
   type BillingInvoice,
 } from '../lib/api';
 import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
+import { assignStripeRedirect } from '../lib/safeRedirect';
 import { isPaidTier, tierDisplayLabel } from '../lib/subscription';
 import styles from './ProfilePage.module.css';
 
@@ -237,7 +238,7 @@ export default function ProfilePage() {
     setBillingError('');
     try {
       const url = await createBillingPortalSession('/dashboard/profile');
-      window.location.assign(url);
+      assignStripeRedirect(url);
     } catch (err) {
       setBillingError(getApiError(err, 'Could not open payment settings. Try again.'));
       setPortalBusy(false);

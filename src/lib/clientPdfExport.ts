@@ -138,6 +138,8 @@ function captureScale(): number {
 export async function renderHtmlDocumentToPdfBlob(html: string): Promise<Blob> {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('title', 'Report PDF preview');
+  // allow-same-origin: html2canvas can read the DOM. No allow-scripts: HTML cannot run JS.
+  iframe.setAttribute('sandbox', 'allow-same-origin');
   iframe.style.cssText = [
     'position:fixed',
     'left:-14000px',
