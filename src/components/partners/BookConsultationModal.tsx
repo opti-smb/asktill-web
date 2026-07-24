@@ -217,13 +217,15 @@ export default function BookConsultationModal({ advisor, open, onClose, onRedeem
                   setError(null);
                   setUseWallet(e.target.checked);
                 }}
-                disabled={submitting || loadingBal}
+                disabled={submitting || loadingBal || !balance}
               />
               <span>
                 Apply AT Rewards
-                {canAffordRedeem
-                  ? ` (−${formatMoney(catalogCreditUsd)} / ${formatPoints(redeemPtsCost)} pts)`
-                  : ` (need ${formatPoints(redeemPtsCost)} pts; you have ${formatPoints(points)})`}
+                {loadingBal && !balance
+                  ? ' (loading wallet…)'
+                  : canAffordRedeem
+                    ? ` (−${formatMoney(catalogCreditUsd)} / ${formatPoints(redeemPtsCost)} pts)`
+                    : ` (need ${formatPoints(redeemPtsCost)} pts; you have ${formatPoints(points)})`}
               </span>
             </label>
 
@@ -262,7 +264,8 @@ export default function BookConsultationModal({ advisor, open, onClose, onRedeem
                 type="button"
                 className={styles.confirmBtn}
                 onClick={() => void confirm()}
-                disabled={submitting || loadingBal}
+                disabled={submitting || fee <= 0}
+                title={fee <= 0 ? 'Consultation fee unavailable' : undefined}
               >
                 {submitting
                   ? 'Processing…'
