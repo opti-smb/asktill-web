@@ -70,8 +70,8 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
             <h2 className={styles.title}>Ask AskTill</h2>
             <p className={styles.sub}>
               {variant === 'drawer'
-                ? 'Questions about your uploaded reports'
-                : 'Uses your AT Uploads statement — no need to upload again'}
+                ? 'Answers from your saved AT Uploads statement'
+                : 'Uses your analyzed statement JSON — no need to re-upload files'}
             </p>
           </div>
           {onClose && (

@@ -1866,7 +1866,11 @@ export const ask = (
   const form = new FormData();
   form.append('question', question);
   const sid = statementId?.trim();
-  if (sid) form.append('statement_id', sid);
+  // Prefer the saved statement JSON from AT Uploads — do not re-upload files.
+  if (sid) {
+    form.append('statement_id', sid);
+    return mainApi.post('/api/ask', form);
+  }
   if (files.bank) form.append('bank', files.bank, files.bank.name);
   if (files.pos) form.append('pos', files.pos, files.pos.name);
   if (files.ecommerce) form.append('ecommerce', files.ecommerce, files.ecommerce.name);
