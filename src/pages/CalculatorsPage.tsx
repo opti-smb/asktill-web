@@ -2,6 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'reac
 import { useNavigate, useParams } from 'react-router-dom';
 
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
+import RiskGauge from '../components/calculators/RiskGauge';
 import SectionHeader from '../components/layout/SectionHeader';
 import { useAnalysis } from '../context/AnalysisContext';
 import {
@@ -40,6 +41,7 @@ import {
   calcTargetPrice,
   calcWeeklyTracker,
   calculatorsInGroup,
+  evaluateRisk,
   fmtDays,
   fmtMoney,
   fmtMoney2,
@@ -48,6 +50,7 @@ import {
   getCalculatorGroupFor,
   optN,
   type CalculatorId,
+  type RiskReading,
 } from '@asktill/calculators';
 
 import styles from './CalculatorsPage.module.css';
@@ -240,6 +243,7 @@ function ResultBlock({
   formula,
   tip,
   assumptions,
+  risk,
   children,
 }: {
   title: string;
@@ -248,6 +252,7 @@ function ResultBlock({
   formula?: string;
   tip?: string;
   assumptions?: string;
+  risk?: RiskReading | null;
   children?: ReactNode;
 }) {
   return (
@@ -255,6 +260,7 @@ function ResultBlock({
       <div className={styles.resultTitle}>{title}</div>
       {main ? <div className={styles.resultMain}>{main}</div> : null}
       {sub ? <div className={styles.resultSub}>{sub}</div> : null}
+      {risk ? <RiskGauge reading={risk} /> : null}
       {children}
       {formula ? (
         <div className={styles.formulaBox}>
@@ -476,6 +482,7 @@ export default function CalculatorsPage() {
             title="Your runway"
             main={fmtDays(out.days)}
             sub={`About ${out.months.toFixed(1)} months · daily burn ${fmtMoney2(out.dailyBurn)}/day.`}
+            risk={evaluateRisk('cash-runway', out.days)}
             formula={formulaLines}
             assumptions={
               burnFromKpi
@@ -501,11 +508,19 @@ export default function CalculatorsPage() {
         });
         if (!out) return <p className={styles.empty}>Need starting cash, monthly in, and monthly out from statements.</p>;
         const net = out.effectiveIn - out.effectiveOut;
+        const lowest = Math.min(...out.months.map((m) => m.cash));
+        const oneMonthFixed = Math.max(out.effectiveOut, 0);
         return (
           <ResultBlock
             title="Cash in 12 months"
             main={fmtMoney(out.endingCash)}
             sub={`Month 6 ≈ ${fmtMoney(out.months[5].cash)} · Month 12 ≈ ${fmtMoney(out.months[11].cash)}`}
+            risk={evaluateRisk('cash-flow-forecast', lowest, {
+              highRisk: 0,
+              lowRisk: oneMonthFixed,
+              highLabel: 'Any month < $0',
+              lowLabel: `Above ${fmtMoney(oneMonthFixed)} (1 mo outflows)`,
+            })}
             formula={[
               `base_net = ${out.effectiveIn} − ${out.effectiveOut} = ${net}`,
               `ending_cash = ${out.endingCash}`,
@@ -538,6 +553,7 @@ export default function CalculatorsPage() {
             title={out.onTrack ? 'On track this week' : 'Behind this week'}
             main={fmtMoney(out.variance)}
             sub={`Expected ${fmtMoney(out.expectedByNow)} · net ${fmtMoney(out.netRevenue)} (${fmtPct(out.pctOfMonth)} of target).`}
+            risk={evaluateRisk('weekly-cash-flow', out.onTrack ? 0 : 1)}
             formula={[
               'expected = target × (week × 7) ÷ (365.25 ÷ 12)',
               `variance = ${out.variance.toFixed(2)}`,
@@ -559,6 +575,7 @@ export default function CalculatorsPage() {
             title="Net margin"
             main={fmtPct(out.netMarginPct)}
             sub={`Net profit ${fmtMoney(out.netProfit)}.`}
+            risk={evaluateRisk('net-margin', out.netMarginPct)}
             formula={[
               `net_profit = ${v.revenue} − ${v.cogs || '0'} − ${v.opex} = ${out.netProfit}`,
               `net_margin_% = ${out.netMarginPct.toFixed(2)}%`,
@@ -591,6 +608,7 @@ export default function CalculatorsPage() {
             title="Gross / contribution margin"
             main={fmtPct(out.marginPct)}
             sub={`Accounting gross ${fmtMoney(out.accountingGrossProfit)} (${fmtPct(out.accountingMarginPct)}) · after fees/returns ${fmtMoney(out.grossProfit)}.`}
+            risk={evaluateRisk('gross-margin', out.marginPct)}
             formula={[
               `accounting = revenue − COGS = ${fmtMoney2(num('revenue'))} − ${fmtMoney2(o('cogs'))}`,
               `after_extras = accounting − fees − returns = ${fmtMoney2(out.grossProfit)}`,
@@ -618,16 +636,33 @@ export default function CalculatorsPage() {
             </p>
           );
         }
+        const stmtRevenue =
+          analysis?.kpis?.find((k) => k.id === 'revenue')?.value ??
+          analysis?.cash_flow?.money_in ??
+          analysis?.financial_summary?.total_gross ??
+          (Number.isFinite(num('revenue')) && num('revenue') > 0 ? num('revenue') : NaN);
+        const revenuePctOfBe =
+          out.monthlyRevenue > 0 && Number.isFinite(stmtRevenue) && stmtRevenue > 0
+            ? (stmtRevenue / out.monthlyRevenue) * 100
+            : null;
         return (
           <ResultBlock
             title="Break-even monthly sales"
             main={fmtMoney(out.monthlyRevenue)}
             sub={`≈ ${fmtMoney(out.weeklyRevenue)}/week · ${fmtMoney(out.dailyRevenue)}/day · effective margin ${fmtPct(out.effectiveMarginPct)}.`}
+            risk={
+              revenuePctOfBe != null ? evaluateRisk('break-even', revenuePctOfBe) : null
+            }
             formula={[
               'break_even = fixed_costs ÷ (contribution_margin_% ÷ 100)',
               `break_even = ${fmtMoney2(out.effectiveFixed)} ÷ (${out.effectiveMarginPct.toFixed(2)} ÷ 100)`,
               `= ${fmtMoney2(out.monthlyRevenue)} / month`,
-            ].join('\n')}
+              revenuePctOfBe != null
+                ? `revenue ÷ break_even = ${stmtRevenue} ÷ ${out.monthlyRevenue.toFixed(2)} = ${revenuePctOfBe.toFixed(1)}%`
+                : '',
+            ]
+              .filter(Boolean)
+              .join('\n')}
             assumptions="Fixed costs ≈ this period’s money out (or burn). Margin ≈ (revenue − fees − refunds) ÷ revenue when COGS is not on the statement."
             tip={
               out.monthlyRevenue > num('fixed') * 3
@@ -675,6 +710,8 @@ export default function CalculatorsPage() {
         }
         const sorted = [...out].sort((a, b) => a.annualFee - b.annualFee);
         const cheapest = sorted[0];
+        const blendedRate =
+          rateRows.reduce((s, r) => s + r.ratePct, 0) / rateRows.length;
         return (
           <ResultBlock
             title="What this means"
@@ -684,6 +721,7 @@ export default function CalculatorsPage() {
                 : '—'
             }
             sub={`Using this month’s card sales × 12 (= ${fmtMoney(num('volume'))} annual volume) and each processor’s fee % from your statements.`}
+            risk={evaluateRisk('processor-compare', blendedRate)}
             formula={[
               'For each processor on your statement:',
               'estimated_yearly_fees ≈ annual_volume × fee_%',
@@ -726,6 +764,7 @@ export default function CalculatorsPage() {
             title="Payroll as % of revenue"
             main={fmtPct(out.pct)}
             sub={`Labor ${fmtMoney(out.effectivePayroll)} vs revenue ${fmtMoney(num('revenue'))}.`}
+            risk={evaluateRisk('payroll-pct-revenue', out.pct)}
             formula={`payroll_% = ${out.effectivePayroll} ÷ ${v.revenue} × 100 = ${out.pct.toFixed(2)}%`}
             assumptions="Payroll from outflow categories tagged payroll/wages; revenue from statement KPIs."
             tip={
@@ -760,6 +799,7 @@ export default function CalculatorsPage() {
             title="Runway if you hire"
             main={`${fmtDays(out.runwayBeforeDays)} → ${fmtDays(out.runwayAfterDays)}`}
             sub={`Hire cost ${fmtMoney(out.hireMonthly)}/mo · extra revenue needed ${fmtMoney(out.extraRevenueNeeded)}${out.usedContributionMargin ? ' (using contribution margin)' : ''}.`}
+            risk={evaluateRisk('hiring-affordability', out.runwayAfterDays)}
             formula={[
               `runway_before = cash ÷ burn × (365.25÷12) = ${out.runwayBeforeDays.toFixed(1)} days`,
               `runway_after = (cash − recruiting) ÷ (burn + hire) × (365.25÷12) = ${out.runwayAfterDays.toFixed(1)} days`,
@@ -792,6 +832,7 @@ export default function CalculatorsPage() {
             title="Period cash ROI"
             main={fmtPct(out.roiPct)}
             sub={`Profit ${fmtMoney(out.profit)} · net return ${fmtMoney(out.netReturn)} on ${fmtMoney(out.netInvestment)}${out.annualizedRoiPct != null ? ` · annualized ≈ ${fmtPct(out.annualizedRoiPct)}` : ''}.`}
+            risk={evaluateRisk('roi', out.roiPct)}
             formula={[
               'ROI% = (return − investment) ÷ investment × 100',
               `ROI% = (${fmtMoney2(out.netReturn)} − ${fmtMoney2(out.netInvestment)}) ÷ ${fmtMoney2(out.netInvestment)} × 100`,
@@ -841,6 +882,15 @@ export default function CalculatorsPage() {
               : ` Statement cash ${fmtMoney(cashAvail)} is below purchase price ${fmtMoney(out.buyBreakdown.price)}.`
             : '';
         const label = out.usedNpv ? 'NPV cost' : 'Cash cost';
+        const runwayKpi = analysis?.kpis?.find((k) => k.id === 'days_of_runway')?.value;
+        const daysPerMonth = 365.25 / 12;
+        const burnMo =
+          cashAvail > 0 && runwayKpi != null && runwayKpi > 0
+            ? (cashAvail * daysPerMonth) / runwayKpi
+            : 0;
+        const buyPrice = out.buyBreakdown.price;
+        const monthsConsumed =
+          burnMo > 0 && buyPrice > 0 ? buyPrice / burnMo : null;
         return (
           <ResultBlock
             title={
@@ -852,6 +902,11 @@ export default function CalculatorsPage() {
             }
             main={`${label}: buy ${fmtMoney(out.buyTotal)} · lease ${fmtMoney(out.leaseTotal)}`}
             sub={`${out.usedNpv ? `NPV at ${out.discountRatePct}% cost of capital. ` : 'Undiscounted cash totals. '}Difference ${fmtMoney(Math.abs(out.buyTotal - out.leaseTotal))}.${canBuy}`}
+            risk={
+              monthsConsumed != null
+                ? evaluateRisk('buy-vs-lease', monthsConsumed)
+                : null
+            }
             formula={[
               out.usedNpv
                 ? 'Buy NPV ≈ price + tax + interest + maint − PV(residual)'
@@ -860,7 +915,12 @@ export default function CalculatorsPage() {
                 ? 'Lease NPV ≈ PV(monthly payments) + lease tax + maint + PV(early exit)'
                 : 'Lease total = monthly × months + lease tax + maint + early exit',
               `buy = ${fmtMoney2(out.buyTotal)} · lease = ${fmtMoney2(out.leaseTotal)}`,
-            ].join('\n')}
+              monthsConsumed != null
+                ? `runway_months_consumed ≈ buy_price ÷ monthly_burn = ${monthsConsumed.toFixed(2)} mo`
+                : '',
+            ]
+              .filter(Boolean)
+              .join('\n')}
             assumptions="Purchase price and lease terms come from your equipment quote — not from statements. Optional tax/interest/maintenance/residual improve the comparison. Discount rate turns cash totals into NPV."
             tip={
               out.cheaper === 'lease'
@@ -896,6 +956,7 @@ export default function CalculatorsPage() {
             title="True cost of being paid late"
             main={fmtMoney(out.totalCost)}
             sub={`Opportunity cost ${fmtMoney(out.opportunityCost)} · fees ${fmtMoney(out.extraFees)} · ≈ ${fmtMoney(out.dailyCost)}/day late.`}
+            risk={evaluateRisk('late-payment-cost', num('daysLate'))}
             formula={[
               'opportunity = amount × (cost_of_capital% ÷ 100) × (days ÷ 365)',
               `opportunity = ${fmtMoney2(num('amount'))} × ${(num('costOfCapital') / 100).toFixed(4)} × (${num('daysLate')} ÷ 365)`,
@@ -977,16 +1038,24 @@ export default function CalculatorsPage() {
           Number.isFinite(out.fcfCoveragePct) && out.fcfCoveragePct !== Infinity
             ? `${out.fcfCoveragePct.toFixed(0)}% of free cash`
             : 'no free cash to cover payment';
+        const dscr =
+          out.monthlyAllIn > 0 && Number.isFinite(num('freeCash'))
+            ? num('freeCash') / out.monthlyAllIn
+            : null;
         return (
           <ResultBlock
             title={out.affordable ? 'Looks affordable on this month’s cash' : 'Tight vs this month’s free cash'}
             main={`${fmtMoney(out.monthlyAllIn)}/mo`}
             sub={`P&I ${fmtMoney(out.payment)} · total interest ${fmtMoney(out.totalInterest)} · total paid ${fmtMoney(out.totalPaid)} · uses ${coverage}.`}
+            risk={dscr != null ? evaluateRisk('loan-affordability', dscr) : null}
             formula={[
               'PMT = P × r(1+r)^n ÷ ((1+r)^n − 1), r = APR÷12',
               `payment = ${fmtMoney2(out.payment)} · all-in = payment + insurance = ${fmtMoney2(out.monthlyAllIn)}`,
               `affordable if free_cash ≥ all-in → ${fmtMoney2(num('freeCash'))} ≥ ${fmtMoney2(out.monthlyAllIn)} → ${out.affordable ? 'yes' : 'no'}`,
-            ].join('\n')}
+              dscr != null ? `DSCR ≈ free_cash ÷ payment = ${dscr.toFixed(2)}x` : '',
+            ]
+              .filter(Boolean)
+              .join('\n')}
             assumptions="Free cash = this statement period’s money in − money out. Loan amount, APR, and term come from your lender quote — not from statements. One month’s FCF is a planning hint, not underwriting."
             tip={
               out.affordable
@@ -1062,6 +1131,7 @@ export default function CalculatorsPage() {
             title="Estimated MCA APR"
             main={fmtPct(out.aprPct)}
             sub={`Payback ${fmtMoney(out.payback)} · finance cost ${fmtMoney(out.cost)}${out.extraFees > 0 ? ` (incl. ${fmtMoney(out.extraFees)} fees)` : ''} · simple annualized ≈ ${fmtPct(out.simpleAprPct)}.`}
+            risk={evaluateRisk('mca-apr', out.aprPct)}
             formula={[
               'payback = advance × factor',
               `payback = ${fmtMoney2(num('advance'))} × ${num('factor')} = ${fmtMoney2(out.payback)}`,
@@ -1108,7 +1178,7 @@ export default function CalculatorsPage() {
               `estimated_max = ${fmtMoney2(out.estimatedMax)}`,
               `likely_eligible ≈ years ≥ 2 && revenue ≥ $100k && request ≤ max → ${out.likelyEligible ? 'yes' : 'no'}`,
             ].join('\n')}
-            assumptions="Revenue may be annualized from this statement period (× 12). Years in business and requested amount are your inputs. This is a size/planning hint — not an SBA eligibility determination."
+            assumptions="Revenue may be annualized from this statement period (× 12). Years in business and requested amount are your inputs. This is a size/planning hint — not an SBA eligibility determination. DSCR risk gauge appears on Loan Affordability when you enter a payment."
             tip={
               out.likelyEligible
                 ? 'Tip: Ballpark only — confirm use of proceeds, credit, and lender rules on SBA.gov.'
@@ -1141,6 +1211,7 @@ export default function CalculatorsPage() {
             title="Inventory turns"
             main={`${out.turns.toFixed(1)}× / year`}
             sub={`≈ ${out.daysOnHand.toFixed(0)} days on hand${out.holdingCost > 0 ? ` · holding cost ${fmtMoney(out.holdingCost)}` : ''}.`}
+            risk={evaluateRisk('inventory-turnover', out.turns)}
             formula={[
               'turns = COGS ÷ average_inventory',
               `turns = ${fmtMoney2(num('cogs'))} ÷ ${fmtMoney2(num('inventory'))} = ${out.turns.toFixed(2)}`,
