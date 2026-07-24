@@ -131,12 +131,3 @@
 .tillDisplayText {
   animation: displayPulse 3s ease-in-out infinite;
 }
-
-@media (max-width: 900px) {
-  .hero h1 { font-size: 40px; }
-  .heroGrid { grid-template-columns: 1fr; gap: 36px; }
-}
-
-@media (max-width: 540px) {
-  .hero h1 { font-size: 32px; }
-}

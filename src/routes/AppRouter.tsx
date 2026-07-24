@@ -18,6 +18,7 @@ import ReconPage from '../pages/ReconPage';
 import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
+import AtRewardsPage from '../pages/AtRewardsPage';
 import ProfilePage from '../pages/ProfilePage';
 import PricingPage from '../pages/PricingPage';
 import CheckoutPage from '../pages/CheckoutPage';
@@ -108,8 +109,8 @@ function AppRoutes() {
           <Route path="calculators" element={<CalculatorsPage />} />
           <Route path="calculators/:slug" element={<CalculatorsPage />} />
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
+          <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />
-          <Route path="rewards" element={<Navigate to={DEFAULT_DASHBOARD_PATH} replace />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
     </Routes>

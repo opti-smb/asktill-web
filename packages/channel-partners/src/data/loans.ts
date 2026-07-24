@@ -232,6 +232,13 @@ export const PARTNER_CATEGORIES: PartnerCategory[] = [
     blurb: 'Compare loans from partner banks and NBFCs, then apply on the lender site.',
     path: 'loans',
   },
+  {
+    id: 'advisors',
+    title: 'CPAs & Tax Advisors',
+    blurb:
+      'Connect with verified CPAs and tax advisors for bookkeeping, tax filing, and financial planning.',
+    path: 'advisors',
+  },
 ];
 
 export const LOAN_PRODUCTS: LoanProduct[] = [

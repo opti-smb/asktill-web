@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ask, formatAskResponseForChat, getApiError } from '../../lib/api';
+import { getActiveStatementViewId } from '../../lib/activeStatementView';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { useChat } from '../../context/ChatContext';
 import { SAMPLE_ASK_QUESTIONS } from '../../lib/sampleQuestions';
@@ -11,13 +12,19 @@ interface AskChatPanelProps {
 }
 
 export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanelProps) {
-  const { files } = useAnalysis();
+  const { files, result, getLastStreamStatementId } = useAnalysis();
   const { messages, setMessages } = useChat();
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   const hasFiles = Boolean(files.bank || files.pos || files.ecommerce);
+  const statementId =
+    result?.statement_id?.trim() ||
+    getLastStreamStatementId()?.trim() ||
+    getActiveStatementViewId()?.trim() ||
+    null;
+  const canAsk = hasFiles || Boolean(statementId);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,13 +33,13 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
   async function handleAsk(q?: string) {
     const text = (q ?? question).trim();
     if (!text) return;
-    if (!hasFiles) {
+    if (!canAsk) {
       setMessages((prev) => [
         ...prev,
         { role: 'user', text },
         {
           role: 'assistant',
-          text: 'Upload bank, POS, and ecommerce reports first, then run analysis.',
+          text: 'Upload bank, POS, or ecommerce on AT Uploads and run analysis first — Ask uses that statement automatically.',
         },
       ]);
       return;
@@ -42,7 +49,7 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
     setQuestion('');
     setLoading(true);
     try {
-      const { data } = await ask(text, files);
+      const { data } = await ask(text, files, statementId);
       const answer = formatAskResponseForChat(data);
       setMessages((prev) => [...prev, { role: 'assistant', text: answer || 'No answer returned.' }]);
     } catch (err) {
@@ -64,7 +71,7 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
             <p className={styles.sub}>
               {variant === 'drawer'
                 ? 'Questions about your uploaded reports'
-                : 'POST /api/ask — same answers as Postman'}
+                : 'Uses your AT Uploads statement — no need to upload again'}
             </p>
           </div>
           {onClose && (
@@ -78,7 +85,11 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
       <div className={styles.body}>
         {messages.length === 0 && (
           <div className={styles.welcome}>
-            <p>Ask about revenue, fees, or reconciliation gaps after uploading your reports.</p>
+            <p>
+              {canAsk
+                ? 'Ask about revenue, fees, or reconciliation for your current statement.'
+                : 'Upload reports on AT Uploads and run analysis, then ask here.'}
+            </p>
             <div className={styles.sampleRow}>
               {SAMPLE_ASK_QUESTIONS.map((q) => (
                 <button key={q} type="button" className={styles.sampleBtn} onClick={() => handleAsk(q)}>

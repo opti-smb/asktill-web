@@ -336,16 +336,3 @@
   line-height: 1.45;
 }
 
-@media (max-width: 760px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .stepLabel {
-    display: none;
-  }
-
-  .stepDivider {
-    width: 14px;
-  }
-}

@@ -215,20 +215,6 @@
 
 
 .down {
-
   color: var(--neg);
-
-}
-
-
-
-@media (max-width: 1000px) {
-
-  .standardGrid {
-
-    grid-template-columns: 1fr;
-
-  }
-
 }
 

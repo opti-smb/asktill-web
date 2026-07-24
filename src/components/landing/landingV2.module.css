@@ -961,23 +961,3 @@
   gap: 8px;
 }
 
-@media (max-width: 900px) {
-  .stepsGrid { grid-template-columns: 1fr 1fr; }
-  .letterGrid { grid-template-columns: 1fr; }
-  .rowsGrid { grid-template-columns: 1fr 1fr; }
-  .partnersGrid { grid-template-columns: 1fr 1fr; }
-  .pricingGrid { grid-template-columns: 1fr 1fr; }
-  .footerGrid { grid-template-columns: 1fr 1fr; }
-  .h1 { font-size: 38px; }
-  .h2 { font-size: 28px; }
-}
-
-@media (max-width: 600px) {
-  .stepsGrid { grid-template-columns: 1fr; }
-  .rowsGrid { grid-template-columns: 1fr; }
-  .partnersGrid { grid-template-columns: 1fr; }
-  .pricingGrid { grid-template-columns: 1fr; }
-  .footerGrid { grid-template-columns: 1fr; }
-  .h1 { font-size: 32px; }
-  .hero { padding: 56px 0 48px; }
-}
