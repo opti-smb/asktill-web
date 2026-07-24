@@ -13,16 +13,11 @@ import {
   LETTER_UPDATED_EVENT,
   loadAtLetterCache,
   loadLandingAtLetterCache,
-  markUserHasSavedLetter,
   saveAtLetterCache,
-  clearUserAtLetterState,
-  clearAllAtLetterDeviceCache,
-  savedLetterUserId,
   userHasSavedLetterHint,
 } from '../lib/atLetterCache';
 import { hasRecentAnalyzeSession, REPORT_HISTORY_REFRESH_EVENT, useReportSync } from '../hooks/useReportSync';
 import {
-  fetchAtLetterLandingMeta,
   fetchSavedReport,
   getApiError,
   USER_LOGOUT_EVENT,
@@ -98,37 +93,12 @@ export function useAtLetterPreview(): {
     };
   }, []);
 
-  // Logged-out landing: show sample/cache immediately; verify with API in background.
+  // Logged-out landing: show device cache / sample only.
+  // Do not call landing with userId/email (server IDOR). Cache clears on next login sync if wiped.
   useEffect(() => {
     if (!ready || isAuth) return;
-
-    const userId = savedLetterUserId();
-    let cancelled = false;
-
-    void fetchAtLetterLandingMeta(userId ? { userId } : undefined)
-      .then(({ data }) => {
-        if (cancelled) return;
-        if (data.source === 'user') {
-          setLandingSource('user');
-          if (data.user_id) markUserHasSavedLetter(data.user_id);
-          return;
-        }
-        // Server has no stored month (wiped or never uploaded) — show Brookline sample.
-        setLandingSource('sample');
-        if (userId) {
-          clearUserAtLetterState(userId);
-        } else {
-          clearAllAtLetterDeviceCache();
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLandingSource(loadLandingAtLetterCache() || userHasSavedLetterHint() ? 'user' : 'sample');
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    const cached = loadLandingAtLetterCache();
+    setLandingSource(cached || userHasSavedLetterHint() ? 'user' : 'sample');
   }, [ready, isAuth, tick]);
 
   // Logged-in: load the pinned / session month, not always chronologically newest.

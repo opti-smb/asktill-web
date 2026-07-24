@@ -80,13 +80,24 @@ function dispatchSessionExpiredOnce(): void {
 export { dispatchSessionExpiredOnce };
 export const CHAT_STORAGE_KEY = 'asktill_chat_messages';
 
-/** Clear in-memory user data (analysis, chat, upload) without removing JWT. */
-export function resetUserScopedState() {
+/** Remove all Ask chat history keys from sessionStorage (legacy + per-user). */
+export function clearChatHistoryStorage(): void {
   try {
     sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    const toRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i += 1) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith(`${CHAT_STORAGE_KEY}:`)) toRemove.push(key);
+    }
+    toRemove.forEach((key) => sessionStorage.removeItem(key));
   } catch {
     /* ignore */
   }
+}
+
+/** Clear in-memory user data (analysis, chat, upload) without removing JWT. */
+export function resetUserScopedState() {
+  clearChatHistoryStorage();
   window.dispatchEvent(new CustomEvent(USER_STATE_RESET_EVENT));
 }
 
@@ -2096,23 +2107,13 @@ export interface AtLetterLandingMeta {
   statement_id?: string;
 }
 
-function atLetterLandingHeaders(userId?: string): Record<string, string> {
-  const headers: Record<string, string> = {};
-  const id = userId?.trim();
-  if (id) headers['X-User-Id'] = id;
-  return headers;
-}
-
-/** Public landing metadata — user's latest letter or Brookline sample. */
-export async function fetchAtLetterLandingMeta(opts?: { userId?: string; email?: string }) {
-  const userId = opts?.userId?.trim();
-  const email = opts?.email?.trim();
+/** Landing metadata — live letter only when Bearer is present; else Brookline sample. */
+export async function fetchAtLetterLandingMeta(_opts?: { userId?: string; email?: string }) {
+  // Intentionally ignore client-supplied userId/email — server no longer trusts them.
   warmupBackend();
   await ensureAuthServiceReady(12_000);
   const request = () =>
     mainApi.get<AtLetterLandingMeta>('/api/at-letter/landing', {
-      params: email ? { email } : userId ? { userId } : undefined,
-      headers: atLetterLandingHeaders(userId),
       timeout: 60_000,
     });
 
