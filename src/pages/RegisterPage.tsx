@@ -17,6 +17,7 @@ import {
 import {
   clearClerkSession,
   clerkErrorMessage,
+  isClerkAlreadySignedInError,
   isClerkCaptchaError,
   clearGoogleSignInAttempt,
   formatClerkSignUpBlockers,
@@ -191,6 +192,37 @@ function RegisterClerkFlow() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const fresh = params.get('fresh') === '1';
+    const emailParam = params.get('email')?.trim();
+    if (emailParam) {
+      setEmail(normalizeEmail(emailParam));
+    }
+    if (!fresh) return;
+    clearRegisterDraft();
+    setStep(0);
+    setCode('');
+    setEmailVerified(false);
+    setError('');
+    setInfo('Session cleared — enter your email to get a new verification code.');
+    if (clerk.loaded) {
+      void (async () => {
+        try {
+          await clearClerkSession(clerk, {
+            redirectUrl: `${window.location.origin}/register`,
+          });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
+    const clean = emailParam
+      ? `/register?email=${encodeURIComponent(normalizeEmail(emailParam))}`
+      : '/register';
+    window.history.replaceState({}, document.title, clean);
+  }, [location.search, clerk]);
+
+  useEffect(() => {
     const flash = consumeRegisterFromGoogle();
     const state = location.state as {
       email?: string;
@@ -301,17 +333,33 @@ function RegisterClerkFlow() {
 
     const tempPw = tempClerkPassword();
 
-    if (!signUp.id) {
-      await signUp.create({ emailAddress: addr });
-      await satisfyClerkPassword(signUp, tempPw);
-    } else if (emailChanged || !clerkEmail) {
-      await signUp.update({ emailAddress: addr });
-      await satisfyClerkPassword(signUp, tempPw);
-      setEmailVerified(false);
-      setCode('');
+    async function createOrUpdateSignUp() {
+      if (!signUp) throw new Error('Auth is still loading.');
+      if (!signUp.id) {
+        await signUp.create({ emailAddress: addr });
+        await satisfyClerkPassword(signUp, tempPw);
+      } else if (emailChanged || !clerkEmail) {
+        await signUp.update({ emailAddress: addr });
+        await satisfyClerkPassword(signUp, tempPw);
+        setEmailVerified(false);
+        setCode('');
+      }
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
     }
 
-    await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+    try {
+      await createOrUpdateSignUp();
+    } catch (err) {
+      // Stale Clerk browser session after account delete — fully sign out and retry once.
+      if (!isClerkAlreadySignedInError(err)) throw err;
+      clearRegisterDraft();
+      await clearClerkSession(clerk, {
+        redirectUrl: `${window.location.origin}/register`,
+      });
+      // Hard reload so useSignUp() starts with a clean client (no leftover session).
+      window.location.assign(`/register?email=${encodeURIComponent(addr)}&fresh=1`);
+      return 'redirecting';
+    }
     return 'sent';
   }
 
@@ -344,6 +392,7 @@ function RegisterClerkFlow() {
         return;
       }
       const result = await deliverSignUpCode(addr, false);
+      if (result === 'redirecting') return;
       setEmail(addr);
       setStep(1);
       if (result === 'already_verified') {
@@ -369,9 +418,20 @@ function RegisterClerkFlow() {
     setOtpFeedback('none');
     setLoading(true);
     try {
-      await deliverSignUpCode(email, true);
+      const result = await deliverSignUpCode(email, true);
+      if (result === 'redirecting') return;
       setInfo('');
     } catch (err) {
+      if (isClerkAlreadySignedInError(err)) {
+        clearRegisterDraft();
+        await clearClerkSession(clerk, {
+          redirectUrl: `${window.location.origin}/register`,
+        });
+        window.location.assign(
+          `/register?email=${encodeURIComponent(normalizeEmail(email))}&fresh=1`,
+        );
+        return;
+      }
       setError(clerkErrorMessage(err, 'Could not resend code.'));
     } finally {
       setLoading(false);
