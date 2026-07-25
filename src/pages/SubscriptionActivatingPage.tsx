@@ -39,6 +39,13 @@ export default function SubscriptionActivatingPage() {
   useEffect(() => {
     if (!sessionId || navigatedRef.current) return undefined;
 
+    // Clear any leftover flag from older builds that showed a sign-in modal.
+    try {
+      sessionStorage.removeItem('asktill_need_post_payment_signin');
+    } catch {
+      /* private mode */
+    }
+
     patchUserTierRef.current(TIER_PAID);
 
     const readyTimer = window.setTimeout(() => setReady(true), READY_MS);
