@@ -1,9 +1,11 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
 
 import Logo from '../components/common/Logo';
 import PlanGrid from '../components/pricing/PlanGrid';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
+import { warmupAuthService, warmupSubscriptionService } from '../lib/api';
 import { tierDisplayLabel } from '../lib/subscription';
 import type { PlanDefinition } from '../lib/plans';
 import styles from './PricingPage.module.css';
@@ -20,6 +22,12 @@ export default function PricingPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const returnTo = resolveReturnPath(params.get('from'));
+
+  // Start waking Stripe checkout service while the user picks a plan.
+  useEffect(() => {
+    warmupSubscriptionService();
+    warmupAuthService();
+  }, []);
 
   const onSubscribe = (plan: PlanDefinition) => {
     const from = encodeURIComponent(returnTo);

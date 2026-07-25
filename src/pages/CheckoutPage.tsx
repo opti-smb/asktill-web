@@ -4,7 +4,13 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
-import { createCheckoutSession, getApiError, primeBackendBeforeCheckout, warmupBackend } from '../lib/api';
+import {
+  createCheckoutSession,
+  getApiError,
+  primeBackendBeforeCheckout,
+  warmupAuthService,
+  warmupSubscriptionService,
+} from '../lib/api';
 import { getPlanById } from '../lib/plans';
 import { assignStripeRedirect } from '../lib/safeRedirect';
 import { isPaidTier } from '../lib/subscription';
@@ -28,8 +34,10 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Wake backend + parsers while user is on checkout (before Stripe redirect).
+  // Wake Subscription (+ Auth) while the user reviews the plan — do not block Stripe on PDF backend.
   useEffect(() => {
+    warmupSubscriptionService();
+    warmupAuthService();
     void primeBackendBeforeCheckout();
   }, []);
 
@@ -46,10 +54,9 @@ export default function CheckoutPage() {
     setError(null);
     setLoading(true);
     try {
-      // Finish parser warm before leaving — keeps Render instance busy through Stripe.
+      // Keep backend warm in background after return — never await it before Stripe.
       void primeBackendBeforeCheckout();
-      warmupBackend();
-      const checkoutUrl = await createCheckoutSession(plan.id, returnTo);
+      const checkoutUrl = await createCheckoutSession(plan.id, returnTo, user?.email);
       assignStripeRedirect(checkoutUrl);
     } catch (err) {
       setError(getApiError(err, 'Could not start checkout. Try again in a moment.'));
