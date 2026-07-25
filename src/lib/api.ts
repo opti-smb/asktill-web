@@ -823,13 +823,20 @@ export async function validateUploadsWithRetry(files: UploadFiles) {
 }
 
 /** Wake Render services before login or upload (no-op when already warm). */
-function serviceOrigin(envKey: 'VITE_API_BASE_URL' | 'VITE_AUTH_API_URL' | 'VITE_REGISTER_API_URL'): string {
+function serviceOrigin(
+  envKey:
+    | 'VITE_API_BASE_URL'
+    | 'VITE_AUTH_API_URL'
+    | 'VITE_REGISTER_API_URL'
+    | 'VITE_SUBSCRIPTION_API_URL',
+): string {
   const raw = import.meta.env[envKey];
   if (typeof raw === 'string' && raw.trim()) {
     return raw.trim().replace(/\/$/, '');
   }
   if (envKey === 'VITE_API_BASE_URL') return 'http://localhost:8000';
   if (envKey === 'VITE_AUTH_API_URL') return 'http://localhost:8002';
+  if (envKey === 'VITE_SUBSCRIPTION_API_URL') return 'http://localhost:8005';
   return 'http://localhost:8003';
 }
 
@@ -1089,6 +1096,63 @@ export function warmupRegistrationService() {
   void probeServiceHealth(`${serviceOrigin('VITE_REGISTER_API_URL')}/health`, 15_000);
 }
 
+const SUBSCRIPTION_WARM_TTL_MS = 3 * 60 * 1000;
+let subscriptionWarmUntil = 0;
+let subscriptionWarmupInFlight: Promise<boolean> | null = null;
+
+function markSubscriptionServiceWarm() {
+  subscriptionWarmUntil = Date.now() + SUBSCRIPTION_WARM_TTL_MS;
+}
+
+export function isSubscriptionServiceWarm(): boolean {
+  return Date.now() < subscriptionWarmUntil;
+}
+
+async function probeSubscriptionHealth(timeoutMs: number): Promise<boolean> {
+  try {
+    if (import.meta.env.DEV) {
+      const res = await subscriptionApi.get('/health', { timeout: timeoutMs });
+      return res.status === 200 && isHealthyServicePayload(res.data);
+    }
+    return probeServiceHealth(`${serviceOrigin('VITE_SUBSCRIPTION_API_URL')}/health`, timeoutMs);
+  } catch {
+    return false;
+  }
+}
+
+/** Wake Subscription service early (Stripe checkout lives here — often cold on Render). */
+export function warmupSubscriptionService() {
+  void probeSubscriptionHealth(20_000).then((ok) => {
+    if (ok) markSubscriptionServiceWarm();
+  });
+}
+
+/** Probe subscription health until budget — call from pricing/checkout before Pay. */
+export async function ensureSubscriptionServiceReady(probeTimeoutMs = 45_000): Promise<boolean> {
+  if (isSubscriptionServiceWarm()) return true;
+  if (subscriptionWarmupInFlight) return subscriptionWarmupInFlight;
+
+  subscriptionWarmupInFlight = (async () => {
+    const deadline = Date.now() + Math.max(probeTimeoutMs, 5_000);
+    let attempt = 0;
+    while (Date.now() < deadline) {
+      attempt += 1;
+      const slice = Math.min(25_000, Math.max(4_000, deadline - Date.now()));
+      const ok = await probeSubscriptionHealth(slice);
+      if (ok) {
+        markSubscriptionServiceWarm();
+        return true;
+      }
+      await new Promise((r) => window.setTimeout(r, Math.min(1_500, 300 * attempt)));
+    }
+    return false;
+  })().finally(() => {
+    subscriptionWarmupInFlight = null;
+  });
+
+  return subscriptionWarmupInFlight;
+}
+
 export function isLocalDevServices(): boolean {
   if (!import.meta.env.DEV) return false;
   const auth = serviceOrigin('VITE_AUTH_API_URL');
@@ -1099,6 +1163,7 @@ export function warmupServices() {
   warmupBackend();
   warmupAuthService();
   warmupRegistrationService();
+  warmupSubscriptionService();
   void ensureAuthServiceReady(4_000);
 }
 
@@ -1194,11 +1259,24 @@ export interface ConfirmCheckoutResponse {
 }
 
 /** Start Stripe Checkout for a paid plan (requires Bearer JWT). */
-export async function createCheckoutSession(planId: string, returnPath: string): Promise<string> {
-  const { data } = await subscriptionApi.post<CheckoutSessionResponse>('/api/checkout/session', {
+export async function createCheckoutSession(
+  planId: string,
+  returnPath: string,
+  email?: string | null,
+): Promise<string> {
+  // Prefer waking Subscription before the POST so cold starts happen on /health.
+  await ensureSubscriptionServiceReady(55_000);
+  const payload: { planId: string; returnPath: string; email?: string } = {
     planId,
     returnPath,
-  });
+  };
+  const trimmed = email?.trim().toLowerCase();
+  if (trimmed) payload.email = trimmed;
+  const { data } = await subscriptionApi.post<CheckoutSessionResponse>(
+    '/api/checkout/session',
+    payload,
+    { timeout: 45_000 },
+  );
   const url = data?.checkoutUrl?.trim();
   if (!url) throw new Error('Checkout URL missing from server response');
   return url;
