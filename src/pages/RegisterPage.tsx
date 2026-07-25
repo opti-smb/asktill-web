@@ -106,6 +106,16 @@ async function satisfyClerkPassword(
   await signUp.update({ password });
 }
 
+function friendlyClerkSignUpError(err: unknown, fallback: string): string {
+  const raw = clerkErrorMessage(err, fallback);
+  // Clerk can surface a password error while starting email OTP (temp password step).
+  // That is not the user's password — remapped so signup is not blocked by a misleading message.
+  if (/incorrect password/i.test(raw)) {
+    return 'Could not start email verification. Refresh the page and try again.';
+  }
+  return raw;
+}
+
 function RegisterClerkFlow() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -336,13 +346,27 @@ function RegisterClerkFlow() {
     async function createOrUpdateSignUp() {
       if (!signUp) throw new Error('Auth is still loading.');
       if (!signUp.id) {
-        await signUp.create({ emailAddress: addr });
-        await satisfyClerkPassword(signUp, tempPw);
+        // Include temp password at create so Clerk does not fail a later password update
+        // with a misleading "Incorrect password" during the email OTP step.
+        try {
+          await signUp.create({ emailAddress: addr, password: tempPw });
+        } catch (createErr) {
+          if (!signUp.id) {
+            await signUp.create({ emailAddress: addr });
+          }
+          try {
+            await satisfyClerkPassword(signUp, tempPw);
+          } catch {
+            throw createErr;
+          }
+        }
       } else if (emailChanged || !clerkEmail) {
         await signUp.update({ emailAddress: addr });
         await satisfyClerkPassword(signUp, tempPw);
         setEmailVerified(false);
         setCode('');
+      } else {
+        await satisfyClerkPassword(signUp, tempPw);
       }
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
     }
@@ -403,7 +427,7 @@ function RegisterClerkFlow() {
         setInfo('');
       }
     } catch (err) {
-      setError(clerkErrorMessage(err, 'Could not send verification email.'));
+      setError(friendlyClerkSignUpError(err, 'Could not send verification email.'));
       if (isClerkCaptchaError(err)) setStep(0);
     } finally {
       setLoading(false);
@@ -432,7 +456,7 @@ function RegisterClerkFlow() {
         );
         return;
       }
-      setError(clerkErrorMessage(err, 'Could not resend code.'));
+      setError(friendlyClerkSignUpError(err, 'Could not resend code.'));
     } finally {
       setLoading(false);
     }
@@ -475,7 +499,7 @@ function RegisterClerkFlow() {
         throw new Error(formatClerkSignUpBlockers(signUp) ?? 'Invalid or expired code.');
       } catch (err) {
         setOtpFeedback('error');
-        setError(clerkErrorMessage(err, 'Incorrect code. Please try again.'));
+        setError(friendlyClerkSignUpError(err, 'Incorrect code. Please try again.'));
         setCode('');
         lastOtpAttemptRef.current = '';
       } finally {

@@ -2,8 +2,17 @@ import { useEffect, useState } from 'react';
 import AskChatPanel from '../analysis/AskChatPanel';
 import styles from './FloatingAskButton.module.css';
 
+/**
+ * Floating Ask drawer. Panel stays mounted while closed so chat history
+ * (from ChatContext) and draft input survive open/close within the session.
+ */
 export default function FloatingAskButton() {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -16,20 +25,26 @@ export default function FloatingAskButton() {
 
   return (
     <>
-      {open && (
+      {open ? (
         <button
           type="button"
           className={styles.backdrop}
           aria-label="Close chat"
           onClick={() => setOpen(false)}
         />
-      )}
+      ) : null}
 
-      {open && (
-        <div className={styles.drawer} role="dialog" aria-label="Ask AskTill">
+      {mounted ? (
+        <div
+          className={styles.drawer}
+          role="dialog"
+          aria-label="Ask AskTill"
+          hidden={!open}
+          aria-hidden={!open}
+        >
           <AskChatPanel variant="drawer" onClose={() => setOpen(false)} />
         </div>
-      )}
+      ) : null}
 
       <button
         type="button"

@@ -261,7 +261,7 @@ function formatApiError(
       if (obj.message?.trim()) return obj.message.trim();
     }
     if (isAuthLogin) {
-      return 'Wrong password. Try again.';
+      return 'Sign in failed. Check your email and password, then try again.';
     }
     return 'Your session expired or could not be verified. Please sign in again.';
   }
@@ -1103,6 +1103,23 @@ export function warmupServices() {
 }
 
 const attachBearer = (cfg: InternalAxiosRequestConfig) => {
+  const url = String(cfg.url ?? '');
+  // Never attach a prior JWT to credential endpoints — a stale Bearer can
+  // confuse proxies/gateways and surface as a false "wrong password" 401.
+  if (
+    url.includes('/api/auth/login')
+    || url.includes('/api/auth/clerk-login')
+    || url.includes('/api/auth/forgot-password')
+    || url.includes('/api/register')
+  ) {
+    if (cfg.headers) {
+      cfg.headers.Authorization = undefined;
+      if (typeof cfg.headers.delete === 'function') {
+        cfg.headers.delete('Authorization');
+      }
+    }
+    return cfg;
+  }
   const token = getToken();
   if (token) {
     cfg.headers.set('Authorization', `Bearer ${token}`);

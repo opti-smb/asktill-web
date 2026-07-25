@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -95,15 +95,13 @@ export default function LoginPage() {
     } | null;
 
     const prefilledEmail = state?.email?.trim().toLowerCase() ?? '';
+    // Reset before revealing the real password field. Do NOT clear again after
+    // reveal — that races browser/password-manager autofill and can submit "".
     reset({ email: prefilledEmail, password: '' });
     setShowPassword(false);
     setShowPasswordInput(false);
 
     const revealTimer = window.setTimeout(() => setShowPasswordInput(true), 50);
-    const clearTimer = window.setTimeout(() => {
-      setValue('password', '');
-      if (passwordInputRef.current) passwordInputRef.current.value = '';
-    }, 120);
 
     if (flash?.error || state?.error) {
       setServerError(flash?.error ?? state?.error ?? '');
@@ -119,11 +117,43 @@ export default function LoginPage() {
 
     return () => {
       window.clearTimeout(revealTimer);
-      window.clearTimeout(clearTimer);
     };
   }, [location.pathname, location.key, reset, setValue]);
 
+  // Password managers often paint autofill without firing React onChange.
+  // Keep RHF state in sync so validation does not reject a filled field as empty.
+  useEffect(() => {
+    if (!showPasswordInput) return undefined;
 
+    const syncPasswordFromDom = () => {
+      const el = passwordInputRef.current;
+      if (!el?.value) return;
+      setValue('password', el.value, { shouldDirty: true, shouldValidate: false });
+    };
+
+    syncPasswordFromDom();
+    const timers = [0, 100, 300, 600, 1200].map((delay) =>
+      window.setTimeout(syncPasswordFromDom, delay),
+    );
+    const el = passwordInputRef.current;
+    el?.addEventListener('change', syncPasswordFromDom);
+    el?.addEventListener('input', syncPasswordFromDom);
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      el?.removeEventListener('change', syncPasswordFromDom);
+      el?.removeEventListener('input', syncPasswordFromDom);
+    };
+  }, [showPasswordInput, setValue]);
+
+  const syncPasswordThenSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const fromDom = passwordInputRef.current?.value ?? '';
+    if (fromDom) {
+      setValue('password', fromDom, { shouldValidate: true, shouldDirty: true });
+    }
+    await handleSubmit(onSubmit)(event);
+  };
 
   const onSubmit = async (data: LoginFormData) => {
 
@@ -132,11 +162,11 @@ export default function LoginPage() {
     setEmailHighlight(false);
 
     const email = data.email.trim().toLowerCase();
-
-
+    // Prefer live DOM value so password-manager autofill (often skips onChange) is used.
+    const password = passwordInputRef.current?.value || data.password || '';
 
     try {
-      await login(email, data.password);
+      await login(email, password);
 
       const redirectTo = getPostLoginRedirect((location.state as { from?: string } | null)?.from);
 
@@ -162,7 +192,7 @@ export default function LoginPage() {
       }
 
       setServerError(
-        loginCredentialErrorMessage(err) || 'Wrong password. Try again.',
+        loginCredentialErrorMessage(err) || 'Sign in failed. Check your email and password, then try again.',
       );
 
       if (isInvalidPasswordFailure(err)) {
@@ -206,9 +236,11 @@ export default function LoginPage() {
           <form
             key={`login-${location.key}`}
             className={styles.form}
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={(event) => {
+              void syncPasswordThenSubmit(event);
+            }}
             noValidate
-            autoComplete="off"
+            autoComplete="on"
           >
 
             <EmailField
