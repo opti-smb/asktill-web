@@ -202,7 +202,8 @@ export function loginCredentialErrorMessage(err: unknown): string {
         return detail.trim();
       }
     }
-    return 'Wrong password. Try again.';
+    // Do not assume every 401 is a bad password (stale session, gateway, cold start).
+    return 'Sign in failed. Check your email and password, then try again.';
   }
   return 'Sign in failed. Check your email and password, then try again.';
 }

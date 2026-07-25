@@ -144,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (isTokenExpired(stored)) {
         clearToken();
+        resetUserScopedState();
         markSessionExpiredPersisted();
         if (!cancelled) {
           setTok(null);
@@ -169,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const status = (err as AxiosError)?.response?.status;
         if (status === 401) {
           clearToken();
+          resetUserScopedState();
           markSessionExpiredPersisted();
           if (!cancelled) {
             setTok(null);
