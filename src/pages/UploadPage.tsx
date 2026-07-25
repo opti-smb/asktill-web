@@ -238,6 +238,15 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const { isPaid } = useSubscription();
 
   useEffect(() => {
+    // Clear leftover flag from older deploys that gated upload behind a sign-in modal.
+    try {
+      sessionStorage.removeItem('asktill_need_post_payment_signin');
+    } catch {
+      /* private mode */
+    }
+  }, []);
+
+  useEffect(() => {
     if (isPaid) {
       setPersistentFreeTierNotice(null);
     }
