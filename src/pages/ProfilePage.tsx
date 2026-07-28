@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import SectionHeader from '../components/layout/SectionHeader';
@@ -9,6 +9,7 @@ import {
   createBillingPortalSession,
   fetchBillingInvoices,
   getApiError,
+  openAdminDashboard,
   setAutoRenewalEnabled,
   type BillingInvoice,
 } from '../lib/api';
@@ -131,8 +132,9 @@ function PasswordEyeIcon({ visible }: { visible: boolean }) {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isAdmin } = useAuth();
   const { isPaid } = useSubscription();
+  const adminHoverTimer = useRef<number | null>(null);
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [billingBusy, setBillingBusy] = useState(false);
@@ -270,9 +272,13 @@ export default function ProfilePage() {
               <dt>Business</dt>
               <dd>{user?.businessName ?? '—'}</dd>
             </div>
+            <div className={styles.fieldRow}>
+              <dt>Role</dt>
+              <dd>{isAdmin ? 'Admin' : 'Member'}</dd>
+            </div>
             {user?.industry ? (
               <div className={styles.fieldRow}>
-                <dt>Role</dt>
+                <dt>Industry</dt>
                 <dd>{user.industry}</dd>
               </div>
             ) : null}
@@ -291,6 +297,37 @@ export default function ProfilePage() {
               <dd>{formatMemberSince(user?.createdAt)}</dd>
             </div>
           </dl>
+          {isAdmin ? (
+            <div
+              className={styles.adminBanner}
+              onMouseEnter={() => {
+                if (adminHoverTimer.current != null) window.clearTimeout(adminHoverTimer.current);
+                adminHoverTimer.current = window.setTimeout(() => {
+                  void openAdminDashboard();
+                }, 400);
+              }}
+              onMouseLeave={() => {
+                if (adminHoverTimer.current != null) {
+                  window.clearTimeout(adminHoverTimer.current);
+                  adminHoverTimer.current = null;
+                }
+              }}
+            >
+              <div>
+                <strong>Admin access</strong>
+                <p>Hover or click to open the AskTill Admin Console.</p>
+              </div>
+              <button
+                type="button"
+                className={styles.bannerBtn}
+                onClick={() => {
+                  void openAdminDashboard();
+                }}
+              >
+                Admin Dashboard
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <section className={styles.card}>
