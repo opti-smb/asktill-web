@@ -10,9 +10,9 @@ import {
 import styles from './RiskGauge.module.css';
 
 const LEVEL_COLOR: Record<RiskLevel, string> = {
-  high: '#E11D48', // red — risk
-  moderate: '#EAB308', // yellow — moderate
-  low: '#16A34A', // green — good
+  high: '#E24B4A', // AT Letter red
+  moderate: '#F5B942', // AT Letter amber
+  low: '#2E9C6A', // AT Letter green
 };
 
 function clamp01(x: number): number {
@@ -26,9 +26,11 @@ function tOf(value: number, min: number, max: number): number {
 
 type Props = {
   reading: RiskReading;
+  /** Tighter layout for health scoreboard rows (no top rule). */
+  compact?: boolean;
 };
 
-export default function RiskGauge({ reading }: Props) {
+export default function RiskGauge({ reading, compact }: Props) {
   const { min, max } = riskGaugeDomain(reading);
   const higher = reading.direction === 'higher_better';
   const tHigh = tOf(reading.highRisk, min, max);
@@ -58,7 +60,7 @@ export default function RiskGauge({ reading }: Props) {
 
   return (
     <div
-      className={styles.wrap}
+      className={`${styles.wrap} ${compact ? styles.compact : ''}`}
       style={{ '--risk-color': color } as CSSProperties}
       role="img"
       aria-label={`${reading.levelLabel}: ${reading.metricLabel} ${formatRiskValue(reading)}`}

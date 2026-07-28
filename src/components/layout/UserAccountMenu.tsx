@@ -5,7 +5,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useDismissOnEscape } from '../../hooks/useDismissOnEscape';
-import { getApiError, openAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
+import { getApiError, openAdminDashboard, prefetchAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
 import { clearClerkSession, isClerkEnabled } from '../../lib/clerk';
 import { isPaidTier, tierDisplayLabel } from '../../lib/subscription';
 import styles from './UserAccountMenu.module.css';
@@ -168,7 +168,10 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
                 role="menuitem"
                 onMouseEnter={() => {
                   clearAdminHoverTimer();
-                  adminHoverTimer.current = window.setTimeout(goAdminDashboard, 350);
+                  // Prefetch only — never auto-navigate on hover (felt slow / surprising).
+                  adminHoverTimer.current = window.setTimeout(() => {
+                    prefetchAdminDashboard();
+                  }, 120);
                 }}
                 onMouseLeave={clearAdminHoverTimer}
                 onClick={goAdminDashboard}
