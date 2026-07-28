@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 import SectionHeader from '../components/layout/SectionHeader';
 
 import styles from './AtLedgerPage.module.css';
-
-const HOVER_NAV_MS = 120;
 
 const ICON_PROPS = {
   width: 24,
@@ -97,28 +95,6 @@ const LEDGER_BOXES: ReadonlyArray<{
 
 /** AT Ledger hub — boxes open the same pages as the old top-level tabs. */
 export default function AtLedgerPage() {
-  const navigate = useNavigate();
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearHoverTimer = useCallback(() => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-  }, []);
-
-  const goOnHover = useCallback(
-    (path: string) => {
-      clearHoverTimer();
-      hoverTimer.current = setTimeout(() => {
-        navigate(path);
-      }, HOVER_NAV_MS);
-    },
-    [clearHoverTimer, navigate],
-  );
-
-  useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
-
   return (
     <>
       <SectionHeader
@@ -134,17 +110,12 @@ export default function AtLedgerPage() {
           <div className={styles.card}>
             <div className={styles.scrollViewport}>
               <p className={styles.lead}>
-                Hover a section below — Cash Flow, Reconciliation, Overview, and Reports — or click
-                to open it.
+                Click a section below — Cash Flow, Reconciliation, Overview, or Reports — to open
+                it.
               </p>
-              <div className={styles.grid} onMouseLeave={clearHoverTimer}>
+              <div className={styles.grid}>
                 {LEDGER_BOXES.map((box) => (
-                  <Link
-                    key={box.id}
-                    to={box.path}
-                    className={styles.cardBtn}
-                    onMouseEnter={() => goOnHover(box.path)}
-                  >
+                  <Link key={box.id} to={box.path} className={styles.cardBtn}>
                     <span className={styles.cardIcon}>{box.icon}</span>
                     <span className={styles.cardEyebrow}>Ledger</span>
                     <span className={styles.cardTitle}>{box.title}</span>
