@@ -1536,13 +1536,21 @@ export async function fetchIsAdmin(): Promise<boolean> {
 
 export function getAdminDashboardUrl(): string {
   const raw = (import.meta.env.VITE_ADMIN_DASHBOARD_URL as string | undefined)?.trim();
-  return (raw || 'http://127.0.0.1:5174').replace(/\/$/, '');
+  if (raw) return raw.replace(/\/$/, '');
+  return (
+    import.meta.env.PROD
+      ? 'https://asktill-admin-dashboard.vercel.app'
+      : 'http://127.0.0.1:5174'
+  ).replace(/\/$/, '');
 }
 
 /** Opens Admin Dashboard in this tab using the current session (no second login). */
-export function openAdminDashboard(): void {
+export async function openAdminDashboard(): Promise<void> {
   const base = getAdminDashboardUrl();
-  const token = getToken();
+  let token = getToken();
+  if (!token || isTokenExpired(token)) {
+    token = await refreshAccessSession();
+  }
   if (token) {
     window.location.assign(`${base}/overview#access_token=${encodeURIComponent(token)}`);
     return;

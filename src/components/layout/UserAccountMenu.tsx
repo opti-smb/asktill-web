@@ -4,7 +4,8 @@ import { useClerk } from '@clerk/clerk-react';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../context/SubscriptionContext';
-import { getApiError, setAutoRenewalEnabled } from '../../lib/api';
+import { useDismissOnEscape } from '../../hooks/useDismissOnEscape';
+import { getApiError, openAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
 import { clearClerkSession, isClerkEnabled } from '../../lib/clerk';
 import { isPaidTier, tierDisplayLabel } from '../../lib/subscription';
 import styles from './UserAccountMenu.module.css';
@@ -16,12 +17,14 @@ type Props = {
 };
 
 export default function UserAccountMenu({ showName = false, showProfile = true }: Props) {
-  const { user, logout, refreshUser } = useAuth();
+  const { user, logout, refreshUser, isAdmin } = useAuth();
   const { isPaid } = useSubscription();
   const clerk = useClerk();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null);
+  const adminHoverTimer = useRef<number | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -43,17 +46,44 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
         setMenuOpen(false);
       }
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
 
     document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
     };
   }, [menuOpen]);
+
+  useDismissOnEscape(() => setMenuOpen(false), menuOpen);
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  const clearAdminHoverTimer = () => {
+    if (adminHoverTimer.current != null) {
+      window.clearTimeout(adminHoverTimer.current);
+      adminHoverTimer.current = null;
+    }
+  };
+
+  const openMenu = () => {
+    clearCloseTimer();
+    setMenuOpen(true);
+  };
+
+  const scheduleCloseMenu = () => {
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => setMenuOpen(false), 220);
+  };
+
+  const goAdminDashboard = () => {
+    clearAdminHoverTimer();
+    setMenuOpen(false);
+    void openAdminDashboard();
+  };
 
   const handleSignOut = async () => {
     if (signingOut) return;
@@ -94,7 +124,12 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
 
   return (
     <>
-      <div className={styles.wrap} ref={menuRef}>
+      <div
+        className={styles.wrap}
+        ref={menuRef}
+        onMouseEnter={openMenu}
+        onMouseLeave={scheduleCloseMenu}
+      >
         {showName ? <span className={styles.name}>{displayName}</span> : null}
         <button
           type="button"
@@ -124,6 +159,21 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
                 }}
               >
                 Profile
+              </button>
+            ) : null}
+            {isAdmin ? (
+              <button
+                type="button"
+                className={styles.menuItem}
+                role="menuitem"
+                onMouseEnter={() => {
+                  clearAdminHoverTimer();
+                  adminHoverTimer.current = window.setTimeout(goAdminDashboard, 350);
+                }}
+                onMouseLeave={clearAdminHoverTimer}
+                onClick={goAdminDashboard}
+              >
+                Admin Dashboard
               </button>
             ) : null}
             <button
