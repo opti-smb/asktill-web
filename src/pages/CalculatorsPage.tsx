@@ -1,7 +1,9 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
+import Field from '../components/calculators/Field';
+import ResultBlock from '../components/calculators/ResultBlock';
 import RiskGauge from '../components/calculators/RiskGauge';
 import SectionHeader from '../components/layout/SectionHeader';
 import { useAnalysis } from '../context/AnalysisContext';
@@ -10,6 +12,7 @@ import {
   useHasLiveDashboardAnalysis,
   useReportSync,
 } from '../hooks/useReportSync';
+import { mergeDefaults, type NumMap } from '../hooks/useCalculatorForm';
 import { getActiveStatementViewId } from '../lib/activeStatementView';
 import { fetchSavedReport } from '../lib/api';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
@@ -18,10 +21,9 @@ import {
   periodKeyFromLabel,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
+import { buildCalculatorHealthOverview } from '../lib/calculatorHealthReadings';
 import { statementDefaultsFor, statementProcessorRates } from '../lib/statementCalculatorInputs';
 import {
-  CALCULATOR_GROUPS,
-  CALCULATORS,
   calcBreakEven,
   calcBuyVsLease,
   calcCashFlowForecast,
@@ -40,249 +42,17 @@ import {
   calcSbaEstimate,
   calcTargetPrice,
   calcWeeklyTracker,
-  calculatorsInGroup,
   evaluateRisk,
   fmtDays,
   fmtMoney,
   fmtMoney2,
   fmtPct,
   getCalculator,
-  getCalculatorGroupFor,
   optN,
   type CalculatorId,
-  type RiskReading,
 } from '@asktill/calculators';
 
 import styles from './CalculatorsPage.module.css';
-
-type NumMap = Record<string, string>;
-
-const EMPTY_FIELDS: Record<CalculatorId, NumMap> = {
-  'cash-runway': {
-    cash: '',
-    burn: '',
-    overdraft: '',
-    loanPenalties: '',
-    processingFees: '',
-    taxes: '',
-  },
-  'cash-flow-forecast': {
-    cash: '',
-    inflow: '',
-    outflow: '',
-    interest: '',
-    penalties: '',
-    oneTimeFees: '',
-    growth: '',
-  },
-  'weekly-cash-flow': {
-    target: '',
-    week: '',
-    soFar: '',
-    refunds: '',
-    chargebacks: '',
-    fees: '',
-  },
-  'net-margin': {
-    revenue: '',
-    cogs: '',
-    opex: '',
-    interest: '',
-    loanPenalties: '',
-    processingFees: '',
-  },
-  'gross-margin': {
-    revenue: '',
-    cogs: '',
-    processingFees: '',
-    returns: '',
-    shipping: '',
-    penalties: '',
-  },
-  'break-even': {
-    fixed: '',
-    margin: '',
-    processingFeePct: '',
-    loanCharges: '',
-    salesTax: '',
-  },
-  'processor-compare': {
-    volume: '',
-    gatewayMonthly: '',
-    chargebacks: '',
-    pci: '',
-    perTxn: '',
-    avgTicket: '',
-  },
-  'payroll-pct-revenue': {
-    payroll: '',
-    revenue: '',
-    contractors: '',
-    bonuses: '',
-    agency: '',
-  },
-  'hiring-affordability': {
-    cash: '',
-    burn: '',
-    salary: '',
-    recruiting: '',
-    training: '',
-    overtime: '',
-    severance: '',
-    contributionMargin: '',
-  },
-  roi: {
-    investment: '',
-    returnAmount: '',
-    financingFees: '',
-    taxes: '',
-    penalties: '',
-    monthsHeld: '',
-  },
-  'buy-vs-lease': {
-    price: '',
-    months: '',
-    lease: '',
-    cashAvailable: '',
-    buyTax: '',
-    buyInterest: '',
-    buyMaintenance: '',
-    residual: '',
-    leaseTax: '',
-    leaseMaintenance: '',
-    earlyTermination: '',
-    discountRate: '',
-  },
-  'late-payment-cost': {
-    amount: '',
-    daysLate: '',
-    costOfCapital: '',
-    lateFees: '',
-    collectionFees: '',
-    legalCosts: '',
-  },
-  'employee-true-cost': {
-    salary: '',
-    burden: '',
-    signingBonus: '',
-    severance: '',
-  },
-  'loan-affordability': {
-    principal: '',
-    rate: '',
-    months: '',
-    freeCash: '',
-    origination: '',
-    insurance: '',
-    prepay: '',
-  },
-  'pricing-margin': { cost: '', margin: '', platformFee: '', processingFee: '', tax: '' },
-  'mca-apr': { advance: '', factor: '', months: '', origination: '', latePenalties: '' },
-  'sba-eligibility': {
-    revenue: '',
-    years: '',
-    requested: '',
-    packing: '',
-    guarantee: '',
-    processing: '',
-  },
-  'inventory-turnover': {
-    cogs: '',
-    inventory: '',
-    carrying: '',
-    carryingPct: '',
-    storage: '',
-    spoilage: '',
-    financing: '',
-  },
-};
-
-/** Statement values win; never invent industry rates / calendar week / fake COGS. */
-function mergeDefaults(id: CalculatorId, fromStmt: NumMap): NumMap {
-  const base = { ...EMPTY_FIELDS[id] };
-  for (const [k, v] of Object.entries(fromStmt)) {
-    if (v !== '' && v != null) base[k] = v;
-  }
-  return base;
-}
-
-function Field({
-  label,
-  name,
-  value,
-  onChange,
-  full,
-  readOnly,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (name: string, value: string) => void;
-  full?: boolean;
-  readOnly?: boolean;
-}) {
-  return (
-    <label className={`${styles.field} ${full ? styles.fieldFull : ''}`}>
-      <span className={styles.label}>{label}</span>
-      <input
-        className={styles.input}
-        name={name}
-        inputMode="decimal"
-        value={value}
-        readOnly={readOnly}
-        onChange={(e) => onChange(name, e.target.value)}
-      />
-    </label>
-  );
-}
-
-function ResultBlock({
-  title,
-  main,
-  sub,
-  formula,
-  tip,
-  assumptions,
-  risk,
-  children,
-}: {
-  title: string;
-  main?: string;
-  sub?: string;
-  formula?: string;
-  tip?: string;
-  assumptions?: string;
-  risk?: RiskReading | null;
-  children?: ReactNode;
-}) {
-  return (
-    <div className={styles.result}>
-      <div className={styles.resultTitle}>{title}</div>
-      {main ? <div className={styles.resultMain}>{main}</div> : null}
-      {sub ? <div className={styles.resultSub}>{sub}</div> : null}
-      {risk ? <RiskGauge reading={risk} /> : null}
-      {children}
-      {formula ? (
-        <div className={styles.formulaBox}>
-          <div className={styles.formulaLabel}>Formula used</div>
-          <pre className={styles.formula}>{formula}</pre>
-        </div>
-      ) : null}
-      {assumptions ? (
-        <div className={styles.assumeBox} role="note">
-          <div className={styles.assumeLabel}>What’s included</div>
-          <p className={styles.assumeText}>{assumptions}</p>
-        </div>
-      ) : null}
-      {tip ? (
-        <div className={styles.tipBox} role="note">
-          <div className={styles.tipLabel}>Friendly tip</div>
-          <p className={styles.tipText}>{tip}</p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export default function CalculatorsPage() {
   const { slug } = useParams();
@@ -297,7 +67,6 @@ export default function CalculatorsPage() {
   const [hydrating, setHydrating] = useState(false);
   const [hydrateError, setHydrateError] = useState<string | null>(null);
   const [values, setValues] = useState<NumMap>({});
-  const [openGroupIds, setOpenGroupIds] = useState<string[]>([]);
   const hydrateAttemptRef = useRef<string | null>(null);
 
   const sortedReports = useMemo(() => {
@@ -377,24 +146,34 @@ export default function CalculatorsPage() {
   const openCalculator = (id: CalculatorId) => {
     setSelectedId(id);
     applyStatementDefaults(id);
-    const g = getCalculatorGroupFor(id);
-    if (g) {
-      setOpenGroupIds((prev) => (prev.includes(g.id) ? prev : [...prev, g.id]));
-    }
   };
 
-  const toggleGroup = (groupId: string, calculatorIds: CalculatorId[]) => {
-    setOpenGroupIds((prev) => {
-      const closing = prev.includes(groupId);
-      if (closing) {
-        if (selectedId && calculatorIds.includes(selectedId)) {
-          setSelectedId(null);
-          setValues({});
-        }
-        return prev.filter((id) => id !== groupId);
-      }
-      return [...prev, groupId];
-    });
+  const closeCalculator = () => {
+    setSelectedId(null);
+    setValues({});
+  };
+
+  const healthOverview = useMemo(() => buildCalculatorHealthOverview(result), [result]);
+
+  const onBoxTilt = (e: MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    // Subtle tilt only — keep boxes from jumping forward
+    el.style.setProperty('--tilt-x', `${(-py * 3).toFixed(2)}deg`);
+    el.style.setProperty('--tilt-y', `${(px * 3.5).toFixed(2)}deg`);
+    el.style.setProperty('--tilt-glare-x', `${((px + 0.5) * 100).toFixed(1)}%`);
+    el.style.setProperty('--tilt-glare-y', `${((py + 0.5) * 100).toFixed(1)}%`);
+  };
+
+  const resetBoxTilt = (e: MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    el.style.setProperty('--tilt-x', '0deg');
+    el.style.setProperty('--tilt-y', '0deg');
+    el.style.setProperty('--tilt-glare-x', '50%');
+    el.style.setProperty('--tilt-glare-y', '50%');
   };
 
   const switchStatement = async (statementId: string) => {
@@ -415,16 +194,16 @@ export default function CalculatorsPage() {
 
   const monthSwitcher =
     isMultiMonth ? (
-      <div className={styles.monthBlock}>
-        <div className={styles.monthLabel}>Statement month</div>
-        <div className={styles.monthRow}>
+      <div className={styles.viewBar}>
+        <div className={styles.viewTitle}>Statement month</div>
+        <div className={styles.viewFilterRow}>
           {sortedReports.map((row) => {
             const selected = row.statement_id === activeStatementId;
             return (
               <button
                 key={row.statement_id}
                 type="button"
-                className={`${styles.monthChip} ${selected ? styles.monthChipActive : ''}`}
+                className={`${styles.viewFilter} ${selected ? styles.viewFilterActive : ''}`}
                 onClick={() => void switchStatement(row.statement_id)}
               >
                 {row.period_label || row.period_key || row.statement_id}
@@ -1729,19 +1508,21 @@ export default function CalculatorsPage() {
 
   if (!historyReady || hydrating) {
     return (
-      <div className={styles.dashMain}>
-        <SectionHeader
-          periodMeta="CALCULATORS"
-          title={
-            <>
-              Loading your <em>statements…</em>
-            </>
-          }
-        />
-        <div className="wrap" style={{ padding: '12px 0 28px' }}>
-          <p className={styles.emptyHint}>
-            {hydrating ? 'Opening your saved statement…' : 'Loading your account…'}
-          </p>
+      <div className={styles.letterScope}>
+        <div className={styles.main}>
+          <SectionHeader
+            periodMeta="CALCULATORS"
+            title={
+              <>
+                Loading your <em>statements…</em>
+              </>
+            }
+          />
+          <div className="wrap" style={{ padding: '12px 0 28px' }}>
+            <p className={styles.emptyHint}>
+              {hydrating ? 'Opening your saved statement…' : 'Loading your account…'}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -1749,111 +1530,280 @@ export default function CalculatorsPage() {
 
   if (!hasLiveAnalysis && savedCount === 0) {
     return (
-      <div className={styles.dashMain}>
-        <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.emptyHint} />
+      <div className={styles.letterScope}>
+        <div className={styles.main}>
+          <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.emptyHint} />
+        </div>
       </div>
     );
   }
 
   if (!analysis) {
     return (
-      <div className={styles.dashMain}>
-        <SectionHeader
-          periodMeta="CALCULATORS"
-          title={
-            <>
-              Numbers from <em>your statements.</em>
-            </>
-          }
-        />
-        <div className="wrap" style={{ padding: '12px 0 28px' }}>
-          <p className={styles.emptyHint}>
-            {hydrateError ??
-              (savedCount > 0
-                ? isMultiMonth
-                  ? 'You have multiple saved months. Pick one below — calculators use that month (same as Overview).'
-                  : 'Opening your saved month…'
-                : 'Upload statements once, then calculators fill from that data.')}
-          </p>
-          {monthSwitcher}
+      <div className={styles.letterScope}>
+        <div className={styles.main}>
+          <SectionHeader
+            periodMeta="CALCULATORS"
+            title={
+              <>
+                Numbers from <em>your statements.</em>
+              </>
+            }
+          />
+          <div className="wrap" style={{ padding: '12px 0 28px' }}>
+            <p className={styles.emptyHint}>
+              {hydrateError ??
+                (savedCount > 0
+                  ? isMultiMonth
+                    ? 'You have multiple saved months. Pick one below — calculators use that month (same as Overview).'
+                    : 'Opening your saved month…'
+                  : 'Upload statements once, then calculators fill from that data.')}
+            </p>
+            {monthSwitcher}
+          </div>
         </div>
       </div>
     );
   }
 
+  const scoreColor =
+    healthOverview?.band === 'green'
+      ? '#4DC8A0'
+      : healthOverview?.band === 'amber'
+        ? '#F5B942'
+        : healthOverview?.band === 'red'
+          ? '#E24B4A'
+          : 'rgba(255,255,255,0.85)';
+  const scoreFrac = Math.max(0, Math.min(1, (healthOverview?.score ?? 0) / 100));
+  const gaugeR = 88;
+  const gaugeCx = 110;
+  const gaugeCy = 100;
+  const gaugeLen = Math.PI * gaugeR;
+
   return (
-    <>
+    <div className={styles.letterScope}>
       <SectionHeader
         periodMeta={analysis.period_label ?? 'CALCULATORS'}
         title={
           <>
-            Numbers from <em>your statements.</em>
+            Calculator <em>health.</em>
           </>
         }
       />
-      <div className={styles.dashMain}>
+      <div className={styles.main}>
         <div className="wrap">
-          <div className={styles.dashCard}>
+          <div className={styles.page}>
             <div className={styles.scrollViewport}>
-              <p className={styles.lead}>
-                All {CALCULATORS.length} calculators — open a heading, then pick one. Fields we can
-                take from your uploaded statements fill in automatically; quote-only fields stay blank
-                for you to enter.
-                {isMultiMonth
-                  ? ` You have ${sortedReports.length} months saved; pick one below (same as Overview).`
-                  : ''}
-              </p>
-
               {monthSwitcher}
+
+              <div
+                className={`${styles.directions} ${styles.animIn} ${styles.box3d}`}
+                onMouseMove={onBoxTilt}
+                onMouseLeave={resetBoxTilt}
+              >
+                <div className={styles.directionsEyebrow}>How to read this</div>
+                <p className={styles.prose}>
+                  Every calculator runs on this statement&apos;s numbers and is scored against
+                  Asktill&apos;s risk thresholds. The bar under each reading shows where it lands:{' '}
+                  <span className={styles.legendKey}>
+                    <i className={styles.dotRed} />
+                    <b>At risk</b>
+                  </span>
+                  <span className={styles.legendKey}>
+                    <i className={styles.dotAmber} />
+                    <b>Watch</b>
+                  </span>
+                  <span className={styles.legendKey}>
+                    <i className={styles.dotGreen} />
+                    <b>Healthy</b>
+                  </span>
+                  Click any row to open inputs and adjust — formulas stay the same.
+                </p>
+              </div>
+
+              {healthOverview ? (
+                <div
+                  className={`${styles.overall} ${styles.animIn} ${styles.animDelay1} ${styles.box3d}`}
+                  onMouseMove={onBoxTilt}
+                  onMouseLeave={resetBoxTilt}
+                >
+                  <div className={styles.gaugeWrap}>
+                    <svg viewBox="0 0 220 118" width="220" className={styles.gaugeSvg} aria-hidden>
+                      <path
+                        d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
+                        fill="none"
+                        stroke="var(--letter-border)"
+                        strokeWidth="14"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        className={styles.gaugeProgress}
+                        d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
+                        fill="none"
+                        stroke={scoreColor}
+                        strokeWidth="14"
+                        strokeLinecap="round"
+                        strokeDasharray={`${scoreFrac * gaugeLen} ${gaugeLen}`}
+                        style={
+                          {
+                            '--gauge-len': gaugeLen,
+                            '--gauge-drawn': scoreFrac * gaugeLen,
+                          } as CSSProperties
+                        }
+                      />
+                    </svg>
+                    <div className={styles.gaugeScoreBlock}>
+                      <div className={styles.gaugeScore} style={{ color: scoreColor }}>
+                        {healthOverview.score}
+                      </div>
+                      <div className={styles.gaugeOf}>out of 100</div>
+                      <div className={styles.gaugeBand} style={{ color: scoreColor }}>
+                        {healthOverview.bandLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.ovRight}>
+                    <h2 className={styles.ovTitle}>Overall calculator health</h2>
+                    <p className={styles.ovMeta}>
+                      {healthOverview.periodLabel} · {healthOverview.scored} of{' '}
+                      {healthOverview.total} scored
+                    </p>
+                    <div className={styles.counts}>
+                      <div
+                        className={`${styles.count} ${styles.countGreen} ${styles.box3d}`}
+                        onMouseMove={onBoxTilt}
+                        onMouseLeave={resetBoxTilt}
+                      >
+                        <div className={styles.countN}>{healthOverview.healthy}</div>
+                        <div className={styles.countL}>
+                          <b>Healthy</b>
+                        </div>
+                      </div>
+                      <div
+                        className={`${styles.count} ${styles.countAmber} ${styles.box3d}`}
+                        onMouseMove={onBoxTilt}
+                        onMouseLeave={resetBoxTilt}
+                      >
+                        <div className={styles.countN}>{healthOverview.watch}</div>
+                        <div className={styles.countL}>
+                          <b>Watch</b>
+                        </div>
+                      </div>
+                      <div
+                        className={`${styles.count} ${styles.countRed} ${styles.box3d}`}
+                        onMouseMove={onBoxTilt}
+                        onMouseLeave={resetBoxTilt}
+                      >
+                        <div className={styles.countN}>{healthOverview.atRisk}</div>
+                        <div className={styles.countL}>
+                          <b>At risk</b>
+                        </div>
+                      </div>
+                    </div>
+                    <p className={`${styles.ovSummary} ${styles.prose}`}>{healthOverview.summary}</p>
+                  </div>
+                </div>
+              ) : null}
 
               <div className={`${styles.workbench} ${active ? styles.workbenchSplit : ''}`}>
                 <div className={styles.groupsPane}>
-                  <div
-                    className={`${styles.groups} ${openGroupIds.length > 0 ? styles.groupsHasOpen : ''}`}
-                  >
-                    {CALCULATOR_GROUPS.map((group) => {
-                      const open = openGroupIds.includes(group.id);
-                      const items = calculatorsInGroup(group);
-                      return (
-                        <div key={group.id} className={styles.group}>
-                          <button
-                            type="button"
-                            className={`${styles.groupHeading} ${open ? styles.groupHeadingOpen : styles.groupHeadingRest}`}
-                            aria-expanded={open}
-                            onClick={() => toggleGroup(group.id, group.calculatorIds)}
-                          >
-                            <span className={styles.groupTitle}>{group.title}</span>
-                            <span className={styles.groupMeta}>{items.length}</span>
-                            <span className={styles.groupChevron} aria-hidden>
-                              {open ? '−' : '+'}
+                  {healthOverview?.groups.map((group, gi) => {
+                    const tallies = {
+                      green: group.rows.filter((r) => r.band === 'green').length,
+                      amber: group.rows.filter((r) => r.band === 'amber').length,
+                      red: group.rows.filter((r) => r.band === 'red').length,
+                    };
+                    return (
+                      <section
+                        key={group.id}
+                        className={`${styles.cat} ${styles.animIn}`}
+                        style={{ animationDelay: `${0.12 + gi * 0.06}s` }}
+                      >
+                        <div className={styles.catHd}>
+                          <h3>
+                            <span className={styles.sectionNum}>{gi + 1}</span>
+                            {group.title}
+                            <span className={styles.cnum}>{group.rows.length}</span>
+                          </h3>
+                          <div className={styles.catTally}>
+                            <span>
+                              <i className={styles.dotGreen} />
+                              {tallies.green}
                             </span>
-                          </button>
-                          {open ? (
-                            <div className={styles.gridStmt}>
-                              {items.map((c) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  className={`${styles.card} ${active?.id === c.id ? styles.cardActive : ''}`}
-                                  onClick={() => openCalculator(c.id)}
-                                >
-                                  <div className={styles.cat}>{c.category}</div>
-                                  <div className={styles.cardTitle}>{c.name}</div>
-                                  <div className={styles.cardQ}>{c.question}</div>
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
+                            <span>
+                              <i className={styles.dotAmber} />
+                              {tallies.amber}
+                            </span>
+                            <span>
+                              <i className={styles.dotRed} />
+                              {tallies.red}
+                            </span>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className={styles.healthGrid}>
+                          {group.rows.map((row, ri) => (
+                            <button
+                              key={row.id}
+                              type="button"
+                              className={`${styles.calcRow} ${styles.box3d} ${styles[`band_${row.band}`]} ${
+                                active?.id === row.id ? styles.calcRowActive : ''
+                              }`}
+                              style={{ animationDelay: `${0.16 + gi * 0.06 + ri * 0.04}s` }}
+                              onMouseMove={onBoxTilt}
+                              onMouseLeave={resetBoxTilt}
+                              onAnimationEnd={(e) => {
+                                if (e.currentTarget === e.target) {
+                                  e.currentTarget.classList.add(styles.tiltReady);
+                                }
+                              }}
+                              onClick={() => openCalculator(row.id)}
+                            >
+                              <div className={styles.calcInfo}>
+                                <div className={styles.calcName}>{row.meta.name}</div>
+                                <div className={styles.calcQ}>{row.meta.question}</div>
+                              </div>
+                              <div className={styles.calcRead}>
+                                <div className={styles.metricLab}>{row.metricLabel}</div>
+                                <div className={styles.reading}>
+                                  <span className={styles.readingV}>{row.displayMain}</span>
+                                  {row.displayUnit ? (
+                                    <span className={styles.readingU}>{row.displayUnit}</span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className={styles.calcMeter}>
+                                {row.risk ? (
+                                  <RiskGauge reading={row.risk} compact />
+                                ) : (
+                                  <p className={styles.infoNote}>
+                                    {row.note ?? 'Open to enter inputs.'}
+                                  </p>
+                                )}
+                              </div>
+                              <div className={styles.cPill}>
+                                <span className={`${styles.pill} ${styles[`pill_${row.band}`]}`}>
+                                  {row.pillLabel}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
                 </div>
 
                 {active ? (
-                  <section className={styles.panel} aria-live="polite">
-                    <h2 className={styles.panelTitle}>{active.name}</h2>
-                    <p className={styles.panelQ}>{active.question}</p>
+                  <section className={`${styles.panel} ${styles.panelIn} ${styles.box3d}`} aria-live="polite">
+                    <div className={styles.panelTop}>
+                      <div>
+                        <h2 className={styles.panelTitle}>{active.name}</h2>
+                        <p className={styles.panelQ}>{active.question}</p>
+                      </div>
+                      <button type="button" className={styles.panelClose} onClick={closeCalculator}>
+                        Close
+                      </button>
+                    </div>
                     <form className={styles.form} onSubmit={onSubmit}>
                       {fields}
                     </form>
@@ -1865,6 +1815,6 @@ export default function CalculatorsPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

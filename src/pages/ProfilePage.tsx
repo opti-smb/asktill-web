@@ -10,6 +10,7 @@ import {
   fetchBillingInvoices,
   getApiError,
   openAdminDashboard,
+  prefetchAdminDashboard,
   setAutoRenewalEnabled,
   type BillingInvoice,
 } from '../lib/api';
@@ -303,8 +304,8 @@ export default function ProfilePage() {
               onMouseEnter={() => {
                 if (adminHoverTimer.current != null) window.clearTimeout(adminHoverTimer.current);
                 adminHoverTimer.current = window.setTimeout(() => {
-                  void openAdminDashboard();
-                }, 400);
+                  prefetchAdminDashboard();
+                }, 120);
               }}
               onMouseLeave={() => {
                 if (adminHoverTimer.current != null) {
@@ -315,7 +316,7 @@ export default function ProfilePage() {
             >
               <div>
                 <strong>Admin access</strong>
-                <p>Hover or click to open the AskTill Admin Console.</p>
+                <p>Click to open the AskTill Admin Console.</p>
               </div>
               <button
                 type="button"

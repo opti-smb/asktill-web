@@ -1544,12 +1544,32 @@ export function getAdminDashboardUrl(): string {
   ).replace(/\/$/, '');
 }
 
+/** Prefetch Admin Dashboard handoff (wake Auth + refresh JWT) without navigating. */
+export function prefetchAdminDashboard(): void {
+  warmupAuthService();
+  const token = getToken();
+  if (!token || isTokenExpired(token)) {
+    void refreshAccessSession().catch(() => undefined);
+  }
+}
+
 /** Opens Admin Dashboard in this tab using the current session (no second login). */
 export async function openAdminDashboard(): Promise<void> {
   const base = getAdminDashboardUrl();
+  warmupAuthService();
   let token = getToken();
   if (!token || isTokenExpired(token)) {
-    token = await refreshAccessSession();
+    try {
+      // Don't hang forever on a cold Auth wake — race a short budget then fall through.
+      token = await Promise.race([
+        refreshAccessSession(),
+        new Promise<null>((resolve) => {
+          window.setTimeout(() => resolve(null), 4_000);
+        }),
+      ]);
+    } catch {
+      token = null;
+    }
   }
   if (token) {
     window.location.assign(`${base}/overview#access_token=${encodeURIComponent(token)}`);
