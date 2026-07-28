@@ -24,6 +24,9 @@ export { normalizeTier, tierDisplayLabel } from './subscription';
 const TOKEN_KEY =
   import.meta.env.TOKEN_STORAGE_KEY ?? 'asktill_access_token';
 
+/** Access JWT lives in memory only (H1). Refresh uses httpOnly cookie on Auth. */
+let memoryAccessToken: string | null = null;
+
 export const extractAccessToken = (data: unknown): string | null => {
   if (!data || typeof data !== 'object') return null;
   const d = data as Record<string, unknown>;
@@ -35,9 +38,39 @@ export const extractAccessToken = (data: unknown): string | null => {
   );
 };
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+export const getToken = (): string | null => {
+  if (memoryAccessToken) return memoryAccessToken;
+  // One-time bridge: migrate legacy localStorage JWTs out of XSS-readable storage.
+  try {
+    const legacy = localStorage.getItem(TOKEN_KEY);
+    if (legacy?.trim()) {
+      memoryAccessToken = legacy.trim();
+      localStorage.removeItem(TOKEN_KEY);
+      return memoryAccessToken;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
+export const setToken = (token: string) => {
+  memoryAccessToken = token;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
+export const clearToken = () => {
+  memoryAccessToken = null;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+};
 
 export interface AuthUser {
   userId: string;
@@ -141,6 +174,7 @@ const mainApi = axios.create({
 const authApi = axios.create({
   baseURL: devBase() ?? import.meta.env.VITE_AUTH_API_URL,
   timeout: 90_000,
+  withCredentials: true,
 });
 const registerApi = axios.create({
   baseURL: devBase() ?? import.meta.env.VITE_REGISTER_API_URL,
@@ -1175,6 +1209,7 @@ const attachBearer = (cfg: InternalAxiosRequestConfig) => {
     url.includes('/api/auth/login')
     || url.includes('/api/auth/clerk-login')
     || url.includes('/api/auth/forgot-password')
+    || url.includes('/api/auth/refresh')
     || url.includes('/api/register')
   ) {
     if (cfg.headers) {
@@ -1247,6 +1282,21 @@ export function normalizeUser(data: unknown): AuthUser | null {
 
 export const login = (email: string, password: string) =>
   authApi.post('/api/auth/login', { email, password });
+
+/** Rotate httpOnly refresh cookie → new access JWT (memory-only on the client). */
+export async function refreshAccessSession(): Promise<string | null> {
+  try {
+    const { data } = await authApi.post('/api/auth/refresh', null, { timeout: 20_000 });
+    const token = extractAccessToken(data);
+    if (token) {
+      setToken(token);
+      return token;
+    }
+  } catch {
+    /* no refresh cookie or expired */
+  }
+  return null;
+}
 
 export interface CheckoutSessionResponse {
   checkoutUrl: string;
@@ -1468,6 +1518,59 @@ export function extractNotRegistered(err: unknown): NotRegisteredInfo | null {
 
 /** Stateless JWT — client discards token; safe to call on sign-out. */
 export const logoutApi = () => authApi.post('/api/auth/logout').catch(() => undefined);
+
+/** True when the current JWT user has a row in identity.admins. */
+export async function fetchIsAdmin(): Promise<boolean> {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const { status } = await authApi.get('/api/admin/me', {
+      timeout: 12_000,
+      validateStatus: (s) => s === 200 || s === 403 || s === 401,
+    });
+    return status === 200;
+  } catch {
+    return false;
+  }
+}
+
+export function getAdminDashboardUrl(): string {
+  const raw = (import.meta.env.VITE_ADMIN_DASHBOARD_URL as string | undefined)?.trim();
+  return (raw || 'http://127.0.0.1:5174').replace(/\/$/, '');
+}
+
+/** Opens Admin Dashboard in this tab using the current session (no second login). */
+export function openAdminDashboard(): void {
+  const base = getAdminDashboardUrl();
+  const token = getToken();
+  if (token) {
+    window.location.assign(`${base}/overview#access_token=${encodeURIComponent(token)}`);
+    return;
+  }
+  window.location.assign(`${base}/login`);
+}
+
+/** Read + clear one-time handoff token from Admin Console (hash #access_token=…). */
+export function consumeHandoffTokenFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const hash = window.location.hash.replace(/^#/, '');
+  const hashMatch = hash.match(/(?:^|&)access_token=([^&]+)/);
+  let token = hashMatch ? decodeURIComponent(hashMatch[1]) : null;
+
+  if (!token) {
+    const q = new URLSearchParams(window.location.search);
+    token = q.get('access_token');
+  }
+  if (!token?.trim()) return null;
+
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${window.location.search}`,
+  );
+  return token.trim();
+}
 
 export async function fetchCurrentUser() {
   warmupAuthService();

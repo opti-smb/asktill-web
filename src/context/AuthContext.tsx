@@ -11,13 +11,16 @@ import type { AxiosError } from 'axios';
 import {
   clearAppSession,
   clearToken,
+  consumeHandoffTokenFromUrl,
   extractAccessToken,
   fetchCurrentUser,
+  fetchIsAdmin,
   getToken,
   login as apiLogin,
   clerkLoginWithRetry,
   logoutApi,
   normalizeUser,
+  refreshAccessSession,
   resetUserScopedState,
   resetSessionExpiryDispatchGuard,
   SESSION_EXPIRED_EVENT,
@@ -35,6 +38,8 @@ interface AuthContextValue {
   token: string | null;
   user: AuthUser | null;
   isAuth: boolean;
+  /** True when identity.admins has a row for this user. */
+  isAdmin: boolean;
   ready: boolean;
   sessionExpired: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -50,10 +55,17 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTok] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [ready, setReady] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const expiryTimerRef = useRef<number | null>(null);
   const expiringRef = useRef(false);
+
+  const refreshAdminFlag = useCallback(async () => {
+    const ok = await fetchIsAdmin();
+    setIsAdmin(ok);
+    return ok;
+  }, []);
 
   const clearExpiryTimer = useCallback(() => {
     if (expiryTimerRef.current != null) {
@@ -66,7 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (accessToken: string) => {
       clearExpiryTimer();
       if (isTokenExpired(accessToken)) {
-        dispatchSessionExpiredOnce();
+        void refreshAccessSession().then((renewed) => {
+          if (renewed) {
+            setTok(renewed);
+            scheduleSessionExpiry(renewed);
+          } else {
+            dispatchSessionExpiredOnce();
+          }
+        });
         return;
       }
       const expiry = getTokenExpiryMs(accessToken);
@@ -76,13 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }, SESSION_TTL_MS);
         return;
       }
-      const delay = expiry - Date.now();
-      if (delay <= 0) {
-        dispatchSessionExpiredOnce();
-        return;
-      }
+      // Refresh ~60s before access JWT expires so the tab stays signed in.
+      const delay = Math.max(1_000, expiry - Date.now() - 60_000);
       expiryTimerRef.current = window.setTimeout(() => {
-        dispatchSessionExpiredOnce();
+        void refreshAccessSession().then((renewed) => {
+          if (renewed) {
+            setTok(renewed);
+            scheduleSessionExpiry(renewed);
+          } else {
+            dispatchSessionExpiredOnce();
+          }
+        });
       }, delay);
     },
     [clearExpiryTimer],
@@ -103,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAppSession();
       setTok(null);
       setUser(null);
+      setIsAdmin(false);
       if (options?.expired === true) {
         markSessionExpiredPersisted();
         setSessionExpired(true);
@@ -131,24 +155,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      const stored = getToken();
-      if (!stored) {
+      // Admin Console → AskTill handoff (#access_token=…).
+      const handoff = consumeHandoffTokenFromUrl();
+      if (handoff) {
+        setToken(handoff);
+      }
+
+      // Prefer silent refresh via httpOnly cookie (no access JWT in localStorage).
+      let access = getToken();
+      if (!access || isTokenExpired(access)) {
+        clearToken();
+        access = await refreshAccessSession();
+      }
+
+      if (!access) {
         if (!cancelled) {
           setTok(null);
           setUser(null);
+          setIsAdmin(false);
           setSessionExpired(isSessionExpiredPersisted());
           setReady(true);
         }
         return;
       }
 
-      if (isTokenExpired(stored)) {
+      if (isTokenExpired(access)) {
         clearToken();
         resetUserScopedState();
         markSessionExpiredPersisted();
         if (!cancelled) {
           setTok(null);
           setUser(null);
+          setIsAdmin(false);
           setSessionExpired(true);
           setReady(true);
         }
@@ -160,31 +198,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = normalizeUser(data);
         if (!profile) throw new Error('Invalid session');
         if (!cancelled) {
-          setTok(stored);
+          setTok(access);
           setUser(profile);
-          scheduleSessionExpiry(stored);
+          scheduleSessionExpiry(access);
+          void refreshAdminFlag();
           window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
           window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
         }
       } catch (err) {
         const status = (err as AxiosError)?.response?.status;
         if (status === 401) {
+          const renewed = await refreshAccessSession();
+          if (renewed && !cancelled) {
+            try {
+              const { data } = await fetchCurrentUser();
+              const profile = normalizeUser(data);
+              if (profile) {
+                setTok(renewed);
+                setUser(profile);
+                scheduleSessionExpiry(renewed);
+                void refreshAdminFlag();
+                window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
+                window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
+                return;
+              }
+            } catch {
+              /* fall through */
+            }
+          }
           clearToken();
           resetUserScopedState();
           markSessionExpiredPersisted();
           if (!cancelled) {
             setTok(null);
             setUser(null);
+            setIsAdmin(false);
             setSessionExpired(true);
           }
         } else if (!cancelled) {
-          const userId = getTokenSubject(stored);
-          setTok(stored);
+          const userId = getTokenSubject(access);
+          setTok(access);
           if (userId) {
             setUser({ userId, email: null, name: null, businessName: null });
-            scheduleSessionExpiry(stored);
+            scheduleSessionExpiry(access);
+            void refreshAdminFlag();
           } else {
             setUser(null);
+            setIsAdmin(false);
           }
         }
       } finally {
@@ -197,7 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       clearExpiryTimer();
     };
-  }, [clearExpiryTimer, scheduleSessionExpiry]);
+  }, [clearExpiryTimer, scheduleSessionExpiry, refreshAdminFlag]);
 
   useEffect(() => {
     const onExpired = () => {
@@ -242,10 +302,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         businessName: null,
       });
     }
+    void refreshAdminFlag();
     warmupServices();
     window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
     window.dispatchEvent(new CustomEvent(LETTER_UPDATED_EVENT));
-  }, [scheduleSessionExpiry]);
+  }, [scheduleSessionExpiry, refreshAdminFlag]);
 
   const establishSessionFromResponse = useCallback(
     (data: unknown, fallbackEmail?: string) => {
@@ -287,13 +348,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profile = normalizeUser(data);
       if (profile) {
         setUser(profile);
+        void refreshAdminFlag();
         return profile;
       }
     } catch {
       /* keep existing user on transient errors */
     }
     return user;
-  }, [user]);
+  }, [user, refreshAdminFlag]);
 
   const patchUserTier = useCallback((tier: string) => {
     setUser((prev) => (prev ? { ...prev, tier } : prev));
@@ -304,7 +366,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, isAuth, ready, sessionExpired, login, establishSessionFromResponse, loginWithClerkSession, logout, refreshUser, patchUserTier }}
+      value={{
+        token,
+        user,
+        isAuth,
+        isAdmin,
+        ready,
+        sessionExpired,
+        login,
+        establishSessionFromResponse,
+        loginWithClerkSession,
+        logout,
+        refreshUser,
+        patchUserTier,
+      }}
     >
       {children}
     </AuthContext.Provider>
