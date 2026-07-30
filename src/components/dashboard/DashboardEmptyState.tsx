@@ -1,5 +1,6 @@
 import SectionHeader from '../layout/SectionHeader';
 import DashboardWelcome, { dashboardWelcomeHeader } from './DashboardWelcome';
+import Spinner from '../common/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { firstNameFromUser } from '../../lib/atLetterPreview';
 
@@ -24,7 +25,9 @@ export default function DashboardEmptyState({
         {historyReady ? (
           <DashboardWelcome />
         ) : (
-          <p className={loadingHintClassName}>Loading your account…</p>
+          <div className={loadingHintClassName} style={{ color: 'var(--muted)' }}>
+            <Spinner label="Loading your statements…" size="sm" />
+          </div>
         )}
       </div>
     </>

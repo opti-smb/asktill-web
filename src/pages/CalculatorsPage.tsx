@@ -1820,7 +1820,7 @@ export default function CalculatorsPage() {
                     loadStatus ??
                     (savedCount > 0
                       ? 'Opening your latest statement month…'
-                      : 'Loading your account…')
+                      : 'Loading your statements…')
                   }
                   size="sm"
                 />
