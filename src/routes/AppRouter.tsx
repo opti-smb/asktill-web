@@ -29,16 +29,13 @@ import ProtectedRoute from '../components/auth/ProtectedRoute';
 import PostPaymentRoute from '../components/auth/PostPaymentRoute';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
 import { useAuth } from '../context/AuthContext';
+import PageLoader from '../components/common/PageLoader';
 
 const CalculatorsPage = lazy(() => import('../pages/CalculatorsPage'));
 const ChannelPartnersPage = lazy(() => import('../pages/ChannelPartnersPage'));
 
 function RouteFallback() {
-  return (
-    <div style={{ padding: '2rem', textAlign: 'center' }} role="status">
-      Loading…
-    </div>
-  );
+  return <PageLoader title="Loading page" detail="Getting everything ready…" />;
 }
 
 function UploadPageRoute() {
