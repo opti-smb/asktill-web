@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 
+import PageLoader from '../common/PageLoader';
 import { useAuth } from '../../context/AuthContext';
 import { isSessionExpiredPersisted } from '../../lib/session';
 
@@ -11,18 +12,12 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const showSessionExpired = sessionExpired || isSessionExpiredPersisted();
 
   if (!ready) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>;
+    return <PageLoader title="Signing you in" detail="Restoring your AskTill session…" />;
   }
 
   if (showSessionExpired) {
-    return (
-      <>
-        <div aria-hidden="true" style={{ pointerEvents: 'none', userSelect: 'none' }}>
-          {children}
-        </div>
-        <SessionExpiredOverlay returnTo={location.pathname} />
-      </>
-    );
+    // Do not keep dashboard data mounted behind the overlay (devtools / a11y can still read it).
+    return <SessionExpiredOverlay returnTo={location.pathname} />;
   }
 
   if (!isAuth) {

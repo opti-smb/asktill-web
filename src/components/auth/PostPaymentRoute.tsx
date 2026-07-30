@@ -1,18 +1,28 @@
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { getToken } from '../../lib/api';
-import { isTokenExpired } from '../../lib/jwt';
+import PageLoader from '../common/PageLoader';
+import { useAuth } from '../../context/AuthContext';
 
 /**
- * After Stripe redirect — only require a stored JWT, not a finished /me bootstrap.
- * ProtectedRoute waits on fetchCurrentUser (slow) and showed generic "Loading…" first.
+ * After Stripe redirect the in-memory access JWT is gone (full page navigation).
+ * Wait for Auth bootstrap (httpOnly refresh + checkout sessionStorage bridge)
+ * before deciding — never bounce to /login while restore is still in flight.
  */
 export default function PostPaymentRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const token = getToken();
+  const { ready, isAuth } = useAuth();
   const from = `${location.pathname}${location.search}`;
 
-  if (!token || isTokenExpired(token)) {
+  if (!ready) {
+    return (
+      <PageLoader
+        title="Payment successful"
+        detail="Restoring your session so you can continue…"
+      />
+    );
+  }
+
+  if (!isAuth) {
     return <Navigate to="/login" replace state={{ from }} />;
   }
 
