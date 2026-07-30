@@ -1,4 +1,5 @@
 import type { RewardsBalance, RewardsLedgerEntry } from './api';
+import { USER_LOGOUT_EVENT } from './api';
 
 const SS_KEY = 'asktill:rewards-wallet';
 
@@ -43,4 +44,8 @@ export function clearCachedRewardsWallet(): void {
   } catch {
     /* ignore */
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(USER_LOGOUT_EVENT, () => clearCachedRewardsWallet());
 }
