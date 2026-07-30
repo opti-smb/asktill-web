@@ -17,6 +17,7 @@ import {
 import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from './atLetterStatement';
+import { resolvePublicUrl } from './publicUrls';
 export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
 export type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
 export { normalizeTier, tierDisplayLabel } from './subscription';
@@ -179,7 +180,7 @@ function authApiBase(): string {
 }
 
 const mainApi = axios.create({
-  baseURL: devBase() ?? import.meta.env.VITE_API_BASE_URL,
+  baseURL: devBase() ?? resolvePublicUrl(import.meta.env.VITE_API_BASE_URL, 'api'),
 });
 const authApi = axios.create({
   baseURL: authApiBase(),
@@ -187,11 +188,11 @@ const authApi = axios.create({
   withCredentials: true,
 });
 const registerApi = axios.create({
-  baseURL: devBase() ?? import.meta.env.VITE_REGISTER_API_URL,
+  baseURL: devBase() ?? resolvePublicUrl(import.meta.env.VITE_REGISTER_API_URL, 'register'),
   timeout: 90_000,
 });
 const subscriptionApi = axios.create({
-  baseURL: devBase() ?? import.meta.env.VITE_SUBSCRIPTION_API_URL ?? 'http://localhost:8005',
+  baseURL: devBase() ?? resolvePublicUrl(import.meta.env.VITE_SUBSCRIPTION_API_URL, 'subscription'),
   timeout: 60_000,
 });
 
@@ -926,14 +927,15 @@ function serviceOrigin(
     }
     return '/auth-api';
   }
-  const raw = import.meta.env[envKey];
-  if (typeof raw === 'string' && raw.trim()) {
-    return raw.trim().replace(/\/$/, '');
-  }
-  if (envKey === 'VITE_API_BASE_URL') return 'http://localhost:8000';
-  if (envKey === 'VITE_AUTH_API_URL') return 'http://localhost:8002';
-  if (envKey === 'VITE_SUBSCRIPTION_API_URL') return 'http://localhost:8005';
-  return 'http://localhost:8003';
+  const key =
+    envKey === 'VITE_API_BASE_URL'
+      ? 'api'
+      : envKey === 'VITE_AUTH_API_URL'
+        ? 'auth'
+        : envKey === 'VITE_SUBSCRIPTION_API_URL'
+          ? 'subscription'
+          : 'register';
+  return resolvePublicUrl(import.meta.env[envKey], key);
 }
 
 function isHealthyServicePayload(data: unknown): boolean {
@@ -1595,13 +1597,10 @@ export async function fetchIsAdmin(): Promise<boolean> {
 }
 
 export function getAdminDashboardUrl(): string {
-  const raw = (import.meta.env.VITE_ADMIN_DASHBOARD_URL as string | undefined)?.trim();
-  if (raw) return raw.replace(/\/$/, '');
-  return (
-    import.meta.env.PROD
-      ? 'https://asktill-admin-dashboard.vercel.app'
-      : 'http://127.0.0.1:5174'
-  ).replace(/\/$/, '');
+  return resolvePublicUrl(
+    import.meta.env.VITE_ADMIN_DASHBOARD_URL as string | undefined,
+    'admin',
+  );
 }
 
 /** Prefetch Admin Dashboard handoff (wake Auth + refresh JWT) without navigating. */
