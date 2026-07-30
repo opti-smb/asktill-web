@@ -1,23 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { PROD_URLS, resolvePublicUrl } from '../../lib/publicUrls';
 
 import styles from './AtHelpPanel.module.css';
 
-const PROD_AGENTS = 'https://asktill-agents.onrender.com';
 const READY_MSG = 'asktill-at-help-ready';
 
-function isLocalDevHost(url: string): boolean {
-  return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
-}
-
 function agentsBaseUrl(): string {
-  const raw = (import.meta.env.VITE_AGENTS_API_URL as string | undefined)?.trim();
-  if (import.meta.env.DEV) {
-    return (raw || 'http://127.0.0.1:8001').replace(/\/$/, '');
-  }
-  // Never let a local .env leak into the production iframe.
-  if (!raw || isLocalDevHost(raw)) return PROD_AGENTS;
-  return raw.replace(/\/$/, '');
+  return resolvePublicUrl(
+    import.meta.env.VITE_AGENTS_API_URL as string | undefined,
+    'agents',
+  );
 }
 
 interface Props {
@@ -52,13 +45,13 @@ export default function AtHelpPanel({ onClose }: Props) {
       const data = event.data;
       if (!data || typeof data !== 'object') return;
       if ((data as { type?: string }).type !== READY_MSG) return;
-      const origin = event.origin;
-      if (
-        origin === PROD_AGENTS ||
-        origin.startsWith('http://127.0.0.1:') ||
-        origin.startsWith('http://localhost:')
-      ) {
-        setFrameState('ready');
+      try {
+        const host = new URL(event.origin).hostname;
+        if (host === 'localhost' || host === '127.0.0.1' || event.origin === PROD_URLS.agents) {
+          setFrameState('ready');
+        }
+      } catch {
+        /* ignore */
       }
     }
     window.addEventListener('message', onMessage);
