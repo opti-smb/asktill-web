@@ -25,6 +25,13 @@ import {
 } from '../lib/atLetterStatement';
 import { buildCalculatorHealthOverview } from '../lib/calculatorHealthReadings';
 import { buildCalculatorPerformance } from '../lib/calculatorPerformance';
+import {
+  getCachedCalculatorReport,
+  getCachedRollingWindow,
+  putCachedCalculatorReport,
+  putCachedRollingWindow,
+  rollingWindowKey,
+} from '../lib/calculatorRollingCache';
 import { statementDefaultsFor, statementProcessorRates } from '../lib/statementCalculatorInputs';
 import {
   calcBreakEven,
@@ -99,7 +106,7 @@ export default function CalculatorsPage() {
   const [rollingError, setRollingError] = useState<string | null>(null);
   /** Live status while opening months — month name + progress, not a vague "Loading…". */
   const [loadStatus, setLoadStatus] = useState<string | null>(null);
-  /** Cache fetched months so Last 3 months / revisits don’t reload everything. */
+  /** In-component mirror; durable store is calculatorRollingCache (survives tab changes). */
   const rollingCacheRef = useRef<Map<string, AnalyzeResult>>(new Map());
 
   const sortedReports = useMemo(() => {
@@ -132,11 +139,19 @@ export default function CalculatorsPage() {
       const already =
         mode === ROLLING_VIEW ? activeView === ROLLING_VIEW : activeView !== ROLLING_VIEW;
       if (already) return;
+      // Instant when Last 3 months is already cached — no loading flash on hover.
+      if (mode === ROLLING_VIEW) {
+        const key = rollingWindowKey(sortedReports.slice(-3).map((r) => r.statement_id));
+        if (key && getCachedRollingWindow(key)) {
+          setViewMode('rolling');
+          return;
+        }
+      }
       hoverTimer.current = setTimeout(() => {
         setViewMode(mode);
       }, HOVER_VIEW_MS);
     },
-    [activeView, clearHoverTimer, activeStatementId, analysis],
+    [activeView, clearHoverTimer, activeStatementId, analysis, sortedReports],
   );
 
   useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
@@ -245,20 +260,20 @@ export default function CalculatorsPage() {
 
   const rollingKey = useMemo(
     () =>
-      sortedReports
-        .slice(-3)
-        .map((r) => r.statement_id)
-        .join('|'),
+      rollingWindowKey(
+        sortedReports.slice(-3).map((r) => r.statement_id),
+      ),
     [sortedReports],
   );
 
-  // Keep current in-memory statement in the rolling cache.
+  // Keep current in-memory statement in the rolling cache (session + durable).
   useEffect(() => {
     if (!result?.statement_id || !getAnalyzeAnalysis(result)) return;
     rollingCacheRef.current.set(result.statement_id, result);
+    putCachedCalculatorReport(result);
   }, [result]);
 
-  // Load latest ≤3 months once; reuse cache on later clicks.
+  // Load latest ≤3 months once; reuse durable cache on hover / tab revisit.
   useEffect(() => {
     if (monthOnly) return;
     if (!sortedReports.length) {
@@ -269,12 +284,27 @@ export default function CalculatorsPage() {
     }
 
     const latest = sortedReports.slice(-3);
+    const windowHit = getCachedRollingWindow(rollingKey);
+    if (windowHit && windowHit.length === latest.length) {
+      for (const r of windowHit) {
+        if (r.statement_id) rollingCacheRef.current.set(r.statement_id, r);
+      }
+      setRollingResults(windowHit);
+      setRollingLoading(false);
+      setRollingError(null);
+      setLoadStatus(null);
+      return;
+    }
 
-    // Already have every month for this window — open instantly.
     const cached = latest
-      .map((row) => rollingCacheRef.current.get(row.statement_id))
+      .map(
+        (row) =>
+          rollingCacheRef.current.get(row.statement_id) ??
+          getCachedCalculatorReport(row.statement_id),
+      )
       .filter((r): r is AnalyzeResult => Boolean(r && getAnalyzeAnalysis(r)));
     if (cached.length === latest.length) {
+      putCachedRollingWindow(rollingKey, cached);
       setRollingResults(cached);
       setRollingLoading(false);
       setRollingError(null);
@@ -285,7 +315,13 @@ export default function CalculatorsPage() {
     let cancelled = false;
     setRollingLoading(true);
     setRollingError(null);
-    const missing = latest.filter((row) => !rollingCacheRef.current.has(row.statement_id));
+    const missing = latest.filter(
+      (row) =>
+        !(
+          rollingCacheRef.current.has(row.statement_id) ||
+          getCachedCalculatorReport(row.statement_id)
+        ),
+    );
     setLoadStatus(
       missing.length
         ? `Opening ${missing.length} saved month${missing.length === 1 ? '' : 's'}…`
@@ -299,22 +335,28 @@ export default function CalculatorsPage() {
           const row = latest[i]!;
           if (cancelled) return;
           const label = (row.period_label || row.period_key || 'statement').trim();
-          const hit = rollingCacheRef.current.get(row.statement_id);
+          const hit =
+            rollingCacheRef.current.get(row.statement_id) ??
+            getCachedCalculatorReport(row.statement_id);
           if (hit && getAnalyzeAnalysis(hit)) {
+            rollingCacheRef.current.set(row.statement_id, hit);
             loaded.push(hit);
             continue;
           }
           setLoadStatus(`Opening ${label}… (${i + 1} of ${latest.length})`);
           if (result?.statement_id === row.statement_id && getAnalyzeAnalysis(result)) {
             rollingCacheRef.current.set(row.statement_id, result);
+            putCachedCalculatorReport(result);
             loaded.push(result);
             continue;
           }
           const { data } = await fetchSavedReport(row.statement_id);
           rollingCacheRef.current.set(row.statement_id, data);
+          putCachedCalculatorReport(data);
           loaded.push(data);
         }
         if (!cancelled) {
+          putCachedRollingWindow(rollingKey, loaded);
           setRollingResults(loaded);
         }
       } catch {
@@ -358,8 +400,10 @@ export default function CalculatorsPage() {
 
   const switchStatement = async (statementId: string) => {
     if (!statementId || statementId === result?.statement_id || hydrating) return;
-    const cached = rollingCacheRef.current.get(statementId);
+    const cached =
+      rollingCacheRef.current.get(statementId) ?? getCachedCalculatorReport(statementId);
     if (cached && getAnalyzeAnalysis(cached)) {
+      rollingCacheRef.current.set(statementId, cached);
       loadSavedReport(cached);
       return;
     }
@@ -372,6 +416,7 @@ export default function CalculatorsPage() {
     try {
       const { data } = await fetchSavedReport(statementId);
       rollingCacheRef.current.set(statementId, data);
+      putCachedCalculatorReport(data);
       loadSavedReport(data);
     } catch {
       hydrateAttemptRef.current = null;
