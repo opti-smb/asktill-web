@@ -846,6 +846,9 @@ export function extractUploadMismatches(err: unknown): UploadValidationResult | 
 }
 
 export const validateUploads = (files: UploadFiles) => {
+  if (!getToken()) {
+    return Promise.reject(new Error('Sign in required to upload statements.'));
+  }
   const form = new FormData();
   if (files.bank) form.append('bank', files.bank, files.bank.name);
   if (files.pos) form.append('pos', files.pos, files.pos.name);
@@ -1632,9 +1635,9 @@ export async function openAdminDashboard(): Promise<void> {
     );
   }
 
-  // Query + hash: Admin reads either; never fall through to Admin /login.
+  // Hash only — avoids leaking JWT via Referer / server access logs.
   const q = encodeURIComponent(token);
-  window.location.assign(`${base}/overview?access_token=${q}#access_token=${q}`);
+  window.location.assign(`${base}/overview#access_token=${q}`);
 }
 
 /** Read + clear one-time handoff token from Admin Console (hash #access_token=…). */
@@ -1839,6 +1842,11 @@ async function analyzeViaStream(
   onEvent: (event: AnalyzeProgressEvent) => void,
   force = false,
 ): Promise<AnalyzeResult> {
+  const token = getToken();
+  if (!token) {
+    throw new Error('Sign in required to upload and analyze statements.');
+  }
+
   const fileCount = [files.bank, files.pos, files.ecommerce].filter(Boolean).length;
   onEvent({
     stage: 'upload',
@@ -1847,9 +1855,9 @@ async function analyzeViaStream(
   });
 
   const form = analyzeFormData(files.bank, files.pos, files.ecommerce);
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
 
   const controller = new AbortController();
   let timeoutId: number | null = null;
@@ -2111,6 +2119,9 @@ export async function analyzeWithProgress(
   onEvent: (event: AnalyzeProgressEvent) => void,
   options?: { force?: boolean },
 ): Promise<AnalyzeResult> {
+  if (!getToken()) {
+    throw new Error('Sign in required to upload and analyze statements.');
+  }
   const force = Boolean(options?.force);
   try {
     return await analyzeViaStream(files, onEvent, force);
