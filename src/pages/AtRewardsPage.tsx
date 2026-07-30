@@ -7,23 +7,11 @@ import {
   type RewardsBalance,
   type RewardsLedgerEntry,
 } from '../lib/api';
+import { formatMoney, formatPoints } from '../lib/format';
 
 import styles from './AtRewardsPage.module.css';
 
 const LIVE_POLL_MS = 15_000;
-
-function formatMoney(usd: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(usd);
-}
-
-function formatPoints(n: number): string {
-  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(n)));
-}
 
 function formatClock(d: Date): string {
   return d.toLocaleTimeString(undefined, {
@@ -126,6 +114,8 @@ export default function AtRewardsPage() {
       />
       <div className={styles.main}>
         <div className="wrap">
+          <div className={styles.page}>
+            <div className={styles.scrollViewport}>
           <div className={styles.statusBar}>
             <div className={styles.statusLeft}>
               <span className={styles.statusTitle}>Live wallet</span>
@@ -250,6 +240,8 @@ export default function AtRewardsPage() {
               </ul>
             )}
           </section>
+            </div>
+          </div>
         </div>
       </div>
     </>

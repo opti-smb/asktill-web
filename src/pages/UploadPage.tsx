@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../components/common/Logo';
@@ -16,6 +16,7 @@ import {
   fetchReportHistory,
   fetchSavedReport,
   freeTierLimitNotice,
+  freeTierNoticeFromStoredMonth,
   getApiError,
   getApiErrorAsync,
   hasFreeTierLimitConflict,
@@ -30,14 +31,13 @@ import {
   validateUploadsWithRetry,
   ensureAuthServiceReady,
   ensureBackendServiceReady,
-  wasBackendRecentlyPrimed,
   warmupBackend,
   warningsBySlot,
   type FreeTierLimitNotice,
   type UploadValidationResult,
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
-import { pickMostRecentlyUploadedReport } from '../lib/atLetterStatement';
+import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from '../lib/atLetterStatement';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import type { FileUploadState } from '../types';
@@ -62,6 +62,12 @@ const steps = [
 
 function fileFromList(list: FileList | undefined): File | undefined {
   return list?.[0];
+}
+
+function fileListFromFile(file: File): FileList {
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  return transfer.files;
 }
 
 function resolveSlotWarnings(
@@ -94,7 +100,8 @@ function uploadStateFromFile(
   checking: boolean,
   validationFailed: boolean,
   verifyErrorMessage?: string | null,
-  validationCurrent: boolean = true,
+  /** True when this slot's file was already included in the last successful validate. */
+  slotAlreadyVerified: boolean = false,
 ): FileUploadState {
   if (!file) return { uploaded: false };
   const period = validation?.detected_periods?.[slot];
@@ -117,6 +124,7 @@ function uploadStateFromFile(
     };
   }
 
+  // Always show checking while in-flight — never fall through to green.
   if (checking) {
     return {
       uploaded: true,
@@ -126,15 +134,15 @@ function uploadStateFromFile(
       sizeLabel: size,
       periodLabel: filenamePeriod,
       statusLine: filenamePeriod
-        ? `Likely ${filenamePeriod} — uploading & confirming…`
-        : 'Uploading file and checking statement month…',
+        ? `Checking ${filenamePeriod}…`
+        : 'Checking statement month…',
       detail: filenamePeriod
         ? `${size} · ${filenamePeriod} · verifying…`
-        : `${size} · uploading & verifying…`,
+        : `${size} · verifying…`,
     };
   }
 
-  if (validationFailed) {
+  if (validationFailed && !slotAlreadyVerified) {
     return {
       uploaded: true,
       checking: false,
@@ -151,8 +159,8 @@ function uploadStateFromFile(
     };
   }
 
-  // File changed but validate request not started yet (debounce) — don't show Ready.
-  if (!validationCurrent) {
+  // New/changed slot waiting for debounce or in-flight batch validate.
+  if (!slotAlreadyVerified) {
     return {
       uploaded: true,
       checking: true,
@@ -180,6 +188,18 @@ function uploadStateFromFile(
     statusLine: confirmedPeriod ? `Ready · ${confirmedPeriod}` : 'Ready to analyze',
     detail: confirmedPeriod ? `${size} · ${confirmedPeriod}` : size,
   };
+}
+
+function slotKeyAlreadyVerified(
+  slot: UploadSlot,
+  fileKeyValue: string,
+  lastValidatedKeys: string,
+): boolean {
+  if (!fileKeyValue || !lastValidatedKeys) return false;
+  const [bank, pos, ecommerce] = lastValidatedKeys.split('|');
+  if (slot === 'bank') return fileKeyValue === bank;
+  if (slot === 'pos') return fileKeyValue === pos;
+  return fileKeyValue === ecommerce;
 }
 
 function syncPinnedSlotWarnings(
@@ -233,9 +253,15 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     lastStreamStatementId,
     getLastStreamStatementId,
     setFiles,
+    files: draftFiles,
+    uploadValidation: draftValidation,
+    uploadValidatedKeys: draftValidatedKeys,
+    setUploadValidationDraft,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
   const { isPaid } = useSubscription();
+  const draftHydratedRef = useRef(false);
+  const skipEmptyFileSyncRef = useRef(false);
 
   useEffect(() => {
     // Clear leftover flag from older deploys that gated upload behind a sign-in modal.
@@ -258,6 +284,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   }, [location.pathname, navigate]);
   const [showPreviousReports, setShowPreviousReports] = useState(false);
   const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
+  /** Free-tier: period_key → label from report history (for instant upgrade UX). */
+  const [storedFreePeriods, setStoredFreePeriods] = useState<Record<string, string>>({});
   const [duplicateBusy, setDuplicateBusy] = useState(false);
   const [validation, setValidation] = useState<UploadValidationResult | null>(null);
   const [pinnedSlotWarnings, setPinnedSlotWarnings] = useState<
@@ -281,6 +309,12 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
   const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
+  const storedFreePeriodsRef = useRef(storedFreePeriods);
+  const savedReportCountRef = useRef(savedReportCount);
+  const isPaidRef = useRef(isPaid);
+  storedFreePeriodsRef.current = storedFreePeriods;
+  savedReportCountRef.current = savedReportCount;
+  isPaidRef.current = isPaid;
 
   const rejectFreeTierUpload = useCallback(
     (notice: FreeTierLimitNotice | null) => {
@@ -290,16 +324,42 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       setValidation(null);
       setPinnedSlotWarnings({});
       validatedFileKeysRef.current = '';
+      setUploadValidationDraft(null, '');
       setSlotChecking({ bank: false, pos: false, ecommerce: false });
       resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
       setUploadFormKey((key) => key + 1);
     },
-    [resetForm, isPaid],
+    [resetForm, isPaid, setUploadValidationDraft],
   );
 
+  // Restore files + green status after Profile / dashboard nav unmounts this page.
   useEffect(() => {
-    // Backend verifies JWT locally — only wake backend for upload validate.
+    if (draftHydratedRef.current) return;
+    draftHydratedRef.current = true;
+    const hasDraft = Boolean(draftFiles.bank || draftFiles.pos || draftFiles.ecommerce);
+    if (!hasDraft) return;
+    // Prevent the empty first paint from wiping AnalysisContext.files.
+    skipEmptyFileSyncRef.current = true;
+    resetForm({
+      bank: draftFiles.bank ? fileListFromFile(draftFiles.bank) : undefined,
+      pos: draftFiles.pos ? fileListFromFile(draftFiles.pos) : undefined,
+      ecommerce: draftFiles.ecommerce ? fileListFromFile(draftFiles.ecommerce) : undefined,
+    });
+    if (draftValidation) {
+      setValidation(draftValidation);
+      validatedFileKeysRef.current = draftValidatedKeys;
+    }
+    setUploadFormKey((key) => key + 1);
+  }, [draftFiles, draftValidation, draftValidatedKeys, resetForm]);
+
+  useEffect(() => {
+    // Wake backend for upload validate, then keep it warm while this page is open
+    // (Render free tier spins down after idle — that is what makes checks feel stuck).
     void ensureBackendServiceReady(45_000);
+    const keepAlive = window.setInterval(() => {
+      void ensureBackendServiceReady(8_000);
+    }, 90_000);
+    return () => window.clearInterval(keepAlive);
   }, []);
 
   const openSavedReport = useCallback(
@@ -356,7 +416,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     setUploadFormKey((key) => key + 1);
     validatedFileKeysRef.current = '';
     validationRequestRef.current += 1;
-  }, [resetForm]);
+    setUploadValidationDraft(null, '');
+    setFiles({});
+  }, [resetForm, setUploadValidationDraft, setFiles]);
 
   useEffect(() => {
     const onReset = () => resetUploadPage();
@@ -379,20 +441,41 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const currentFileKeys = `${bankKey}|${posKey}|${ecommerceKey}`;
 
   // Keep Ask drawer in sync with AT Uploads slot files (no re-upload in chat).
+  // Skip until draft hydrate finishes — otherwise remount would wipe context files.
   useEffect(() => {
-    setFiles({
-      bank: bankFile,
-      pos: posFile,
-      ecommerce: ecommerceFile,
+    if (!draftHydratedRef.current) return;
+    const empty = !bankFile && !posFile && !ecommerceFile;
+    if (empty && skipEmptyFileSyncRef.current) return;
+    skipEmptyFileSyncRef.current = false;
+    // Defer so month-check POST is not competing with a full context re-render.
+    startTransition(() => {
+      setFiles({
+        bank: bankFile,
+        pos: posFile,
+        ecommerce: ecommerceFile,
+      });
     });
   }, [bankKey, posKey, ecommerceKey, bankFile, posFile, ecommerceFile, setFiles]);
+
+  // Persist green status for Profile round-trips — only after check settles.
+  useEffect(() => {
+    if (!draftHydratedRef.current) return;
+    if (uploadedCount > 0 && validatedFileKeysRef.current !== currentFileKeys) return;
+    startTransition(() => {
+      setUploadValidationDraft(validation, validatedFileKeysRef.current);
+    });
+  }, [validation, currentFileKeys, uploadedCount, setUploadValidationDraft]);
 
   useEffect(() => {
     clearUploadMismatch();
     clearStatementDuplicate();
     if (uploadedCount > 0) setUploadPrompt(null);
-    setContinuityDismissed(false);
-    setPostAnalyzeContinuity(null);
+    // Reset continuity tip only when the form is cleared — not when the 2nd/3rd
+    // box gets a file (that re-opened the popup and blocked the next drop).
+    if (uploadedCount === 0) {
+      setContinuityDismissed(false);
+      setPostAnalyzeContinuity(null);
+    }
     setPinnedSlotWarnings((prev) => ({
       bank: prev.bank?.fileKey === bankKey ? prev.bank : null,
       pos: prev.pos?.fileKey === posKey ? prev.pos : null,
@@ -405,35 +488,63 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   useEffect(() => {
     if (!authReady || !isAuth) {
       setSavedReportCount(isAuth ? null : 0);
+      setStoredFreePeriods({});
       return undefined;
     }
-    // Defer history until uploads are idle — competing with validate on free Render
-    // makes the first post-payment check feel stuck.
-    if (anySlotChecking) return undefined;
 
     let cancelled = false;
-    const timer = window.setTimeout(() => {
-      fetchReportHistory()
-        .then(({ data }) => {
-          if (!cancelled) setSavedReportCount((data.reports ?? []).length);
-        })
-        .catch(() => {
-          if (!cancelled) setSavedReportCount(null);
+    // Start immediately — fetchReportHistory dedupes + caches so opening
+    // "Previous reports" reuses this result instead of a second cold wait.
+    void fetchReportHistory()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const reports = data.reports ?? [];
+        setSavedReportCount(reports.length);
+        const periods: Record<string, string> = {};
+        for (const row of reports) {
+          const key =
+            (row.period_key?.trim() || periodKeyFromLabel(row.period_label) || '').trim();
+          const label = (row.period_label?.trim() || key).trim();
+          if (key && label) periods[key] = label;
+        }
+        // Avoid new object identity when unchanged — that used to re-fire validate.
+        setStoredFreePeriods((prev) => {
+          const prevKeys = Object.keys(prev);
+          const nextKeys = Object.keys(periods);
+          if (
+            prevKeys.length === nextKeys.length
+            && nextKeys.every((key) => prev[key] === periods[key])
+          ) {
+            return prev;
+          }
+          return periods;
         });
-    }, 800);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSavedReportCount(null);
+          setStoredFreePeriods({});
+        }
+      });
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
-  }, [authReady, isAuth, anySlotChecking]);
+  }, [authReady, isAuth]);
 
   useEffect(() => {
     if (uploadedCount < 1) {
+      // Hydrating a draft: first paint is empty before resetForm applies — don't wipe.
+      if (skipEmptyFileSyncRef.current) return undefined;
       setValidation(null);
       setPinnedSlotWarnings({});
       setValidationError(null);
       validatedFileKeysRef.current = '';
       setSlotChecking({ bank: false, pos: false, ecommerce: false });
+      return undefined;
+    }
+
+    // Restored draft / already-green for these exact files — don't re-check.
+    if (validatedFileKeysRef.current === currentFileKeys) {
       return undefined;
     }
 
@@ -447,25 +558,79 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       ecommerce: false,
     });
     setValidationError(null);
-    // Warm in background; validateUploadsWithRetry also waits for auth + backend.
 
-    // Debounce so picking bank/pos/ecom quickly only validates once (prod parse is slow).
-    // Do not flip checking=true until the request actually starts — otherwise the UI
-    // claims "Opening file…" during idle debounce time.
+    // Free tier with a month already on file: show upgrade immediately when the
+    // drop looks like a new month — do not leave the first box spinning on cold validate.
+    const earlyFreeTierNotice = (): FreeTierLimitNotice | null => {
+      if (isPaidRef.current) return null;
+      const storedPeriods = storedFreePeriodsRef.current;
+      const reportCount = savedReportCountRef.current;
+      const storedKeys = Object.keys(storedPeriods);
+      if (storedKeys.length < 1 && (reportCount ?? 0) < 1) return null;
+      const files = uploadFilesRef.current;
+      const candidates = [files.bank, files.pos, files.ecommerce].filter(
+        (f): f is File => Boolean(f),
+      );
+      const storedLabel =
+        Object.values(storedPeriods)[0]
+        ?? (reportCount && reportCount > 0 ? 'one month' : null);
+      let sawNewMonth = false;
+      let newLabel: string | null = null;
+      for (const file of candidates) {
+        const key = periodKeyFromLabel(file.name);
+        const label = periodLabelFromFilename(file.name);
+        if (key && storedPeriods[key]) {
+          continue;
+        }
+        if (key && !storedPeriods[key]) {
+          sawNewMonth = true;
+          newLabel = label ?? key;
+          break;
+        }
+        // No month in filename — free users with a month on file are almost always
+        // uploading another month; show upgrade instead of a long checking spinner.
+        if (!key && (storedKeys.length > 0 || (reportCount ?? 0) > 0)) {
+          sawNewMonth = true;
+          break;
+        }
+      }
+      if (sawNewMonth) {
+        return freeTierNoticeFromStoredMonth(
+          storedLabel === 'one month' ? null : storedLabel,
+          newLabel,
+        );
+      }
+      return null;
+    };
+
+    // Short debounce — keep rules, start the API ASAP. Slightly longer when adding
+    // to an already-checked set so bank+pos+ecom dropped quickly = one request.
+    const debounceMs =
+      validatedFileKeysRef.current && validatedFileKeysRef.current !== currentFileKeys
+        ? 280
+        : 120;
     const timer = window.setTimeout(() => {
       void (async () => {
         if (cancelled || validationRequestRef.current !== requestId) return;
-        // Wake backend BEFORE showing "Uploading…" (skip long wait if activating just primed).
-        if (!wasBackendRecentlyPrimed()) {
-          await ensureBackendServiceReady(90_000);
-        }
-        if (cancelled || validationRequestRef.current !== requestId) return;
-        if (fileKeysAtStart !== `${bankKey}|${posKey}|${ecommerceKey}`) return;
 
+        const freeNotice = earlyFreeTierNotice();
+        if (freeNotice) {
+          rejectFreeTierUpload(freeNotice);
+          return;
+        }
+
+        // Do not await report history here — that blocked month-check for seconds.
+        // Free-tier gate still runs on the backend; client uses cached periods when ready.
+
+        // Only spin boxes that are new/changed — keep already-green slots green.
+        const prevKeys = validatedFileKeysRef.current.split('|');
+        const prevBank = prevKeys[0] ?? '';
+        const prevPos = prevKeys[1] ?? '';
+        const prevEcom = prevKeys[2] ?? '';
         setSlotChecking({
-          bank: Boolean(bankKey),
-          pos: Boolean(posKey),
-          ecommerce: Boolean(ecommerceKey),
+          bank: Boolean(bankKey) && bankKey !== prevBank,
+          pos: Boolean(posKey) && posKey !== prevPos,
+          ecommerce: Boolean(ecommerceKey) && ecommerceKey !== prevEcom,
         });
         try {
           const files = uploadFilesRef.current;
@@ -512,7 +677,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
           }
         }
       })();
-    }, 400);
+    }, debounceMs);
 
     return () => {
       cancelled = true;
@@ -576,6 +741,14 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const hasBoxWarnings = Boolean(slotWarnings.bank || slotWarnings.pos || slotWarnings.ecommerce);
 
   const validationFailed = Boolean(validationError);
+  const lastValidatedKeys = validatedFileKeysRef.current;
+  const bankAlreadyVerified = slotKeyAlreadyVerified('bank', bankKey, lastValidatedKeys);
+  const posAlreadyVerified = slotKeyAlreadyVerified('pos', posKey, lastValidatedKeys);
+  const ecommerceAlreadyVerified = slotKeyAlreadyVerified(
+    'ecommerce',
+    ecommerceKey,
+    lastValidatedKeys,
+  );
   const bankState = useMemo(
     () =>
       uploadStateFromFile(
@@ -586,9 +759,17 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotChecking.bank,
         validationFailed,
         validationError,
-        validationMatchesFiles,
+        bankAlreadyVerified && !slotChecking.bank && !slotWarnings.bank,
       ),
-    [bankFile, activeValidation, slotWarnings, slotChecking.bank, validationFailed, validationError, validationMatchesFiles],
+    [
+      bankFile,
+      activeValidation,
+      slotWarnings,
+      slotChecking.bank,
+      validationFailed,
+      validationError,
+      bankAlreadyVerified,
+    ],
   );
   const posState = useMemo(
     () =>
@@ -600,9 +781,17 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotChecking.pos,
         validationFailed,
         validationError,
-        validationMatchesFiles,
+        posAlreadyVerified && !slotChecking.pos && !slotWarnings.pos,
       ),
-    [posFile, activeValidation, slotWarnings, slotChecking.pos, validationFailed, validationError, validationMatchesFiles],
+    [
+      posFile,
+      activeValidation,
+      slotWarnings,
+      slotChecking.pos,
+      validationFailed,
+      validationError,
+      posAlreadyVerified,
+    ],
   );
   const ecommerceState = useMemo(
     () =>
@@ -614,7 +803,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         slotChecking.ecommerce,
         validationFailed,
         validationError,
-        validationMatchesFiles,
+        ecommerceAlreadyVerified && !slotChecking.ecommerce && !slotWarnings.ecommerce,
       ),
     [
       ecommerceFile,
@@ -623,7 +812,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       slotChecking.ecommerce,
       validationFailed,
       validationError,
-      validationMatchesFiles,
+      ecommerceAlreadyVerified,
     ],
   );
 
@@ -750,10 +939,16 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       ecommerce: ecommerceFile,
     }, force ? { force: true } : undefined);
     if (result && (getAnalyzeAnalysis(result) || result.statement_id)) {
+      // Boxes are done — clear local form (context draft already cleared on success).
+      resetForm({ bank: undefined, pos: undefined, ecommerce: undefined });
+      setValidation(null);
+      setPinnedSlotWarnings({});
+      validatedFileKeysRef.current = '';
+      setUploadFormKey((key) => key + 1);
+      setContinuityDismissed(false);
       const continuity = getAnalyzeAnalysis(result)?.upload_continuity ?? null;
       if (shouldShowContinuityNudge(continuity)) {
         setPostAnalyzeContinuity(continuity);
-        setContinuityDismissed(false);
         return;
       }
       goToDashboard();
@@ -776,7 +971,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
       try {
         warmupBackend();
         await ensureAuthServiceReady(30_000);
-        const { data } = await fetchReportHistory();
+        const { data } = await fetchReportHistory({ force: true });
         const count = data.reports?.length ?? 0;
         setSavedReportCount(count);
         const recent = pickMostRecentlyUploadedReport(data.reports ?? []);
@@ -800,12 +995,6 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   return (
     <div className={`${styles.pageBg} ${embedded ? styles.pageBgEmbedded : ''}`}>
       {analyzeProgress && <AnalyzeProgressOverlay progress={analyzeProgress} />}
-      {showValidationContinuityNudge && validationContinuity ? (
-        <UploadContinuityNudge
-          continuity={validationContinuity}
-          onDismiss={dismissContinuityNudge}
-        />
-      ) : null}
       {postAnalyzeContinuity ? (
         <UploadContinuityNudge
           continuity={postAnalyzeContinuity}
@@ -877,6 +1066,13 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             <p className={styles.pageSub}>
               Upload your Bank, Pos, and Ecom statements. Same period will give best results
             </p>
+            {showValidationContinuityNudge && validationContinuity ? (
+              <UploadContinuityNudge
+                continuity={validationContinuity}
+                onDismiss={dismissContinuityNudge}
+                blocking={false}
+              />
+            ) : null}
             {freeTierNotice ? (
               <div className={styles.freeTierBanner} role="alert">
                 <p className={styles.freeTierTitle}>Free plan: one month on file</p>
@@ -949,6 +1145,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 </svg>
               }
               register={register}
+              onReject={(message) => {
+                setValidationError(message);
+                setUploadPrompt(message);
+              }}
             />
             <FileDropZone
               key={`pos-${uploadFormKey}`}
@@ -965,6 +1165,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 </svg>
               }
               register={register}
+              onReject={(message) => {
+                setValidationError(message);
+                setUploadPrompt(message);
+              }}
             />
             <FileDropZone
               key={`ecommerce-${uploadFormKey}`}
@@ -979,6 +1183,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 </svg>
               }
               register={register}
+              onReject={(message) => {
+                setValidationError(message);
+                setUploadPrompt(message);
+              }}
             />
           </div>
 

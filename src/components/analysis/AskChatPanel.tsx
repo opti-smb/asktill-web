@@ -67,7 +67,7 @@ export default function AskChatPanel({ variant = 'page', onClose }: AskChatPanel
       <div className={styles.head}>
         <div className={styles.headRow}>
           <div>
-            <h2 className={styles.title}>Ask AskTill</h2>
+            <h2 className={styles.title}>AT Help</h2>
             <p className={styles.sub}>
               {variant === 'drawer'
                 ? 'Answers from your saved AT Uploads statement'

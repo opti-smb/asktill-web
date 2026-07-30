@@ -11,12 +11,14 @@
   gap: 10px;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(11, 18, 32, 0.2);
-  font-size: 13px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.2;
   transition: all 0.2s;
   z-index: 50;
   border: none;
-  font-family: inherit;
 }
 
 .askFloating:hover {
@@ -41,8 +43,9 @@
   position: fixed;
   bottom: 88px;
   right: 24px;
-  width: min(420px, calc(100vw - 48px));
-  max-height: min(560px, calc(100vh - 120px));
+  width: min(480px, calc(100vw - 48px));
+  height: min(720px, calc(100vh - 120px));
+  max-height: min(720px, calc(100vh - 120px));
   z-index: 60;
   display: flex;
   flex-direction: column;

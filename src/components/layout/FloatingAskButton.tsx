@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import AskChatPanel from '../analysis/AskChatPanel';
+import AtHelpPanel from '../help/AtHelpPanel';
+import { useDismissOnEscape } from '../../hooks/useDismissOnEscape';
 import styles from './FloatingAskButton.module.css';
 
 /**
- * Floating Ask drawer. Panel stays mounted while closed so chat history
- * (from ChatContext) and draft input survive open/close within the session.
+ * Floating AT Help drawer — Raise an Issue UI from Agents Service.
  */
 export default function FloatingAskButton() {
   const [open, setOpen] = useState(false);
@@ -14,14 +14,7 @@ export default function FloatingAskButton() {
     if (open) setMounted(true);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  useDismissOnEscape(() => setOpen(false), open);
 
   return (
     <>
@@ -29,7 +22,7 @@ export default function FloatingAskButton() {
         <button
           type="button"
           className={styles.backdrop}
-          aria-label="Close chat"
+          aria-label="Close AT Help"
           onClick={() => setOpen(false)}
         />
       ) : null}
@@ -38,11 +31,11 @@ export default function FloatingAskButton() {
         <div
           className={styles.drawer}
           role="dialog"
-          aria-label="Ask AskTill"
+          aria-label="AT Help"
           hidden={!open}
           aria-hidden={!open}
         >
-          <AskChatPanel variant="drawer" onClose={() => setOpen(false)} />
+          <AtHelpPanel onClose={() => setOpen(false)} />
         </div>
       ) : null}
 
@@ -51,7 +44,7 @@ export default function FloatingAskButton() {
         className={`${styles.askFloating} ${open ? styles.askFloatingActive : ''}`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label={open ? 'Close chat' : 'Ask anything'}
+        aria-label={open ? 'Close AT Help' : 'AT Help'}
       >
         <svg
           width="16"
@@ -65,7 +58,7 @@ export default function FloatingAskButton() {
         >
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
         </svg>
-        {open ? 'Close' : 'Ask anything'}
+        {open ? 'Close' : 'AT Help'}
       </button>
     </>
   );

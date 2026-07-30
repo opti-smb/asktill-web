@@ -138,6 +138,7 @@ export function resetUserScopedState() {
 export function clearAppSession() {
   clearToken();
   resetUserScopedState();
+  invalidateReportHistoryCache();
   window.dispatchEvent(new CustomEvent(USER_LOGOUT_EVENT));
 }
 
@@ -168,11 +169,20 @@ function attachAuthInterceptor(client: ReturnType<typeof axios.create>) {
 
 const devBase = () => (import.meta.env.DEV ? '' : undefined);
 
+/**
+ * Production Auth calls go through same-origin `/auth-api` (Vercel rewrite → Render).
+ * Avoids browser CORS / Render cold-start interstitial Network Errors on Google sign-in.
+ */
+function authApiBase(): string {
+  if (import.meta.env.DEV) return '';
+  return '/auth-api';
+}
+
 const mainApi = axios.create({
   baseURL: devBase() ?? import.meta.env.VITE_API_BASE_URL,
 });
 const authApi = axios.create({
-  baseURL: devBase() ?? import.meta.env.VITE_AUTH_API_URL,
+  baseURL: authApiBase(),
   timeout: 90_000,
   withCredentials: true,
 });
@@ -261,9 +271,18 @@ function formatApiError(
   const axiosErr = err as AxiosError;
   if (!axiosErr?.response) {
     if (axiosErr?.message === 'Network Error') {
-      return import.meta.env.DEV
-        ? 'Cannot reach the API. Ensure Auth (8002) and Backend (8000) are running, then refresh.'
-        : 'Cannot reach the server. It may be waking up — keep your files selected and tap Retry.';
+      if (import.meta.env.DEV) {
+        return 'Cannot reach the API. Ensure Auth (8002) and Backend (8000) are running, then refresh.';
+      }
+      const url = String(axiosErr.config?.url ?? '');
+      const authFlow =
+        url.includes('/api/auth')
+        || url.includes('/api/register')
+        || url.includes('clerk-login');
+      if (authFlow) {
+        return 'Cannot reach the sign-in service. It may be waking up — wait a moment and try Google sign-in again.';
+      }
+      return 'Cannot reach the server. It may be waking up — keep your files selected and tap Retry.';
     }
     if (isLikelyTimeoutError(err)) {
       return import.meta.env.DEV
@@ -562,6 +581,34 @@ export function freeTierLimitNotice(
   return { storedLabel, newLabel, message };
 }
 
+/** Client-side free-tier notice when history already shows a month on file. */
+export function freeTierNoticeFromStoredMonth(
+  storedLabel: string | null,
+  newLabel?: string | null,
+): FreeTierLimitNotice {
+  const stored = storedLabel?.trim() || null;
+  const next = newLabel?.trim() || null;
+  if (stored && next) {
+    return {
+      storedLabel: stored,
+      newLabel: next,
+      message: `You have ${stored} on file. Upgrade to add ${next}.`,
+    };
+  }
+  if (stored) {
+    return {
+      storedLabel: stored,
+      newLabel: next,
+      message: `You have ${stored} on file. Free plan covers one statement month — upgrade to add another.`,
+    };
+  }
+  return {
+    storedLabel: null,
+    newLabel: next,
+    message: 'Free plan covers one statement month. Upgrade to add another month.',
+  };
+}
+
 function freeTierNoticeFromDetail(data: unknown): FreeTierLimitNotice | null {
   const d = unwrapErrorDetail(data);
   if (!d) return null;
@@ -831,20 +878,29 @@ function isRetryableValidateError(err: unknown): boolean {
   );
 }
 
-/** Wake backend first, then validate — Auth is not required (backend verifies JWT locally). */
+/** Fire validate immediately — do not wait on /ready probes (cold wake happens on POST). */
 export async function validateUploadsWithRetry(files: UploadFiles) {
-  await ensureBackendReady(45_000);
+  if (!isBackendServiceWarm()) {
+    void ensureBackendReady(8_000);
+  }
 
   const maxAttempts = 4;
   let lastErr: unknown;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (attempt > 0) {
-      await ensureBackendReady(60_000);
-      await new Promise((resolve) => window.setTimeout(resolve, 1_000 * attempt));
+      await ensureBackendReady(30_000);
+      await new Promise((resolve) => window.setTimeout(resolve, 800 * attempt));
     }
     try {
-      return await validateUploads(files);
+      const result = await validateUploads(files);
+      markBackendServiceWarm();
+      try {
+        sessionStorage.setItem('asktill_backend_primed_at', String(Date.now()));
+      } catch {
+        /* private mode */
+      }
+      return result;
     } catch (err) {
       lastErr = err;
       if (!isRetryableValidateError(err) || attempt === maxAttempts - 1) {
@@ -864,6 +920,12 @@ function serviceOrigin(
     | 'VITE_REGISTER_API_URL'
     | 'VITE_SUBSCRIPTION_API_URL',
 ): string {
+  if (envKey === 'VITE_AUTH_API_URL' && !import.meta.env.DEV) {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/auth-api`;
+    }
+    return '/auth-api';
+  }
   const raw = import.meta.env[envKey];
   if (typeof raw === 'string' && raw.trim()) {
     return raw.trim().replace(/\/$/, '');
@@ -927,7 +989,7 @@ export async function ensureBackendServiceReady(probeTimeoutMs = 45_000): Promis
   return ensureBackendReady(probeTimeoutMs);
 }
 
-const BACKEND_WARM_TTL_MS = 3 * 60 * 1000;
+const BACKEND_WARM_TTL_MS = 10 * 60 * 1000;
 let backendWarmUntil = 0;
 let backendWarmupInFlight: Promise<boolean> | null = null;
 
@@ -1005,11 +1067,9 @@ export async function fetchCompactReportHtmlPreview(statementId: string): Promis
 
 async function probeAuthHealth(timeoutMs: number): Promise<boolean> {
   try {
-    if (import.meta.env.DEV) {
-      const res = await authApi.get('/health', { timeout: timeoutMs });
-      return res.status === 200 && isHealthyServicePayload(res.data);
-    }
-    return probeServiceHealth(`${serviceOrigin('VITE_AUTH_API_URL')}/health`, timeoutMs);
+    // Always use authApi so production hits same-origin /auth-api proxy (not cross-origin Render).
+    const res = await authApi.get('/health', { timeout: timeoutMs });
+    return res.status === 200 && isHealthyServicePayload(res.data);
   } catch {
     return false;
   }
@@ -1111,7 +1171,7 @@ export async function primeBackendBeforeCheckout(): Promise<void> {
 }
 
 /** True when checkout/activating already primed backend recently. */
-export function wasBackendRecentlyPrimed(withinMs = 3 * 60 * 1000): boolean {
+export function wasBackendRecentlyPrimed(withinMs = 10 * 60 * 1000): boolean {
   try {
     const raw = sessionStorage.getItem('asktill_backend_primed_at');
     const at = raw ? Number(raw) : 0;
@@ -1557,25 +1617,25 @@ export function prefetchAdminDashboard(): void {
 export async function openAdminDashboard(): Promise<void> {
   const base = getAdminDashboardUrl();
   warmupAuthService();
+  // Wake Auth first so refresh isn't racing a cold start into /login.
+  await ensureAuthServiceReady(25_000);
+
   let token = getToken();
-  if (!token || isTokenExpired(token)) {
-    try {
-      // Don't hang forever on a cold Auth wake — race a short budget then fall through.
-      token = await Promise.race([
-        refreshAccessSession(),
-        new Promise<null>((resolve) => {
-          window.setTimeout(() => resolve(null), 4_000);
-        }),
-      ]);
-    } catch {
-      token = null;
-    }
+  if (!token || isTokenExpired(token, 15_000)) {
+    token = await refreshAccessSession();
   }
-  if (token) {
-    window.location.assign(`${base}/overview#access_token=${encodeURIComponent(token)}`);
-    return;
+  if (!token) {
+    token = getToken();
   }
-  window.location.assign(`${base}/login`);
+  if (!token) {
+    throw new Error(
+      'Could not open Admin Dashboard — no AskTill session. Stay signed in and try again.',
+    );
+  }
+
+  // Query + hash: Admin reads either; never fall through to Admin /login.
+  const q = encodeURIComponent(token);
+  window.location.assign(`${base}/overview?access_token=${q}#access_token=${q}`);
 }
 
 /** Read + clear one-time handoff token from Admin Console (hash #access_token=…). */
@@ -1925,7 +1985,13 @@ async function analyzeViaStream(
         const detail =
           event.detail && typeof event.detail === 'object'
             ? (event.detail as Record<string, unknown>)
-            : { message: msg, code: 'statement_already_stored' };
+            : {
+                message: msg,
+                code:
+                  typeof (event as { code?: string }).code === 'string'
+                    ? (event as { code?: string }).code
+                    : 'analysis_error',
+              };
         err.response = { status: event.status, data: detail };
       }
       throw err;
@@ -2131,21 +2197,61 @@ function isRetryableHistoryError(err: unknown): boolean {
   );
 }
 
-export const fetchReportHistory = async () => {
-  warmupBackend();
-  warmupAuthService();
-  await ensureAuthServiceReady(15_000);
-  const request = () =>
-    mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 120_000 });
+const REPORT_HISTORY_TTL_MS = 60_000;
+let reportHistoryCache: { at: number; data: SavedReportListApi } | null = null;
+let reportHistoryInFlight: Promise<{ data: SavedReportListApi }> | null = null;
 
-  try {
-    return await request();
-  } catch (err) {
-    if (!isRetryableHistoryError(err)) throw err;
-    await new Promise((resolve) => window.setTimeout(resolve, 1500));
-    await ensureAuthServiceReady(20_000);
-    return await request();
+/** Drop cached /api/reports/history (logout, new analyze, free-tier replace). */
+export function invalidateReportHistoryCache() {
+  reportHistoryCache = null;
+}
+
+/**
+ * List saved months. Dedupes in-flight calls and reuses a short TTL cache so
+ * Upload + Previous reports do not each wait on a cold Render wake.
+ */
+export const fetchReportHistory = async (opts?: { force?: boolean }) => {
+  const force = Boolean(opts?.force);
+  if (
+    !force
+    && reportHistoryCache
+    && Date.now() - reportHistoryCache.at < REPORT_HISTORY_TTL_MS
+  ) {
+    return { data: reportHistoryCache.data };
   }
+  if (!force && reportHistoryInFlight) return reportHistoryInFlight;
+
+  reportHistoryInFlight = (async () => {
+    warmupBackend();
+    warmupAuthService();
+    // Wake auth + API together — serial auth-then-API was doubling cold-start wait.
+    await Promise.all([
+      ensureAuthServiceReady(15_000),
+      ensureBackendReady(30_000),
+    ]);
+    const request = () =>
+      mainApi.get<SavedReportListApi>('/api/reports/history', { timeout: 60_000 });
+
+    try {
+      const res = await request();
+      reportHistoryCache = { at: Date.now(), data: res.data };
+      return { data: res.data };
+    } catch (err) {
+      if (!isRetryableHistoryError(err)) throw err;
+      await new Promise((resolve) => window.setTimeout(resolve, 1200));
+      await Promise.all([
+        ensureAuthServiceReady(20_000),
+        ensureBackendReady(30_000),
+      ]);
+      const res = await request();
+      reportHistoryCache = { at: Date.now(), data: res.data };
+      return { data: res.data };
+    }
+  })().finally(() => {
+    reportHistoryInFlight = null;
+  });
+
+  return reportHistoryInFlight;
 };
 
 export const fetchSavedReport = async (statementId: string) => ({
