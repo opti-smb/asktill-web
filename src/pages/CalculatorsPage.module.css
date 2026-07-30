@@ -90,11 +90,76 @@
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.loadStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  border-radius: 10px;
+  background: var(--letter-surface);
+  border: 1px solid var(--letter-border);
+  color: var(--letter-ink);
+}
+
+.loadWhy {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--letter-muted);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 .empty {
   margin: 0;
   font-size: 13px;
   color: var(--letter-muted);
   line-height: 1.45;
+}
+
+/* Same idea as AT Letter “N months on file” chips */
+.historyBar {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--letter-accent-soft);
+  border: 1px solid #b8d0f0;
+}
+
+.historyChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.historyChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(27, 42, 74, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.historyChip span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.historyNote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #1b4d8e;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Month switcher */

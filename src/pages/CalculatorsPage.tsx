@@ -1,10 +1,12 @@
-import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { FormEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
+import CalculatorPerformancePanel from '../components/calculators/CalculatorPerformance';
 import Field from '../components/calculators/Field';
 import ResultBlock from '../components/calculators/ResultBlock';
 import RiskGauge from '../components/calculators/RiskGauge';
+import Spinner from '../components/common/Spinner';
 import SectionHeader from '../components/layout/SectionHeader';
 import { useAnalysis } from '../context/AnalysisContext';
 import {
@@ -15,13 +17,14 @@ import {
 import { mergeDefaults, type NumMap } from '../hooks/useCalculatorForm';
 import { getActiveStatementViewId } from '../lib/activeStatementView';
 import { fetchSavedReport } from '../lib/api';
-import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
+import { getAnalyzeAnalysis, type AnalyzeResult } from '../lib/analyzeResponse';
 import {
   comparePeriodKeys,
   periodKeyFromLabel,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
 import { buildCalculatorHealthOverview } from '../lib/calculatorHealthReadings';
+import { buildCalculatorPerformance } from '../lib/calculatorPerformance';
 import { statementDefaultsFor, statementProcessorRates } from '../lib/statementCalculatorInputs';
 import {
   calcBreakEven,
@@ -54,6 +57,26 @@ import {
 
 import styles from './CalculatorsPage.module.css';
 
+const ROLLING_VIEW = 'rolling';
+const HOVER_VIEW_MS = 120;
+
+function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): string {
+  const label = periodLabel?.trim();
+  if (!label) return 'This month only';
+  const short = label.match(
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i,
+  );
+  if (short) {
+    const token = short[1];
+    const abbr =
+      token.length <= 3
+        ? token.charAt(0).toUpperCase() + token.slice(1).toLowerCase()
+        : token.slice(0, 3);
+    return `${abbr} only`;
+  }
+  return `${label.split(/\s+/)[0]} only`;
+}
+
 export default function CalculatorsPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -68,6 +91,16 @@ export default function CalculatorsPage() {
   const [hydrateError, setHydrateError] = useState<string | null>(null);
   const [values, setValues] = useState<NumMap>({});
   const hydrateAttemptRef = useRef<string | null>(null);
+  /** null = default to latest month only (same as AT Letter). */
+  const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rollingResults, setRollingResults] = useState<AnalyzeResult[]>([]);
+  const [rollingLoading, setRollingLoading] = useState(false);
+  const [rollingError, setRollingError] = useState<string | null>(null);
+  /** Live status while opening months — month name + progress, not a vague "Loading…". */
+  const [loadStatus, setLoadStatus] = useState<string | null>(null);
+  /** Cache fetched months so Last 3 months / revisits don’t reload everything. */
+  const rollingCacheRef = useRef<Map<string, AnalyzeResult>>(new Map());
 
   const sortedReports = useMemo(() => {
     return [...savedReports].sort((a, b) => {
@@ -77,9 +110,47 @@ export default function CalculatorsPage() {
     });
   }, [savedReports]);
 
-  const isMultiMonth = sortedReports.length > 1;
   const activeStatementId =
     getActiveStatementViewId() ?? result?.statement_id?.trim() ?? null;
+
+  /** Same default as AT Letter: month only when a statement is loaded. */
+  const activeView = viewMode ?? (activeStatementId || analysis ? 'month' : ROLLING_VIEW);
+  const monthOnly = activeView !== ROLLING_VIEW;
+  const showViewFilters = Boolean(activeStatementId || analysis);
+
+  const clearHoverTimer = useCallback(() => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+  }, []);
+
+  const selectViewOnHover = useCallback(
+    (mode: 'rolling' | 'month') => {
+      clearHoverTimer();
+      if (mode === 'month' && !(activeStatementId || analysis)) return;
+      const already =
+        mode === ROLLING_VIEW ? activeView === ROLLING_VIEW : activeView !== ROLLING_VIEW;
+      if (already) return;
+      hoverTimer.current = setTimeout(() => {
+        setViewMode(mode);
+      }, HOVER_VIEW_MS);
+    },
+    [activeView, clearHoverTimer, activeStatementId, analysis],
+  );
+
+  useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
+
+  useEffect(() => {
+    setViewMode(null);
+  }, [result?.statement_id, activeStatementId]);
+
+  useEffect(() => {
+    if (viewMode !== 'month') return;
+    if (!(activeStatementId || analysis)) {
+      setViewMode(null);
+    }
+  }, [activeStatementId, analysis, viewMode]);
 
   // Same statement resolution as Overview / Cash flow / AT Letter (pin → session → newest month).
   useEffect(() => {
@@ -103,6 +174,15 @@ export default function CalculatorsPage() {
     hydrateAttemptRef.current = targetId;
     setHydrating(true);
     setHydrateError(null);
+    const hint =
+      primaryReport?.statement_id === targetId
+        ? primaryReport.period_label
+        : savedReports.find((r) => r.statement_id === targetId)?.period_label;
+    setLoadStatus(
+      hint?.trim()
+        ? `Opening ${hint.trim()} from your saved statements…`
+        : 'Opening your saved statement…',
+    );
     void fetchSavedReport(targetId)
       .then(({ data }) => {
         if (!cancelled) loadSavedReport(data);
@@ -116,13 +196,16 @@ export default function CalculatorsPage() {
         }
       })
       .finally(() => {
-        if (!cancelled) setHydrating(false);
+        if (!cancelled) {
+          setHydrating(false);
+          setLoadStatus(null);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [historyReady, analysis, result, primaryReport, loadSavedReport]);
+  }, [historyReady, analysis, result, primaryReport, savedReports, loadSavedReport]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -155,6 +238,103 @@ export default function CalculatorsPage() {
 
   const healthOverview = useMemo(() => buildCalculatorHealthOverview(result), [result]);
 
+  const performance = useMemo(
+    () => (monthOnly ? null : buildCalculatorPerformance(rollingResults)),
+    [monthOnly, rollingResults],
+  );
+
+  const rollingKey = useMemo(
+    () =>
+      sortedReports
+        .slice(-3)
+        .map((r) => r.statement_id)
+        .join('|'),
+    [sortedReports],
+  );
+
+  // Keep current in-memory statement in the rolling cache.
+  useEffect(() => {
+    if (!result?.statement_id || !getAnalyzeAnalysis(result)) return;
+    rollingCacheRef.current.set(result.statement_id, result);
+  }, [result]);
+
+  // Load latest ≤3 months once; reuse cache on later clicks.
+  useEffect(() => {
+    if (monthOnly) return;
+    if (!sortedReports.length) {
+      setRollingResults([]);
+      setLoadStatus(null);
+      setRollingLoading(false);
+      return;
+    }
+
+    const latest = sortedReports.slice(-3);
+
+    // Already have every month for this window — open instantly.
+    const cached = latest
+      .map((row) => rollingCacheRef.current.get(row.statement_id))
+      .filter((r): r is AnalyzeResult => Boolean(r && getAnalyzeAnalysis(r)));
+    if (cached.length === latest.length) {
+      setRollingResults(cached);
+      setRollingLoading(false);
+      setRollingError(null);
+      setLoadStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    setRollingLoading(true);
+    setRollingError(null);
+    const missing = latest.filter((row) => !rollingCacheRef.current.has(row.statement_id));
+    setLoadStatus(
+      missing.length
+        ? `Opening ${missing.length} saved month${missing.length === 1 ? '' : 's'}…`
+        : 'Preparing trend view…',
+    );
+
+    void (async () => {
+      try {
+        const loaded: AnalyzeResult[] = [];
+        for (let i = 0; i < latest.length; i += 1) {
+          const row = latest[i]!;
+          if (cancelled) return;
+          const label = (row.period_label || row.period_key || 'statement').trim();
+          const hit = rollingCacheRef.current.get(row.statement_id);
+          if (hit && getAnalyzeAnalysis(hit)) {
+            loaded.push(hit);
+            continue;
+          }
+          setLoadStatus(`Opening ${label}… (${i + 1} of ${latest.length})`);
+          if (result?.statement_id === row.statement_id && getAnalyzeAnalysis(result)) {
+            rollingCacheRef.current.set(row.statement_id, result);
+            loaded.push(result);
+            continue;
+          }
+          const { data } = await fetchSavedReport(row.statement_id);
+          rollingCacheRef.current.set(row.statement_id, data);
+          loaded.push(data);
+        }
+        if (!cancelled) {
+          setRollingResults(loaded);
+        }
+      } catch {
+        if (!cancelled) {
+          setRollingError('Could not load months for the trend view. Try again.');
+          setRollingResults([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setRollingLoading(false);
+          setLoadStatus(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [monthOnly, rollingKey, sortedReports, result]);
+
   const onBoxTilt = (e: MouseEvent<HTMLElement>) => {
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
@@ -178,41 +358,113 @@ export default function CalculatorsPage() {
 
   const switchStatement = async (statementId: string) => {
     if (!statementId || statementId === result?.statement_id || hydrating) return;
+    const cached = rollingCacheRef.current.get(statementId);
+    if (cached && getAnalyzeAnalysis(cached)) {
+      loadSavedReport(cached);
+      return;
+    }
+    const row = savedReports.find((r) => r.statement_id === statementId);
+    const label = (row?.period_label || row?.period_key || 'that month').trim();
     setHydrating(true);
     setHydrateError(null);
+    setLoadStatus(`Opening ${label}…`);
     hydrateAttemptRef.current = statementId;
     try {
       const { data } = await fetchSavedReport(statementId);
+      rollingCacheRef.current.set(statementId, data);
       loadSavedReport(data);
     } catch {
       hydrateAttemptRef.current = null;
       setHydrateError('Could not open that month. Try again from Reports.');
     } finally {
       setHydrating(false);
+      setLoadStatus(null);
     }
   };
 
-  const monthSwitcher =
-    isMultiMonth ? (
-      <div className={styles.viewBar}>
-        <div className={styles.viewTitle}>Statement month</div>
-        <div className={styles.viewFilterRow}>
-          {sortedReports.map((row) => {
-            const selected = row.statement_id === activeStatementId;
-            return (
-              <button
-                key={row.statement_id}
-                type="button"
-                className={`${styles.viewFilter} ${selected ? styles.viewFilterActive : ''}`}
-                onClick={() => void switchStatement(row.statement_id)}
-              >
-                {row.period_label || row.period_key || row.statement_id}
-              </button>
-            );
-          })}
+  const openFromPerformance = async (id: CalculatorId) => {
+    const last = performance?.months[performance.months.length - 1];
+    if (last && last.statementId !== result?.statement_id) {
+      await switchStatement(last.statementId);
+    }
+    setViewMode('month');
+    setSelectedId(id);
+    if (!last || last.statementId === result?.statement_id) {
+      applyStatementDefaults(id);
+    }
+  };
+
+  const monthsOnFile = Math.min(Math.max(savedCount, activeStatementId ? 1 : 0), 3);
+
+  /** Same meta line pattern as AT Letter under the view bar. */
+  const viewMeta = useMemo(() => {
+    if (!monthOnly) {
+      if (monthsOnFile >= 3) {
+        return 'Quarter view — comparing your latest 3 months on file.';
+      }
+      if (monthsOnFile === 2) {
+        return 'Comparing your latest 2 months on file.';
+      }
+      return 'Upload more months to unlock a 3-month quarter comparison.';
+    }
+    const label = analysis?.period_label?.trim() || 'Selected month';
+    return `${label} only — single-month calculators, no rolling comparison.`;
+  }, [monthOnly, monthsOnFile, analysis?.period_label]);
+
+  const monthsOnFileChip =
+    monthsOnFile > 0 ? (
+      <div className={styles.historyBar}>
+        <div className={styles.historyChips}>
+          {monthsOnFile === 1 ? (
+            <div className={styles.historyChip}>
+              <span>1</span> First upload
+            </div>
+          ) : (
+            <div className={styles.historyChip}>
+              <span>{monthsOnFile}</span> months on file
+            </div>
+          )}
         </div>
+        <p className={styles.historyNote}>
+          {monthsOnFile <= 1
+            ? 'This is your first upload on file.'
+            : monthsOnFile === 2
+              ? monthOnly
+                ? 'Second month on file — prior month saved for rolling comparison.'
+                : 'Second month on file — comparing 2 months.'
+              : monthOnly
+                ? 'Three months on file — use Last 3 months for full quarter comparison.'
+                : 'Three months on file — full quarter view.'}
+        </p>
       </div>
     ) : null;
+
+  /** Same two options as AT Letter — Last 3 months | {month} only. */
+  const letterViewBar = showViewFilters ? (
+    <div className={styles.viewBar}>
+      <div className={styles.viewTitle}>Calculator view</div>
+      <div className={styles.viewFilterRow} onMouseLeave={clearHoverTimer}>
+        <button
+          type="button"
+          className={`${styles.viewFilter} ${activeView === ROLLING_VIEW ? styles.viewFilterActive : ''}`}
+          onMouseEnter={() => selectViewOnHover('rolling')}
+          onClick={() => setViewMode('rolling')}
+        >
+          Last 3 months
+        </button>
+        <button
+          type="button"
+          className={`${styles.viewFilter} ${activeView !== ROLLING_VIEW ? styles.viewFilterActive : ''}`}
+          onMouseEnter={() => selectViewOnHover('month')}
+          onClick={() => {
+            if (activeStatementId || analysis) setViewMode('month');
+          }}
+        >
+          {monthOnlyLabelFromPeriod(analysis?.period_label)}
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   const resultBlock = useMemo(() => {
     if (!active) return null;
@@ -1506,25 +1758,33 @@ export default function CalculatorsPage() {
     }
   })();
 
-  if (!historyReady || hydrating) {
-    return (
-      <div className={styles.letterScope}>
-        <div className={styles.main}>
-          <SectionHeader
-            periodMeta="CALCULATORS"
-            title={
-              <>
-                Loading your <em>statements…</em>
-              </>
-            }
-          />
-          <div className="wrap" style={{ padding: '12px 0 28px' }}>
-            <p className={styles.emptyHint}>
-              {hydrating ? 'Opening your saved statement…' : 'Loading your account…'}
+  const loadingPanel = (title: ReactNode, detail: string) => (
+    <div className={styles.letterScope}>
+      <div className={styles.main}>
+        <SectionHeader periodMeta="CALCULATORS" title={title} />
+        <div className="wrap" style={{ padding: '12px 0 28px' }}>
+          <div className={styles.loadStatus} role="status" aria-live="polite">
+            <Spinner label={detail} size="sm" />
+            <p className={styles.loadWhy}>
+              Fetching your saved statement month from the server — this can take a few seconds on a
+              cold start.
             </p>
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  // First open only — don’t blank the page once a month is already in memory.
+  if ((!historyReady || hydrating) && !analysis) {
+    return loadingPanel(
+      <>
+        Loading your <em>statements…</em>
+      </>,
+      loadStatus ??
+        (hydrating
+          ? 'Opening your saved statement…'
+          : 'Loading your saved months from your account…'),
     );
   }
 
@@ -1551,15 +1811,31 @@ export default function CalculatorsPage() {
             }
           />
           <div className="wrap" style={{ padding: '12px 0 28px' }}>
-            <p className={styles.emptyHint}>
-              {hydrateError ??
-                (savedCount > 0
-                  ? isMultiMonth
-                    ? 'You have multiple saved months. Pick one below — calculators use that month (same as Overview).'
-                    : 'Opening your saved month…'
-                  : 'Upload statements once, then calculators fill from that data.')}
-            </p>
-            {monthSwitcher}
+            {hydrateError ? (
+              <p className={styles.emptyHint}>{hydrateError}</p>
+            ) : loadStatus || hydrating || savedCount > 0 ? (
+              <div className={styles.loadStatus} role="status" aria-live="polite">
+                <Spinner
+                  label={
+                    loadStatus ??
+                    (savedCount > 0
+                      ? 'Opening your latest statement month…'
+                      : 'Loading your account…')
+                  }
+                  size="sm"
+                />
+                <p className={styles.loadWhy}>
+                  Using the month name from your uploaded statement — same as AT Letter.
+                </p>
+              </div>
+            ) : (
+              <p className={styles.emptyHint}>
+                Upload statements once, then calculators fill from that data.
+              </p>
+            )}
+            {letterViewBar}
+            {showViewFilters && viewMeta ? <p className={styles.emptyHint}>{viewMeta}</p> : null}
+            {monthsOnFileChip}
           </div>
         </div>
       </div>
@@ -1594,8 +1870,41 @@ export default function CalculatorsPage() {
         <div className="wrap">
           <div className={styles.page}>
             <div className={styles.scrollViewport}>
-              {monthSwitcher}
+              {letterViewBar}
+              {showViewFilters && viewMeta ? <p className={styles.emptyHint}>{viewMeta}</p> : null}
+              {monthsOnFileChip}
+              {hydrating && analysis && loadStatus ? (
+                <div className={styles.loadStatus} role="status" aria-live="polite">
+                  <Spinner label={loadStatus} size="sm" />
+                </div>
+              ) : null}
 
+              {!monthOnly ? (
+                rollingLoading && !performance ? (
+                  <div className={styles.loadStatus} role="status" aria-live="polite">
+                    <Spinner
+                      label={loadStatus ?? 'Opening your latest months for the trend view…'}
+                      size="sm"
+                    />
+                    <p className={styles.loadWhy}>
+                      First time only — months are cached after this, so the next click opens
+                      instantly.
+                    </p>
+                  </div>
+                ) : rollingError ? (
+                  <p className={styles.emptyHint}>{rollingError}</p>
+                ) : performance ? (
+                  <CalculatorPerformancePanel
+                    performance={performance}
+                    onOpenCalculator={(id) => void openFromPerformance(id)}
+                  />
+                ) : (
+                  <p className={styles.emptyHint}>
+                    Upload at least one statement month to see calculator performance.
+                  </p>
+                )
+              ) : (
+                <>
               <div
                 className={`${styles.directions} ${styles.animIn} ${styles.box3d}`}
                 onMouseMove={onBoxTilt}
@@ -1811,6 +2120,8 @@ export default function CalculatorsPage() {
                   </section>
                 ) : null}
               </div>
+                </>
+              )}
             </div>
           </div>
         </div>
