@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import styles from './AtHelpPanel.module.css';
 
 const PROD_AGENTS = 'https://asktill-agents.onrender.com';
+const READY_MSG = 'asktill-at-help-ready';
 
 function isLocalDevHost(url: string): boolean {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
@@ -12,7 +13,7 @@ function isLocalDevHost(url: string): boolean {
 function agentsBaseUrl(): string {
   const raw = (import.meta.env.VITE_AGENTS_API_URL as string | undefined)?.trim();
   if (import.meta.env.DEV) {
-    return (raw && !isLocalDevHost(raw) ? raw : 'http://127.0.0.1:8001').replace(/\/$/, '');
+    return (raw || 'http://127.0.0.1:8001').replace(/\/$/, '');
   }
   // Never let a local .env leak into the production iframe.
   if (!raw || isLocalDevHost(raw)) return PROD_AGENTS;
@@ -27,6 +28,7 @@ interface Props {
 export default function AtHelpPanel({ onClose }: Props) {
   const { user } = useAuth();
   const [frameState, setFrameState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [reloadKey, setReloadKey] = useState(0);
 
   const src = useMemo(() => {
     const url = new URL(`${agentsBaseUrl()}/help/raise-issue`);
@@ -41,9 +43,27 @@ export default function AtHelpPanel({ onClose }: Props) {
     setFrameState('loading');
     const timer = window.setTimeout(() => {
       setFrameState((prev) => (prev === 'loading' ? 'error' : prev));
-    }, 20000);
+    }, 18000);
     return () => window.clearTimeout(timer);
-  }, [src]);
+  }, [src, reloadKey]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+      if ((data as { type?: string }).type !== READY_MSG) return;
+      const origin = event.origin;
+      if (
+        origin === PROD_AGENTS ||
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('http://localhost:')
+      ) {
+        setFrameState('ready');
+      }
+    }
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   return (
     <section className={styles.panel}>
@@ -77,7 +97,10 @@ export default function AtHelpPanel({ onClose }: Props) {
             <button
               type="button"
               className={styles.retryBtn}
-              onClick={() => setFrameState('loading')}
+              onClick={() => {
+                setReloadKey((k) => k + 1);
+                setFrameState('loading');
+              }}
             >
               Try again
             </button>
@@ -90,13 +113,7 @@ export default function AtHelpPanel({ onClose }: Props) {
             </p>
           </div>
         ) : (
-          <iframe
-            className={styles.frame}
-            title="Raise an Issue"
-            src={src}
-            onLoad={() => setFrameState('ready')}
-            onError={() => setFrameState('error')}
-          />
+          <iframe key={reloadKey} className={styles.frame} title="Raise an Issue" src={src} />
         )}
       </div>
     </section>
