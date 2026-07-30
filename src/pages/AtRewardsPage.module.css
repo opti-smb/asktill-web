@@ -6,6 +6,21 @@
   min-height: calc(100vh - 88px);
 }
 
+.page {
+  max-width: 100%;
+  background: transparent;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.scrollViewport {
+  max-height: min(85vh, 920px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 2px 8px;
+}
+
 .statusBar {
   display: flex;
   align-items: center;

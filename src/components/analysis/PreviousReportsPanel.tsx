@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   downloadMonthlyReportPdf,
-  ensureAuthServiceReady,
   fetchReportHistory,
   fetchSavedReport,
   getApiError,
@@ -50,6 +49,7 @@ export default function PreviousReportsPanel({
   const { isAuth, ready } = useAuth();
   const [reports, setReports] = useState<SavedReportSummaryApi[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadHint, setLoadHint] = useState('Loading saved months…');
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -64,12 +64,18 @@ export default function PreviousReportsPanel({
       return;
     }
     let cancelled = false;
+    let hintTimer: number | undefined;
     setLoading(true);
     setError(null);
+    setLoadHint('Loading saved months…');
+    // Progressive copy — cold Render wake often takes 10–30s on first open.
+    hintTimer = window.setTimeout(() => {
+      if (!cancelled) setLoadHint('Waking the server (first open can take a bit)…');
+    }, 2500);
     warmupBackend();
-    void ensureAuthServiceReady(15_000).finally(() => {
-      if (cancelled) return;
-      fetchReportHistory()
+    // fetchReportHistory already warms auth+API, dedupes, and uses a short cache
+    // (Upload page usually already fetched the list for the count badge).
+    void fetchReportHistory()
       .then(({ data }) => {
         if (cancelled) return;
         const list = data.reports ?? [];
@@ -83,9 +89,12 @@ export default function PreviousReportsPanel({
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+        if (hintTimer) window.clearTimeout(hintTimer);
       });
-    });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (hintTimer) window.clearTimeout(hintTimer);
+    };
   }, [active, isAuth, ready, onReportsLoaded]);
 
   const previous = useMemo(() => {
@@ -152,7 +161,7 @@ export default function PreviousReportsPanel({
       <section className={postmanStyles.panel}>
         <div className={postmanStyles.head}>
           <h2 className={postmanStyles.title}>Previous reports</h2>
-          <p className={postmanStyles.sub}>Loading saved months…</p>
+          <p className={postmanStyles.sub}>{loadHint}</p>
         </div>
       </section>
     );

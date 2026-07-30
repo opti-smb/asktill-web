@@ -17,6 +17,7 @@ import {
   extractUploadMismatches,
   fetchSavedReportWithRetry,
   getApiError,
+  invalidateReportHistoryCache,
   recoverSavedAnalyzeFromHistory,
   statementIdFromProgressEvent,
   type StatementDuplicateInfo,
@@ -59,7 +60,14 @@ interface AnalysisContextValue {
   error: string | null;
   uploadMismatch: UploadValidationResult | null;
   statementDuplicate: StatementDuplicateInfo | null;
+  /** Last successful upload-box validation (survives Profile / nav away). */
+  uploadValidation: UploadValidationResult | null;
+  uploadValidatedKeys: string;
   setFiles: (files: UploadFiles) => void;
+  setUploadValidationDraft: (
+    validation: UploadValidationResult | null,
+    validatedKeys: string,
+  ) => void;
   runAnalyze: (
     files?: UploadFiles,
     options?: { force?: boolean },
@@ -86,6 +94,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [uploadMismatch, setUploadMismatch] = useState<UploadValidationResult | null>(null);
   const [statementDuplicate, setStatementDuplicate] = useState<StatementDuplicateInfo | null>(null);
+  const [uploadValidation, setUploadValidation] = useState<UploadValidationResult | null>(null);
+  const [uploadValidatedKeys, setUploadValidatedKeys] = useState('');
   const pipelineFinishRef = useRef<(() => void) | null>(null);
   const pipelineSafetyRef = useRef<number | null>(null);
   const analyzeProgressRef = useRef<AnalyzeProgressState | null>(null);
@@ -139,6 +149,14 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setFilesState(next);
   }, []);
 
+  const setUploadValidationDraft = useCallback(
+    (validation: UploadValidationResult | null, validatedKeys: string) => {
+      setUploadValidation(validation);
+      setUploadValidatedKeys(validatedKeys);
+    },
+    [],
+  );
+
   const clearError = useCallback(() => setError(null), []);
   const clearUploadMismatch = useCallback(() => setUploadMismatch(null), []);
   const clearStatementDuplicate = useCallback(() => setStatementDuplicate(null), []);
@@ -158,7 +176,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     setError(null);
     setUploadMismatch(null);
     setStatementDuplicate(null);
-  }, []);
+    setUploadValidation(null);
+    setUploadValidatedKeys('');
+  }, [clearPipelineWaiters]);
 
   useEffect(() => {
     const onReset = () => resetSession();
@@ -232,7 +252,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
     let inlineResult: AnalyzeResult | null = null;
 
-    const finishWithResult = async (data: AnalyzeResult, activeFiles: UploadFiles) => {
+    const finishWithResult = async (data: AnalyzeResult, _activeFiles: UploadFiles) => {
       let resolved = data;
       const sid = data.statement_id?.trim();
       const hasPayload = Boolean(getAnalyzeAnalysis(data));
@@ -241,7 +261,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
           resolved = await fetchSavedReportWithRetry(sid);
         } catch {
           try {
-            await ensureAuthServiceReady(45_000);
+            await ensureAuthServiceReady(8_000);
             resolved = await fetchSavedReportWithRetry(sid);
           } catch {
             /* keep statement_id so dashboard can recover via history sync */
@@ -250,13 +270,17 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      setFilesState(activeFiles);
       setResult(resolved);
       pinActiveStatementView(resolved.statement_id);
       markJustAnalyzed();
+      invalidateReportHistoryCache();
       setStatementDuplicate(null);
       setError(null);
       setUploadMismatch(null);
+      // Clear upload boxes after a successful analyze — those stmts are saved now.
+      setFilesState({});
+      setUploadValidation(null);
+      setUploadValidatedKeys('');
 
       if (isAuth && user?.userId) {
         const preview = buildAtLetterPreview(resolved, user, {
@@ -416,7 +440,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       error,
       uploadMismatch,
       statementDuplicate,
+      uploadValidation,
+      uploadValidatedKeys,
       setFiles,
+      setUploadValidationDraft,
       runAnalyze,
       applyStatementDuplicate,
       clearError,
@@ -436,7 +463,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       error,
       uploadMismatch,
       statementDuplicate,
+      uploadValidation,
+      uploadValidatedKeys,
       setFiles,
+      setUploadValidationDraft,
       runAnalyze,
       applyStatementDuplicate,
       clearError,

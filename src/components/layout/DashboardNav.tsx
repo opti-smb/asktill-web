@@ -22,6 +22,7 @@ export default function DashboardNav() {
   const isAtLetterRoute = /^\/dashboard(?:\/at-letter)?\/?$/.test(pathname);
   const isAtLedgerRoute = pathname.startsWith('/dashboard/at-ledger');
   const isCalculatorsRoute = pathname.startsWith('/dashboard/calculators');
+  const isChargebacksRoute = pathname.startsWith('/dashboard/chargebacks');
   const isChannelPartnersRoute = pathname.startsWith('/dashboard/channel-partners');
   const isRewardsRoute = pathname.startsWith('/dashboard/rewards');
   const isProfileRoute = pathname.startsWith('/dashboard/profile');
@@ -30,6 +31,7 @@ export default function DashboardNav() {
     isAtLetterRoute ||
     isAtLedgerRoute ||
     isCalculatorsRoute ||
+    isChargebacksRoute ||
     isChannelPartnersRoute ||
     isRewardsRoute ||
     isProfileRoute ||
@@ -83,7 +85,15 @@ export default function DashboardNav() {
                 className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover('/dashboard/calculators', isCalculatorsRoute)}
               >
-                AT Calculators
+                AT Health Calculator
+              </NavLink>
+
+              <NavLink
+                to="/dashboard/chargebacks"
+                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+                onMouseEnter={() => goOnHover('/dashboard/chargebacks', isChargebacksRoute)}
+              >
+                AT Chargebacks
               </NavLink>
 
               <NavLink

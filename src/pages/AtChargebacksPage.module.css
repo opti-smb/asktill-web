@@ -1,0 +1,18 @@
+.main {
+  padding: 12px 0 28px;
+  background: var(--bg-soft);
+  min-height: calc(100vh - 88px);
+}
+
+.page {
+  max-width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.scrollViewport {
+  max-height: min(85vh, 920px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}

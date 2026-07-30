@@ -1,9 +1,8 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
 import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
-import CalculatorsPage from '../pages/CalculatorsPage';
-import ChannelPartnersPage from '../pages/ChannelPartnersPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -19,7 +18,9 @@ import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
 import AtRewardsPage from '../pages/AtRewardsPage';
+import AtChargebacksPage from '../pages/AtChargebacksPage';
 import ProfilePage from '../pages/ProfilePage';
+import AdminHandoffPage from '../pages/AdminHandoffPage';
 import PricingPage from '../pages/PricingPage';
 import CheckoutPage from '../pages/CheckoutPage';
 import SubscriptionActivatingPage from '../pages/SubscriptionActivatingPage';
@@ -29,6 +30,17 @@ import PostPaymentRoute from '../components/auth/PostPaymentRoute';
 import { DEFAULT_DASHBOARD_PATH } from '../lib/pendingPdfDownload';
 import { useAuth } from '../context/AuthContext';
 
+const CalculatorsPage = lazy(() => import('../pages/CalculatorsPage'));
+const ChannelPartnersPage = lazy(() => import('../pages/ChannelPartnersPage'));
+
+function RouteFallback() {
+  return (
+    <div style={{ padding: '2rem', textAlign: 'center' }} role="status">
+      Loading…
+    </div>
+  );
+}
+
 function UploadPageRoute() {
   const { user } = useAuth();
   return <UploadPage key={user?.userId ?? 'anon'} />;
@@ -36,7 +48,8 @@ function UploadPageRoute() {
 
 function AppRoutes() {
   return (
-    <Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/calculators" element={<Navigate to="/dashboard/calculators" replace />} />
         <Route
@@ -70,6 +83,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <PricingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminHandoffPage />
             </ProtectedRoute>
           }
         />
@@ -108,12 +129,14 @@ function AppRoutes() {
           </Route>
           <Route path="calculators" element={<CalculatorsPage />} />
           <Route path="calculators/:slug" element={<CalculatorsPage />} />
+          <Route path="chargebacks" element={<AtChargebacksPage />} />
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
           <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
 
