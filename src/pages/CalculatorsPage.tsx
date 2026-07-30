@@ -142,7 +142,11 @@ export default function CalculatorsPage() {
       // Instant when Last 3 months is already cached — no loading flash on hover.
       if (mode === ROLLING_VIEW) {
         const key = rollingWindowKey(sortedReports.slice(-3).map((r) => r.statement_id));
-        if (key && getCachedRollingWindow(key)) {
+        const hit = key ? getCachedRollingWindow(key) : undefined;
+        if (hit) {
+          setRollingResults(hit);
+          setRollingLoading(false);
+          setLoadStatus(null);
           setViewMode('rolling');
           return;
         }
@@ -185,6 +189,13 @@ export default function CalculatorsPage() {
     if (!targetId) return;
     if (hydrateAttemptRef.current === targetId) return;
 
+    const cached = getCachedCalculatorReport(targetId);
+    if (cached) {
+      hydrateAttemptRef.current = targetId;
+      loadSavedReport(cached);
+      return;
+    }
+
     let cancelled = false;
     hydrateAttemptRef.current = targetId;
     setHydrating(true);
@@ -200,7 +211,10 @@ export default function CalculatorsPage() {
     );
     void fetchSavedReport(targetId)
       .then(({ data }) => {
-        if (!cancelled) loadSavedReport(data);
+        if (!cancelled) {
+          putCachedCalculatorReport(data);
+          loadSavedReport(data);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -273,6 +287,45 @@ export default function CalculatorsPage() {
     putCachedCalculatorReport(result);
   }, [result]);
 
+  // Prefetch Last 3 months in the background once history is ready (so hover is instant).
+  useEffect(() => {
+    if (!historyReady || !sortedReports.length) return;
+    const latest = sortedReports.slice(-3);
+    const key = rollingWindowKey(latest.map((r) => r.statement_id));
+    if (!key || getCachedRollingWindow(key)) return;
+
+    let cancelled = false;
+    void (async () => {
+      const loaded: AnalyzeResult[] = [];
+      for (const row of latest) {
+        if (cancelled) return;
+        const hit =
+          (result?.statement_id === row.statement_id && getAnalyzeAnalysis(result)
+            ? result
+            : null) ?? getCachedCalculatorReport(row.statement_id);
+        if (hit) {
+          putCachedCalculatorReport(hit);
+          loaded.push(hit);
+          continue;
+        }
+        try {
+          const { data } = await fetchSavedReport(row.statement_id);
+          putCachedCalculatorReport(data);
+          loaded.push(data);
+        } catch {
+          return;
+        }
+      }
+      if (!cancelled && loaded.length === latest.length) {
+        putCachedRollingWindow(key, loaded);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyReady, rollingKey, sortedReports, result?.statement_id]);
+
   // Load latest ≤3 months once; reuse durable cache on hover / tab revisit.
   useEffect(() => {
     if (monthOnly) return;
@@ -310,6 +363,11 @@ export default function CalculatorsPage() {
       setRollingError(null);
       setLoadStatus(null);
       return;
+    }
+
+    // Show whatever we already have while fetching the rest — avoid a full blank loader.
+    if (cached.length > 0) {
+      setRollingResults(cached);
     }
 
     let cancelled = false;
@@ -362,7 +420,7 @@ export default function CalculatorsPage() {
       } catch {
         if (!cancelled) {
           setRollingError('Could not load months for the trend view. Try again.');
-          setRollingResults([]);
+          if (!cached.length) setRollingResults([]);
         }
       } finally {
         if (!cancelled) {
@@ -375,7 +433,9 @@ export default function CalculatorsPage() {
     return () => {
       cancelled = true;
     };
-  }, [monthOnly, rollingKey, sortedReports, result]);
+    // Intentionally omit `result` object identity — statement id is enough via rollingKey/cache.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- result used only as same-id shortcut
+  }, [monthOnly, rollingKey, sortedReports]);
 
   const onBoxTilt = (e: MouseEvent<HTMLElement>) => {
     const el = e.currentTarget;
@@ -493,7 +553,16 @@ export default function CalculatorsPage() {
           type="button"
           className={`${styles.viewFilter} ${activeView === ROLLING_VIEW ? styles.viewFilterActive : ''}`}
           onMouseEnter={() => selectViewOnHover('rolling')}
-          onClick={() => setViewMode('rolling')}
+          onClick={() => {
+            const key = rollingWindowKey(sortedReports.slice(-3).map((r) => r.statement_id));
+            const hit = key ? getCachedRollingWindow(key) : undefined;
+            if (hit) {
+              setRollingResults(hit);
+              setRollingLoading(false);
+              setLoadStatus(null);
+            }
+            setViewMode('rolling');
+          }}
         >
           Last 3 months
         </button>
