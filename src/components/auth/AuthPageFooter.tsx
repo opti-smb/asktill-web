@@ -21,11 +21,14 @@ export default function AuthPageFooter({
   variant,
   showHomeLink = true,
   signInEmail,
+  hidePrimary = false,
 }: {
   variant: AuthPageFooterVariant;
   showHomeLink?: boolean;
   /** Prefill sign-in email when leaving registration (never pass password). */
   signInEmail?: string;
+  /** Hide the Sign up / Sign in cross-link (e.g. login offers Create account only after failure). */
+  hidePrimary?: boolean;
 }) {
   const { lead, primary } = COPY[variant];
   const signInState =
@@ -35,12 +38,16 @@ export default function AuthPageFooter({
 
   return (
     <footer className={styles.footer}>
-      <p className={styles.lead}>{lead}</p>
-      <div className={styles.links}>
-        <Link to={primary.to} state={signInState} className={styles.primary}>
-          {primary.label}
-        </Link>
-      </div>
+      {!hidePrimary ? (
+        <>
+          <p className={styles.lead}>{lead}</p>
+          <div className={styles.links}>
+            <Link to={primary.to} state={signInState} className={styles.primary}>
+              {primary.label}
+            </Link>
+          </div>
+        </>
+      ) : null}
       {showHomeLink ? (
         <Link to="/" className={styles.home}>
           ← Back to home

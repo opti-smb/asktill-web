@@ -26,7 +26,14 @@ export default defineConfig({
     ],
   },
   optimizeDeps: {
-    include: ['recharts', 'lucide-react'],
+    include: [
+      'recharts',
+      'lucide-react',
+      'framer-motion',
+      'three',
+      '@react-three/fiber',
+      '@react-three/drei',
+    ],
   },
   server: {
     host: '127.0.0.1',

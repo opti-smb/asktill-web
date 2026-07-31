@@ -1,0 +1,1292 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Always behind .wrap / layout content */
+  z-index: 0;
+}
+
+.hero,
+.product,
+.story,
+.rewards,
+.pricing,
+.cta,
+.how,
+.features,
+.security {
+  z-index: 0;
+}
+
+/* Security bot — soft background only */
+.secBot {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  translate: -50% -42%;
+  width: min(42vw, 22rem);
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  opacity: 0.22;
+  color: #7cffb2;
+  pointer-events: none;
+  z-index: 0;
+  animation: secBotFloat 9s ease-in-out infinite;
+}
+
+.secBotSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 0 28px rgba(91, 140, 255, 0.25));
+}
+
+.secBotRing {
+  transform-origin: 100px 150px;
+  animation: secBotSpin 28s linear infinite;
+}
+
+.secBotRingB {
+  transform-origin: 100px 150px;
+  animation: secBotSpin 40s linear infinite reverse;
+}
+
+.secBotCaption {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(124, 255, 178, 0.85);
+  text-align: center;
+}
+
+@keyframes secBotFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.18;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 0.28;
+  }
+}
+
+@keyframes secBotSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .secBot {
+    width: min(58vw, 14rem);
+    top: 58%;
+    opacity: 0.12;
+  }
+
+  .secBotCaption {
+    font-size: 0.62rem;
+  }
+}
+
+.shape {
+  position: absolute;
+  border: 1.5px solid rgba(158, 192, 255, 0.45);
+  will-change: transform, opacity;
+}
+
+/* ========== HERO — fill L/R border gaps + bridge between columns ========== */
+.hWashL,
+.hWashR {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: min(22vw, 11rem);
+}
+
+.hWashL {
+  left: 0;
+  background: linear-gradient(90deg, rgba(124, 255, 178, 0.14), transparent 75%);
+  animation: breathe 6.5s ease-in-out infinite;
+}
+
+.hWashR {
+  right: 0;
+  background: linear-gradient(270deg, rgba(91, 140, 255, 0.16), transparent 75%);
+  animation: breathe 7.5s ease-in-out infinite reverse;
+}
+
+.hBridge {
+  position: absolute;
+  left: 42%;
+  top: 28%;
+  width: 16%;
+  height: 42%;
+  background:
+    radial-gradient(ellipse at center, rgba(91, 140, 255, 0.18), transparent 68%),
+    radial-gradient(ellipse at 50% 60%, rgba(124, 255, 178, 0.12), transparent 70%);
+  filter: blur(2px);
+  animation: glowPulseHero 5s ease-in-out infinite;
+}
+
+.hRingL {
+  width: min(14vw, 6.5rem);
+  height: min(14vw, 6.5rem);
+  left: 3%;
+  top: 24%;
+  border-radius: 50%;
+  border-color: rgba(124, 255, 178, 0.4);
+  animation: floatA 11s ease-in-out infinite;
+}
+
+.hRingR {
+  width: min(16vw, 7.5rem);
+  height: min(16vw, 7.5rem);
+  right: 3.5%;
+  top: 18%;
+  border-radius: 50%;
+  border-color: rgba(91, 140, 255, 0.45);
+  animation: floatB 13s ease-in-out infinite;
+}
+
+.hLineL {
+  width: min(12vw, 5.5rem);
+  height: 0;
+  left: 4%;
+  bottom: 30%;
+  border: 0;
+  border-top: 1.5px solid rgba(124, 255, 178, 0.45);
+  animation: driftX 9s ease-in-out infinite;
+}
+
+.hLineR {
+  width: min(13vw, 6rem);
+  height: 0;
+  right: 4%;
+  bottom: 26%;
+  border: 0;
+  border-top: 1.5px solid rgba(91, 140, 255, 0.45);
+  animation: driftX 10s ease-in-out infinite reverse;
+}
+
+.hDiamond {
+  width: min(9vw, 3.6rem);
+  height: min(9vw, 3.6rem);
+  right: 6%;
+  bottom: 38%;
+  border-color: rgba(255, 200, 87, 0.4);
+  transform: rotate(45deg);
+  animation: floatDiamond 12s ease-in-out infinite;
+}
+
+.hFlow,
+.hFlowB {
+  position: absolute;
+  top: 48%;
+  left: 38%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7cffb2;
+  box-shadow: 0 0 14px rgba(124, 255, 178, 0.85);
+  animation: heroFlow 5.2s ease-in-out infinite;
+}
+
+.hFlowB {
+  background: #5b8cff;
+  box-shadow: 0 0 14px rgba(91, 140, 255, 0.85);
+  animation-delay: -2.6s;
+  top: 56%;
+}
+
+@keyframes glowPulseHero {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes heroFlow {
+  0% {
+    left: 38%;
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 60%;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ========== COSMIC ATMOSPHERE — visible space theme, no white moons ========== */
+.cosmic {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.72;
+  --aura-a: rgba(124, 255, 178, 0.45);
+  --aura-b: rgba(91, 140, 255, 0.5);
+  --aurora: rgba(124, 255, 178, 0.35);
+  --rim: #9ec0ff;
+}
+
+.cosmic_mint {
+  --aura-a: rgba(124, 255, 178, 0.5);
+  --aura-b: rgba(91, 140, 255, 0.42);
+  --aurora: rgba(124, 255, 178, 0.4);
+  --rim: #7cffb2;
+}
+
+.cosmic_sky {
+  --aura-a: rgba(91, 140, 255, 0.52);
+  --aura-b: rgba(124, 255, 178, 0.35);
+  --aurora: rgba(91, 140, 255, 0.4);
+  --rim: #5b8cff;
+}
+
+.cosmic_gold {
+  --aura-a: rgba(255, 200, 87, 0.4);
+  --aura-b: rgba(91, 140, 255, 0.45);
+  --aurora: rgba(255, 200, 87, 0.32);
+  --rim: #ffc857;
+}
+
+.cosmicAuraL,
+.cosmicAuraR {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: min(26vw, 13rem);
+  filter: blur(28px);
+  opacity: 1;
+  animation: cosmicBreathe var(--cosmic-breathe, 10s) ease-in-out infinite;
+}
+
+.cosmicAuraL {
+  left: -2%;
+  background: radial-gradient(ellipse at 25% 40%, var(--aura-a), transparent 68%);
+}
+
+.cosmicAuraR {
+  right: -2%;
+  background: radial-gradient(ellipse at 75% 45%, var(--aura-b), transparent 68%);
+  animation-delay: -4s;
+}
+
+.cosmicAurora {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  top: 30%;
+  height: 34%;
+  background: linear-gradient(
+    100deg,
+    transparent 5%,
+    var(--aurora) 30%,
+    rgba(91, 140, 255, 0.28) 55%,
+    transparent 88%
+  );
+  filter: blur(16px);
+  opacity: 0.85;
+  transform: skewY(-5deg);
+  animation: cosmicAuroraDrift var(--cosmic-aurora, 12s) ease-in-out infinite;
+}
+
+.cosmicHorizon {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 0;
+  height: 28%;
+  background: radial-gradient(ellipse at 50% 110%, rgba(47, 91, 255, 0.35), transparent 65%);
+  filter: blur(12px);
+  animation: cosmicBreathe var(--cosmic-breathe, 10s) ease-in-out infinite reverse;
+}
+
+.cosmicOrbit {
+  position: absolute;
+  right: 1.5%;
+  top: 18%;
+  width: min(16vw, 7.5rem);
+  height: min(10vw, 4.8rem);
+  border-radius: 50%;
+  border: 1px solid rgba(158, 192, 255, 0.35);
+  opacity: 0.75;
+  transform: rotate(-22deg);
+  animation: cosmicOrbitPulse var(--cosmic-orbit, 14s) ease-in-out infinite;
+}
+
+/* Second thin orbit on the left — empty rings only */
+.cosmicOrbit::before {
+  content: "";
+  position: absolute;
+  left: -120%;
+  top: 40%;
+  width: 85%;
+  height: 120%;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 255, 178, 0.28);
+  transform: rotate(28deg);
+}
+
+/* Small constellation in left gutter */
+.cosmicConstellation {
+  position: absolute;
+  left: 4.5%;
+  bottom: 24%;
+  width: 2.8rem;
+  height: 2.8rem;
+  background:
+    radial-gradient(circle at 10% 80%, #fff 0 1.2px, transparent 1.4px),
+    radial-gradient(circle at 55% 20%, #fff 0 1.2px, transparent 1.4px),
+    radial-gradient(circle at 90% 70%, #fff 0 1.2px, transparent 1.4px),
+    linear-gradient(
+      115deg,
+      transparent 48%,
+      rgba(255, 255, 255, 0.35) 49.5%,
+      rgba(255, 255, 255, 0.35) 50.5%,
+      transparent 52%
+    ),
+    linear-gradient(
+      25deg,
+      transparent 48%,
+      rgba(255, 255, 255, 0.3) 49.5%,
+      rgba(255, 255, 255, 0.3) 50.5%,
+      transparent 52%
+    );
+  opacity: 0.7;
+  animation: cosmicSparkPulse 7s ease-in-out infinite;
+}
+
+.cosmicSpark {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(158, 192, 255, 0.9), 0 0 14px var(--rim);
+  animation: cosmicSparkPulse var(--d, var(--cosmic-spark, 5s)) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+.cosmicShoot,
+.cosmicShootB {
+  position: absolute;
+  width: 4.5rem;
+  height: 2px;
+  left: 8%;
+  top: 20%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, transparent, #fff 40%, var(--rim));
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transform: rotate(-32deg);
+  animation: cosmicShoot var(--cosmic-shoot, 8s) ease-in-out infinite;
+}
+
+.cosmicShootB {
+  left: auto;
+  right: 12%;
+  top: 68%;
+  transform: rotate(148deg);
+  animation-delay: -4s;
+  animation-duration: 9.5s;
+}
+
+@keyframes cosmicBreathe {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes cosmicAuroraDrift {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: skewY(-5deg) translateX(-3%);
+  }
+  50% {
+    opacity: 1;
+    transform: skewY(-3deg) translateX(3%);
+  }
+}
+
+@keyframes cosmicOrbitPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: rotate(-22deg) scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: rotate(-16deg) scale(1.04);
+  }
+}
+
+@keyframes cosmicSparkPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes cosmicFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes cosmicShoot {
+  0%,
+  62% {
+    opacity: 0;
+    transform: translate(-16px, 10px) rotate(-32deg) scaleX(0.35);
+  }
+  68% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 0;
+    transform: translate(80px, -48px) rotate(-32deg) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ========== PRODUCT — L/R gutters around centered frame ========== */
+.washL,
+.washR {
+  position: absolute;
+  top: 5%;
+  bottom: 5%;
+  width: min(26vw, 13rem);
+}
+
+.washL {
+  left: 0;
+  background: linear-gradient(90deg, rgba(124, 255, 178, 0.16), transparent);
+  animation: breathe 7s ease-in-out infinite;
+}
+
+.washR {
+  right: 0;
+  background: linear-gradient(270deg, rgba(91, 140, 255, 0.18), transparent);
+  animation: breathe 8s ease-in-out infinite reverse;
+}
+
+.pRect {
+  width: min(20vw, 8.5rem);
+  height: min(14vw, 6rem);
+  left: 4%;
+  top: 22%;
+  border-radius: 12px;
+  border-color: rgba(124, 255, 178, 0.55);
+  animation: floatA 10s ease-in-out infinite;
+}
+
+.pCircle {
+  width: min(16vw, 7rem);
+  height: min(16vw, 7rem);
+  right: 5%;
+  top: 18%;
+  border-radius: 50%;
+  border-color: rgba(91, 140, 255, 0.55);
+  animation: floatB 12s ease-in-out infinite;
+}
+
+.pLine {
+  width: min(18vw, 8rem);
+  height: 0;
+  left: 6%;
+  bottom: 28%;
+  border: 0;
+  border-top: 1.5px solid rgba(124, 255, 178, 0.5);
+  animation: driftX 9s ease-in-out infinite;
+}
+
+.pDiamond {
+  width: min(10vw, 4rem);
+  height: min(10vw, 4rem);
+  right: 8%;
+  bottom: 24%;
+  border-color: rgba(255, 200, 87, 0.45);
+  transform: rotate(45deg);
+  animation: floatDiamond 11s ease-in-out infinite;
+}
+
+/* ========== STORY — right of copy, around visual ========== */
+.story {
+  /* soft: motion on the visual side only, no hard cut */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 38%, rgba(0, 0, 0, 0.4) 48%, #000 62%);
+  mask-image: linear-gradient(90deg, transparent 0%, transparent 38%, rgba(0, 0, 0, 0.4) 48%, #000 62%);
+}
+
+.sGlow {
+  position: absolute;
+  right: 2%;
+  top: 15%;
+  width: min(48vw, 22rem);
+  height: min(48vw, 22rem);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 91, 255, 0.35), transparent 65%);
+  filter: blur(18px);
+  animation: pulseHalo 5s ease-in-out infinite;
+}
+
+.sRing {
+  width: min(34vw, 15rem);
+  height: min(34vw, 15rem);
+  right: 8%;
+  top: 18%;
+  border-radius: 50%;
+  border-color: rgba(91, 140, 255, 0.5);
+  animation: spinSlow 24s linear infinite;
+}
+
+.sRingInner {
+  width: min(22vw, 9.5rem);
+  height: min(22vw, 9.5rem);
+  right: 14%;
+  top: 26%;
+  border-radius: 50%;
+  border-style: dashed;
+  border-color: rgba(124, 255, 178, 0.45);
+  animation: spinSlow 18s linear infinite reverse;
+}
+
+.sDash {
+  width: min(14vw, 6rem);
+  height: 0;
+  right: 18%;
+  bottom: 22%;
+  border: 0;
+  border-top: 1.5px solid rgba(124, 255, 178, 0.55);
+  animation: driftX 8s ease-in-out infinite;
+}
+
+.orbitDot {
+  --n: 6;
+  position: absolute;
+  right: calc(8% + min(17vw, 7.5rem));
+  top: calc(18% + min(17vw, 7.5rem));
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background: #7cffb2;
+  box-shadow: 0 0 10px rgba(124, 255, 178, 0.7);
+  animation: orbit 14s linear infinite;
+  animation-delay: calc(var(--i) * -2.33s);
+  offset-path: none;
+  transform-origin: 0 0;
+}
+
+/* orbit via rotate on a pseudo-radius using transform */
+.orbitDot {
+  animation-name: orbitSpin;
+}
+
+@keyframes orbitSpin {
+  from {
+    transform: rotate(calc(var(--i) * 60deg)) translateX(min(17vw, 7.5rem)) rotate(0deg);
+  }
+  to {
+    transform: rotate(calc(var(--i) * 60deg + 360deg)) translateX(min(17vw, 7.5rem)) rotate(-360deg);
+  }
+}
+
+/* ========== REWARDS — motion on both sides (wallet + ways to earn) ========== */
+.rewards {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, transparent 12%, #000 28%);
+  mask-image: linear-gradient(180deg, transparent 0%, transparent 12%, #000 28%);
+}
+
+.rGlow {
+  position: absolute;
+  left: 0;
+  top: 36%;
+  width: min(36vw, 16rem);
+  height: min(36vw, 16rem);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(77, 200, 160, 0.26), transparent 68%);
+  filter: blur(18px);
+  animation: pulseHalo 6s ease-in-out infinite;
+}
+
+.rGlowR {
+  position: absolute;
+  right: 0;
+  top: 42%;
+  width: min(32vw, 14rem);
+  height: min(32vw, 14rem);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91, 140, 255, 0.2), transparent 68%);
+  filter: blur(18px);
+  animation: pulseHalo 7.5s ease-in-out infinite reverse;
+}
+
+.rCoin1,
+.rCoin2,
+.rCoin3 {
+  border-radius: 50%;
+  border-color: rgba(77, 200, 160, 0.55);
+}
+
+.rCoin1 {
+  width: 2.8rem;
+  height: 2.8rem;
+  left: 3%;
+  top: 42%;
+  border-color: rgba(245, 196, 81, 0.6);
+  animation: floatA 9s ease-in-out infinite;
+}
+
+.rCoin2 {
+  width: 2.2rem;
+  height: 2.2rem;
+  left: 14%;
+  top: 58%;
+  animation: floatB 10s ease-in-out infinite;
+}
+
+.rCoin3 {
+  width: 1.9rem;
+  height: 1.9rem;
+  right: 6%;
+  top: 48%;
+  left: auto;
+  border-color: rgba(91, 140, 255, 0.55);
+  animation: floatA 12s ease-in-out infinite reverse;
+}
+
+.rCoin4 {
+  width: 2.4rem;
+  height: 2.4rem;
+  right: 12%;
+  bottom: 18%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(245, 196, 81, 0.5);
+  animation: floatB 11s ease-in-out infinite;
+}
+
+.spark {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4dc8a0;
+  box-shadow: 0 0 8px rgba(77, 200, 160, 0.8);
+  animation: twinkle var(--d) ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+/* ========== PRICING — side arcs beside plan cards ========== */
+.prGlow {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  translate: -50% 0;
+  width: min(70vw, 28rem);
+  height: 16rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 91, 255, 0.28), transparent 70%);
+  filter: blur(20px);
+  animation: pulseHalo 6s ease-in-out infinite;
+}
+
+.prArcL,
+.prArcR {
+  width: min(32vw, 14rem);
+  height: min(32vw, 14rem);
+  border-radius: 50%;
+  border-color: transparent;
+}
+
+.prArcL {
+  left: -4%;
+  top: 25%;
+  border-top-color: rgba(91, 140, 255, 0.55);
+  border-right-color: rgba(91, 140, 255, 0.35);
+  animation: spinSlow 28s linear infinite;
+}
+
+.prArcR {
+  right: -4%;
+  bottom: 15%;
+  border-bottom-color: rgba(124, 255, 178, 0.5);
+  border-left-color: rgba(124, 255, 178, 0.3);
+  animation: spinSlow 22s linear infinite reverse;
+}
+
+.prSlash {
+  width: min(16vw, 7rem);
+  height: 0;
+  left: 5%;
+  bottom: 30%;
+  border: 0;
+  border-top: 1.5px solid rgba(124, 255, 178, 0.45);
+  transform: rotate(-24deg);
+  animation: driftX 10s ease-in-out infinite;
+}
+
+/* ========== CTA — behind / beside panel ========== */
+.cHaloL,
+.cHaloR {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(32px);
+}
+
+.cHaloL {
+  width: min(50vw, 22rem);
+  height: min(50vw, 22rem);
+  left: -10%;
+  top: 20%;
+  background: radial-gradient(circle, rgba(124, 255, 178, 0.32), transparent 68%);
+  animation: pulseHalo 6s ease-in-out infinite;
+}
+
+.cHaloR {
+  width: min(46vw, 20rem);
+  height: min(46vw, 20rem);
+  right: -8%;
+  bottom: 5%;
+  background: radial-gradient(circle, rgba(91, 140, 255, 0.34), transparent 68%);
+  animation: pulseHalo 7.5s ease-in-out infinite reverse;
+}
+
+.cRing {
+  width: min(28vw, 12rem);
+  height: min(28vw, 12rem);
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border-color: rgba(124, 255, 178, 0.35);
+  animation: pulseScale 5s ease-in-out infinite;
+}
+
+/* ========== HOW IT WORKS — step path in side gutters ========== */
+.how {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 14%,
+    transparent 28%,
+    transparent 72%,
+    #000 86%,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 14%,
+    transparent 28%,
+    transparent 72%,
+    #000 86%,
+    #000 100%
+  );
+}
+
+.hTrack {
+  position: absolute;
+  left: 6%;
+  top: 30%;
+  bottom: 18%;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(124, 255, 178, 0.55),
+    rgba(91, 140, 255, 0.5),
+    rgba(255, 200, 87, 0.5),
+    rgba(255, 107, 74, 0.45)
+  );
+  animation: breathe 8s ease-in-out infinite;
+}
+
+.hTrackR {
+  position: absolute;
+  right: 6%;
+  top: 30%;
+  bottom: 18%;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 107, 74, 0.4),
+    rgba(255, 200, 87, 0.45),
+    rgba(91, 140, 255, 0.5),
+    rgba(124, 255, 178, 0.5)
+  );
+  animation: breathe 9s ease-in-out infinite reverse;
+}
+
+.hNode {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  left: calc(6% - 4px);
+  box-shadow: 0 0 12px currentColor;
+  animation: bob 5s ease-in-out infinite;
+}
+
+.hNode1 {
+  top: 32%;
+  background: #7cffb2;
+  color: #7cffb2;
+}
+.hNode2 {
+  top: 48%;
+  background: #5b8cff;
+  color: #5b8cff;
+  animation-delay: -1s;
+}
+.hNode3 {
+  top: 64%;
+  background: #ffc857;
+  color: #ffc857;
+  animation-delay: -2s;
+}
+.hNode4 {
+  top: 78%;
+  background: #ff6b4a;
+  color: #ff6b4a;
+  animation-delay: -3s;
+}
+
+.hBracketL {
+  width: min(12vw, 5rem);
+  height: min(18vw, 7rem);
+  left: 3%;
+  top: 38%;
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  border-color: rgba(124, 255, 178, 0.45);
+  animation: nudge 12s ease-in-out infinite;
+}
+
+.hBracketR {
+  width: min(12vw, 5rem);
+  height: min(18vw, 7rem);
+  right: 3%;
+  bottom: 22%;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  border-color: rgba(91, 140, 255, 0.45);
+  animation: nudge 14s ease-in-out infinite reverse;
+}
+
+/* ========== FEATURES — accent orbs in margins ========== */
+.features {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 16%,
+    transparent 30%,
+    transparent 70%,
+    #000 84%,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 16%,
+    transparent 30%,
+    transparent 70%,
+    #000 84%,
+    #000 100%
+  );
+}
+
+.fOrbMint,
+.fOrbSky,
+.fOrbAmber {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(22px);
+}
+
+.fOrbMint {
+  width: min(24vw, 11rem);
+  height: min(24vw, 11rem);
+  left: -2%;
+  top: 28%;
+  background: radial-gradient(circle, rgba(124, 255, 178, 0.28), transparent 68%);
+  animation: pulseHalo 7s ease-in-out infinite;
+}
+
+.fOrbSky {
+  width: min(20vw, 9rem);
+  height: min(20vw, 9rem);
+  right: -1%;
+  top: 40%;
+  background: radial-gradient(circle, rgba(91, 140, 255, 0.3), transparent 68%);
+  animation: pulseHalo 8s ease-in-out infinite reverse;
+}
+
+.fOrbAmber {
+  width: min(18vw, 8rem);
+  height: min(18vw, 8rem);
+  left: 2%;
+  bottom: 16%;
+  background: radial-gradient(circle, rgba(255, 200, 87, 0.22), transparent 68%);
+  animation: driftSoft 13s ease-in-out infinite;
+}
+
+.fTickL,
+.fTickR {
+  width: min(14vw, 6rem);
+  height: 0;
+  border: 0;
+  border-top: 1.5px solid rgba(124, 255, 178, 0.5);
+}
+
+.fTickL {
+  left: 4%;
+  top: 55%;
+  transform: rotate(-18deg);
+  animation: driftX 9s ease-in-out infinite;
+}
+
+.fTickR {
+  right: 4%;
+  bottom: 30%;
+  border-color: rgba(255, 107, 74, 0.45);
+  transform: rotate(16deg);
+  animation: driftX 11s ease-in-out infinite reverse;
+}
+
+.fSquare {
+  width: min(12vw, 5rem);
+  height: min(12vw, 5rem);
+  right: 5%;
+  top: 22%;
+  border-radius: 10px;
+  border-color: rgba(91, 140, 255, 0.5);
+  animation: floatB 12s ease-in-out infinite;
+}
+
+/* ========== SECURITY — large lock behind content ========== */
+.security {
+  /* no side-only mask — lock sits centered behind text/cards */
+}
+
+.secBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 65% at 50% 55%, rgba(124, 255, 178, 0.1), transparent 62%),
+    radial-gradient(ellipse 55% 50% at 50% 48%, rgba(91, 140, 255, 0.12), transparent 60%);
+  animation: breathe 8s ease-in-out infinite;
+}
+
+.secLockHero {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: min(42vw, 22rem);
+  max-width: 360px;
+  color: rgba(124, 255, 178, 0.16);
+  filter: drop-shadow(0 0 40px rgba(91, 140, 255, 0.14));
+  animation: lockPulse 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.secLockSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes lockPulse {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+.floatDot {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c, rgba(124, 255, 178, 0.7));
+  box-shadow: 0 0 8px var(--c, rgba(124, 255, 178, 0.5));
+  animation: bob var(--d, 5s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* ---- keyframes ---- */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulseHalo {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes pulseScale {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes floatA {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(16px, -22px) rotate(5deg);
+  }
+}
+
+@keyframes floatB {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-18px, 16px);
+  }
+}
+
+@keyframes floatDiamond {
+  0%,
+  100% {
+    transform: rotate(45deg) translate(0, 0);
+  }
+  50% {
+    transform: rotate(52deg) translate(10px, -14px);
+  }
+}
+
+@keyframes driftX {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateX(22px);
+    opacity: 0.9;
+  }
+}
+
+@keyframes spinSlow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-16px);
+    opacity: 1;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(8px, -10px);
+  }
+}
+
+@keyframes driftSoft {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(12px, -18px);
+  }
+}
+
+@media (max-width: 700px) {
+  .story {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, transparent 8%, #000 30%);
+    mask-image: linear-gradient(180deg, transparent 0%, transparent 8%, #000 30%);
+    opacity: 0.5;
+  }
+
+  .hBridge,
+  .hFlow,
+  .hFlowB {
+    display: none;
+  }
+
+  .cosmicOrbit {
+    opacity: 0.55;
+  }
+
+  .cosmicAuraL,
+  .cosmicAuraR {
+    width: min(32vw, 9rem);
+  }
+
+  .cosmicAurora {
+    opacity: 0.7;
+  }
+
+  .hWashL,
+  .hWashR {
+    width: min(28vw, 6.5rem);
+    opacity: 0.7;
+  }
+
+  .rewards {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, transparent 18%, #000 40%);
+    -webkit-mask-composite: source-over;
+    mask-image: linear-gradient(180deg, transparent 0%, transparent 18%, #000 40%);
+    mask-composite: add;
+    opacity: 0.55;
+  }
+
+  .how,
+  .features,
+  .security {
+    opacity: 0.55;
+  }
+
+  .pRect,
+  .pDiamond,
+  .prSlash,
+  .hBracketL,
+  .hBracketR,
+  .fSquare {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hTrack,
+  .hTrackR,
+  .hNode,
+  .fOrbMint,
+  .fOrbSky,
+  .fOrbAmber,
+  .secBackdrop,
+  .secLockHero,
+  .secBot,
+  .secBotRing,
+  .secBotRingB,
+  .shape,
+  .washL,
+  .washR,
+  .hWashL,
+  .hWashR,
+  .hBridge,
+  .hFlow,
+  .hFlowB,
+  .cosmicAuraL,
+  .cosmicAuraR,
+  .cosmicAurora,
+  .cosmicHorizon,
+  .cosmicOrbit,
+  .cosmicSpark,
+  .cosmicConstellation,
+  .cosmicShoot,
+  .cosmicShootB,
+  .sGlow,
+  .rGlow,
+  .prGlow,
+  .cHaloL,
+  .cHaloR,
+  .floatDot,
+  .spark,
+  .orbitDot {
+    animation: none !important;
+  }
+}

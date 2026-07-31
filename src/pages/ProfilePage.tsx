@@ -9,7 +9,6 @@ import {
   createBillingPortalSession,
   fetchBillingInvoices,
   getApiError,
-  openAdminDashboard,
   prefetchAdminDashboard,
   setAutoRenewalEnabled,
   type BillingInvoice,
@@ -194,6 +193,7 @@ export default function ProfilePage() {
     };
   }, [paid, user?.stripeCustomerId, user?.stripeSubscriptionId]);
 
+  const hasPassword = user?.hasPassword ?? true;
   const onPasswordSubmit = async (data: PasswordFormData) => {
     setPasswordError('');
     setPasswordMessage('');
@@ -210,10 +210,21 @@ export default function ProfilePage() {
       setPasswordError(policyError);
       return;
     }
+    if (hasPassword && !data.currentPassword.trim()) {
+      setPasswordError('Current password is required.');
+      return;
+    }
     try {
-      await changePassword(data.currentPassword, data.newPassword);
-      setPasswordMessage('Password updated successfully.');
+      const { data: result } = await changePassword(
+        hasPassword ? data.currentPassword : null,
+        data.newPassword,
+      );
+      setPasswordMessage(
+        result?.message ||
+          'Password updated successfully. Use this password the next time you sign in.',
+      );
       reset();
+      await refreshUser();
     } catch (err) {
       setPasswordError(getApiError(err, 'Could not update password.'));
     }
@@ -322,7 +333,7 @@ export default function ProfilePage() {
                 type="button"
                 className={styles.bannerBtn}
                 onClick={() => {
-                  void openAdminDashboard();
+                  navigate('/admin');
                 }}
               >
                 Admin Dashboard
@@ -510,38 +521,46 @@ export default function ProfilePage() {
         </section>
 
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Change password</h2>
-          <p className={styles.cardSub}>{PASSWORD_HINT}</p>
+          <h2 className={styles.cardTitle}>{hasPassword ? 'Change password' : 'Set password'}</h2>
+          <p className={styles.cardSub}>
+            {hasPassword
+              ? PASSWORD_HINT
+              : `Create a password for email sign-in. ${PASSWORD_HINT}`}
+          </p>
           <form className={styles.form} onSubmit={handleSubmit(onPasswordSubmit)} noValidate autoComplete="off">
-            <label className={styles.label}>
-              Current password
-              <div className={styles.inputWrap}>
-                <input
-                  type="text"
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  data-lpignore="true"
-                  data-1p-ignore="true"
-                  className={`${styles.input} ${styles.inputWithIcon} ${
-                    showCurrentPassword ? '' : styles.passwordMasked
-                  }`}
-                  {...register('currentPassword', { required: 'Current password is required.' })}
-                />
-                <button
-                  type="button"
-                  className={styles.eyeBtn}
-                  onClick={() => setShowCurrentPassword((v) => !v)}
-                  aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
-                >
-                  <PasswordEyeIcon visible={showCurrentPassword} />
-                </button>
-              </div>
-              {errors.currentPassword ? (
-                <span className={styles.fieldError}>{errors.currentPassword.message}</span>
-              ) : null}
-            </label>
+            {hasPassword ? (
+              <label className={styles.label}>
+                Current password
+                <div className={styles.inputWrap}>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    className={`${styles.input} ${styles.inputWithIcon} ${
+                      showCurrentPassword ? '' : styles.passwordMasked
+                    }`}
+                    {...register('currentPassword', {
+                      required: 'Current password is required.',
+                    })}
+                  />
+                  <button
+                    type="button"
+                    className={styles.eyeBtn}
+                    onClick={() => setShowCurrentPassword((v) => !v)}
+                    aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <PasswordEyeIcon visible={showCurrentPassword} />
+                  </button>
+                </div>
+                {errors.currentPassword ? (
+                  <span className={styles.fieldError}>{errors.currentPassword.message}</span>
+                ) : null}
+              </label>
+            ) : null}
             <label className={styles.label}>
               New password
               <div className={styles.inputWrap}>
@@ -614,7 +633,7 @@ export default function ProfilePage() {
             {passwordError ? <p className={styles.formError}>{passwordError}</p> : null}
             {passwordMessage ? <p className={styles.formSuccess}>{passwordMessage}</p> : null}
             <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-              {isSubmitting ? 'Updating…' : 'Update password'}
+              {isSubmitting ? 'Updating…' : hasPassword ? 'Update password' : 'Set password'}
             </button>
           </form>
         </section>

@@ -98,7 +98,7 @@
 }
 
 .pickerQ {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--ink);
   font-style: italic;

@@ -6,22 +6,16 @@ import PlanGrid from '../components/pricing/PlanGrid';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
 import { warmupAuthService, warmupSubscriptionService } from '../lib/api';
+import { resolveBillingReturnPath } from '../lib/safeRedirect';
 import { tierDisplayLabel } from '../lib/subscription';
 import type { PlanDefinition } from '../lib/plans';
 import styles from './PricingPage.module.css';
-
-function resolveReturnPath(raw: string | null): string {
-  if (!raw?.trim()) return '/dashboard/sources';
-  const path = raw.trim();
-  if (!path.startsWith('/') || path.startsWith('//')) return '/dashboard/sources';
-  return path;
-}
 
 export default function PricingPage() {
   const { user, isAuth } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const returnTo = resolveReturnPath(params.get('from'));
+  const returnTo = resolveBillingReturnPath(params.get('from'), '/onboarding');
 
   // Start waking Stripe checkout service while the user picks a plan.
   useEffect(() => {

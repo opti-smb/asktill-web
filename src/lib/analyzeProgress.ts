@@ -159,10 +159,13 @@ export function applyPipelineEvent(
   };
 }
 
-/** Advance the visible step by one row toward the server-confirmed target. */
+/** Advance the visible step toward the server-confirmed target (catch up faster). */
 export function tickPipelineDisplay(prev: AnalyzeProgressState): AnalyzeProgressState | null {
   if (prev.displayIndex >= prev.targetIndex) return null;
-  const next = prev.displayIndex + 1;
+  const gap = prev.targetIndex - prev.displayIndex;
+  // When the server is far ahead (or complete), jump so overlay does not crawl.
+  const step = prev.complete ? Math.max(2, Math.ceil(gap / 2)) : gap > 3 ? 2 : 1;
+  const next = Math.min(prev.targetIndex, prev.displayIndex + step);
   return {
     ...prev,
     activeIndex: next,
@@ -188,9 +191,9 @@ export function dashboardLiveDetail(progress: AnalyzeProgressState): string | nu
 }
 
 /** Ms between visual step ticks while the server is ahead (SSE batching). */
-export const PIPELINE_DISPLAY_TICK_MS = import.meta.env.PROD ? 120 : 320;
-export const PIPELINE_DISPLAY_TICK_COMPLETE_MS = 40;
-export const PIPELINE_DONE_HOLD_MS = 200;
+export const PIPELINE_DISPLAY_TICK_MS = import.meta.env.PROD ? 55 : 160;
+export const PIPELINE_DISPLAY_TICK_COMPLETE_MS = 18;
+export const PIPELINE_DONE_HOLD_MS = 120;
 
 /** Fallback timeline when /api/analyze/stream is unavailable. */
 export function buildFallbackPipelineEvents(): AnalyzeProgressEvent[] {

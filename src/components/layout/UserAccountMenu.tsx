@@ -5,7 +5,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useDismissOnEscape } from '../../hooks/useDismissOnEscape';
-import { getApiError, openAdminDashboard, prefetchAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
+import { getApiError, prefetchAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
 import { clearClerkSession, isClerkEnabled } from '../../lib/clerk';
 import { isPaidTier, tierDisplayLabel } from '../../lib/subscription';
 import styles from './UserAccountMenu.module.css';
@@ -82,7 +82,7 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
   const goAdminDashboard = () => {
     clearAdminHoverTimer();
     setMenuOpen(false);
-    void openAdminDashboard();
+    navigate('/admin');
   };
 
   const handleSignOut = async () => {

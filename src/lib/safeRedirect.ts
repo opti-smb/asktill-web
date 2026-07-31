@@ -10,6 +10,17 @@ export function resolveSafeAppPath(raw: string | null | undefined, fallback = '/
   return from;
 }
 
+/**
+ * Billing return path (pricing / checkout / activating).
+ * Default is upload (/onboarding) so post-payment never dumps on Sources/login.
+ */
+export function resolveBillingReturnPath(
+  raw: string | null | undefined,
+  fallback = '/onboarding',
+): string {
+  return resolveSafeAppPath(raw, fallback);
+}
+
 /** Only allow known Stripe hosts for checkout / billing portal redirects. */
 export function isAllowedStripeRedirect(url: string): boolean {
   try {

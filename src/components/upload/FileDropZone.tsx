@@ -1,5 +1,6 @@
 import type { UseFormRegister } from 'react-hook-form';
 import type { FileUploadState } from '../../types';
+import { validateUploadFile } from '../../lib/uploadFileValidation';
 import styles from './FileDropZone.module.css';
 
 interface FileDropZoneProps {
@@ -9,6 +10,8 @@ interface FileDropZoneProps {
   uploadState: FileUploadState;
   icon: React.ReactNode;
   register: UseFormRegister<Record<string, FileList>>;
+  /** Called when the user picks a file that fails client-side size/type checks. */
+  onReject?: (message: string) => void;
 }
 
 function cardClassForState(uploadState: FileUploadState): string {
@@ -56,6 +59,7 @@ export default function FileDropZone({
   uploadState,
   icon,
   register,
+  onReject,
 }: FileDropZoneProps) {
   const status = uploadState.status
     ?? (uploadState.warning
@@ -67,6 +71,7 @@ export default function FileDropZone({
           : undefined);
   const cardClass = cardClassForState(uploadState);
   const isChecking = status === 'checking';
+  const field = register(name as keyof Record<string, FileList>);
 
   return (
     <div className={`${styles.uploadCard} ${cardClass}`}>
@@ -76,9 +81,24 @@ export default function FileDropZone({
       <label className={styles.dropZone}>
         <input
           type="file"
-          accept=".pdf,.csv,.xlsx,.xls,.tsv"
+          accept=".pdf,.csv,.xlsx,.xls,.tsv,application/pdf,text/csv,text/tab-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           style={{ display: 'none' }}
-          {...register(name as keyof Record<string, FileList>)}
+          name={field.name}
+          ref={field.ref}
+          onBlur={field.onBlur}
+          onChange={async (event) => {
+            const input = event.currentTarget;
+            const file = input.files?.[0];
+            if (file) {
+              const error = await validateUploadFile(file);
+              if (error) {
+                input.value = '';
+                onReject?.(error);
+                return;
+              }
+            }
+            await field.onChange(event);
+          }}
         />
         {uploadState.uploaded ? (
           <div className={styles.uploadBody}>
@@ -106,9 +126,9 @@ export default function FileDropZone({
             </div>
             {isChecking ? (
               <p className={styles.checkingHint}>
-                {uploadState.statusLine?.includes('waiting')
-                  ? 'Queued — will check file type and statement month next…'
-                  : 'Uploading to the server, mapping templates, and checking the statement month…'}
+                {uploadState.statusLine?.includes('waiting') || uploadState.statusLine?.includes('Queued')
+                  ? 'Queued — checking file type and statement month next…'
+                  : 'Verifying file type and statement month on the server…'}
               </p>
             ) : null}
             {uploadState.warning ? (

@@ -84,7 +84,7 @@
 
 .bigNum {
 
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 
   font-size: 18px;
 
@@ -128,7 +128,7 @@
 
 .payrollYesNo {
 
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 
   font-size: 28px;
 
@@ -170,7 +170,7 @@
 
   display: block;
 
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 
   font-size: 22px;
 

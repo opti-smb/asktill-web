@@ -1,0 +1,140 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 50;
+  backdrop-filter: blur(18px);
+  background: rgba(5, 8, 15, 0.94);
+  border-bottom: 1px solid rgba(110, 245, 176, 0.12);
+  font-family: var(--font-display);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.header a,
+.header button,
+.header span {
+  font-family: inherit;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4.75rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #ffffff !important;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, var(--mint), var(--sky));
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.name {
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  color: #ffffff !important;
+}
+
+.links {
+  display: none;
+  gap: 0.85rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.links a {
+  font-family: inherit;
+  font-weight: inherit;
+  color: rgba(255, 255, 255, 0.72) !important;
+  transition: color var(--dur-fast) ease;
+}
+
+.links a:hover {
+  color: #ffffff !important;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.login {
+  display: none;
+  padding: 0.45rem 0.55rem;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.login:hover {
+  color: #ffffff !important;
+}
+
+.cta {
+  min-height: 3.15rem;
+  padding: 0 1.35rem;
+  font-family: inherit !important;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #050b16 !important;
+  background: var(--mint, #6ef5b0) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: 0 10px 28px rgba(110, 245, 176, 0.28) !important;
+}
+
+.cta:hover {
+  background: #7cffb2 !important;
+  color: #050b16 !important;
+}
+
+@media (min-width: 860px) {
+  .links {
+    display: flex;
+  }
+
+  .login {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 520px) {
+  .mark {
+    width: 3.1rem;
+    height: 3.1rem;
+    font-size: 1.15rem;
+  }
+
+  .name {
+    font-size: 1.85rem;
+  }
+
+  .cta {
+    min-height: 3.15rem;
+    padding: 0 1.25rem;
+    font-size: 1rem;
+  }
+}

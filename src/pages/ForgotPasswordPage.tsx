@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useClerk, useSignIn } from '@clerk/clerk-react';
 import { useForm } from 'react-hook-form';
 import AuthNav from '../components/auth/AuthNav';
 import AuthPageFooter from '../components/auth/AuthPageFooter';
 import EmailField from '../components/auth/EmailField';
 import OtpInput, { type OtpInputStatus } from '../components/auth/OtpInput';
-import ClerkCaptcha, { prepareClerkCaptcha } from '../components/auth/ClerkCaptcha';
-import { checkEmail, forgotPasswordCompleteClerk, getApiError } from '../lib/api';
 import {
-  clearClerkSession,
-  clerkErrorMessage,
-  isClerkCaptchaError,
-  isClerkEnabled,
-} from '../lib/clerk';
+  checkEmail,
+  forgotPasswordReset,
+  forgotPasswordSendCode,
+  forgotPasswordVerifyCode,
+  getApiError,
+} from '../lib/api';
 import { emailFieldRules, normalizeEmail } from '../lib/emailValidation';
 import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
 import authFieldStyles from '../components/auth/EmailField.module.css';
@@ -51,13 +49,16 @@ interface EmailForm {
   email: string;
 }
 
-function ForgotPasswordClerkFlow() {
+/**
+ * Forgot password via Auth Service OTP — writes the same passwordHash used by email login.
+ * (Clerk-only reset left users able to reset in Clerk without updating AskTill login.)
+ */
+function ForgotPasswordAuthFlow() {
   const navigate = useNavigate();
-  const clerk = useClerk();
-  const { isLoaded, signIn } = useSignIn();
 
   const [step, setStep] = useState<Step>(0);
   const [savedEmail, setSavedEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -84,24 +85,14 @@ function ForgotPasswordClerkFlow() {
     };
   }, []);
 
-  const sendResetCode = useCallback(
-    async (addr: string) => {
-      if (!isLoaded || !signIn) throw new Error('Auth is still loading.');
-
-      const { data: emailCheck } = await checkEmail(addr);
-      if (!emailCheck.registered) {
-        throw new Error(emailCheck.message ?? 'No account for this email. Please register first.');
-      }
-
-      await prepareClerkCaptcha();
-
-      await signIn.create({
-        strategy: 'reset_password_email_code',
-        identifier: addr,
-      });
-    },
-    [isLoaded, signIn],
-  );
+  const sendResetCode = useCallback(async (addr: string) => {
+    const { data: emailCheck } = await checkEmail(addr);
+    if (!emailCheck.registered) {
+      throw new Error(emailCheck.message ?? 'No account for this email. Please register first.');
+    }
+    const { data } = await forgotPasswordSendCode(addr);
+    return data;
+  }, []);
 
   const handleSendCode = async (data: EmailForm) => {
     setError('');
@@ -110,13 +101,16 @@ function ForgotPasswordClerkFlow() {
 
     setLoading(true);
     try {
-      await sendResetCode(addr);
+      const result = await sendResetCode(addr);
       setSavedEmail(addr);
-      setInfo('We sent a 6-digit code to your email. Check your inbox and spam folder.');
+      setInfo(
+        result.devCode
+          ? `${result.message} Dev code: ${result.devCode}`
+          : result.message || 'We sent a 6-digit code to your email.',
+      );
       setStep(1);
     } catch (err) {
-      setError(clerkErrorMessage(err, getApiError(err, 'Could not send reset code.')));
-      if (isClerkCaptchaError(err)) setStep(0);
+      setError(getApiError(err, 'Could not send reset code.'));
     } finally {
       setLoading(false);
     }
@@ -131,10 +125,14 @@ function ForgotPasswordClerkFlow() {
     setOtpFeedback('none');
     setLoading(true);
     try {
-      await sendResetCode(savedEmail);
-      setInfo('A new code was sent. Check spam if you do not see it.');
+      const result = await sendResetCode(savedEmail);
+      setInfo(
+        result.devCode
+          ? `A new code was sent. Dev code: ${result.devCode}`
+          : 'A new code was sent. Check spam if you do not see it.',
+      );
     } catch (err) {
-      setError(clerkErrorMessage(err, getApiError(err, 'Could not resend code.')));
+      setError(getApiError(err, 'Could not resend code.'));
     } finally {
       setLoading(false);
     }
@@ -142,37 +140,32 @@ function ForgotPasswordClerkFlow() {
 
   const verifyOtpCode = useCallback(
     async (otp: string) => {
-      if (!isLoaded || !signIn) return;
-
       setLoading(true);
       setOtpFeedback('pending');
       setError('');
       try {
-        await signIn.attemptFirstFactor({
-          strategy: 'reset_password_email_code',
-          code: otp,
-        });
-        if (signIn.status === 'needs_new_password') {
-          setOtpFeedback('success');
-          if (otpSuccessTimerRef.current) clearTimeout(otpSuccessTimerRef.current);
-          otpSuccessTimerRef.current = setTimeout(() => {
-            setInfo('');
-            setStep(2);
-            setOtpFeedback('none');
-          }, OTP_SUCCESS_DELAY_MS);
-          return;
+        const { data } = await forgotPasswordVerifyCode(savedEmail, otp);
+        if (!data.resetToken) {
+          throw new Error('Invalid or expired code.');
         }
-        throw new Error('Invalid or expired code.');
+        setResetToken(data.resetToken);
+        setOtpFeedback('success');
+        if (otpSuccessTimerRef.current) clearTimeout(otpSuccessTimerRef.current);
+        otpSuccessTimerRef.current = setTimeout(() => {
+          setInfo('');
+          setStep(2);
+          setOtpFeedback('none');
+        }, OTP_SUCCESS_DELAY_MS);
       } catch (err) {
         setOtpFeedback('error');
-        setError(clerkErrorMessage(err, 'Incorrect code. Please try again.'));
+        setError(getApiError(err, 'Incorrect code. Please try again.'));
         setCode('');
         lastOtpAttemptRef.current = '';
       } finally {
         setLoading(false);
       }
     },
-    [isLoaded, signIn],
+    [savedEmail],
   );
 
   function handleCodeChange(value: string) {
@@ -185,13 +178,13 @@ function ForgotPasswordClerkFlow() {
   }
 
   useEffect(() => {
-    if (step !== 1 || loading || !isLoaded || !signIn) return;
+    if (step !== 1 || loading || !savedEmail) return;
     const otp = code.replace(/\D/g, '');
     if (otp.length !== 6) return;
     if (lastOtpAttemptRef.current === otp) return;
     lastOtpAttemptRef.current = otp;
     void verifyOtpCode(otp);
-  }, [code, step, loading, isLoaded, signIn, verifyOtpCode]);
+  }, [code, step, loading, savedEmail, verifyOtpCode]);
 
   const otpInputStatus: OtpInputStatus =
     otpFeedback === 'success' ? 'success' : otpFeedback === 'error' ? 'error' : 'default';
@@ -208,23 +201,24 @@ function ForgotPasswordClerkFlow() {
       setError('Passwords do not match.');
       return;
     }
-    if (!isLoaded || !signIn) return;
+    if (!resetToken) {
+      setError('Reset session expired. Request a new code.');
+      setStep(0);
+      return;
+    }
 
     setLoading(true);
     try {
-      await signIn.resetPassword({ password });
-      if (signIn.status !== 'complete' || !signIn.createdSessionId) {
-        throw new Error('Could not finish password reset. Try again.');
-      }
-
-      const { data } = await forgotPasswordCompleteClerk(signIn.createdSessionId, password);
-      await clearClerkSession(clerk);
+      const { data } = await forgotPasswordReset(resetToken, password);
       navigate('/login', {
         replace: true,
-        state: { success: data.message ?? 'Password updated. Sign in with your new password.' },
+        state: {
+          success: data.message ?? 'Password updated. Sign in with your new password.',
+          email: savedEmail,
+        },
       });
     } catch (err) {
-      setError(clerkErrorMessage(err, getApiError(err, 'Could not update password.')));
+      setError(getApiError(err, 'Could not update password.'));
     } finally {
       setLoading(false);
     }
@@ -232,8 +226,6 @@ function ForgotPasswordClerkFlow() {
 
   return (
     <>
-      <ClerkCaptcha variant={step >= 1 ? 'compact' : 'default'} />
-
       <div className={registerStyles.cardHeader}>
         <h1 className={registerStyles.heading}>
           Reset your <em>password</em>
@@ -277,7 +269,7 @@ function ForgotPasswordClerkFlow() {
             }
             onEmailChange={() => setError('')}
           />
-          <button type="submit" className={registerStyles.submit} disabled={loading || !isLoaded}>
+          <button type="submit" className={registerStyles.submit} disabled={loading}>
             {loading ? 'Sending…' : 'Send reset code'}
           </button>
         </form>
@@ -327,6 +319,7 @@ function ForgotPasswordClerkFlow() {
               onClick={() => {
                 setStep(0);
                 setCode('');
+                setResetToken('');
                 setError('');
                 setInfo('');
                 setOtpFeedback('none');
@@ -392,27 +385,12 @@ function ForgotPasswordClerkFlow() {
 }
 
 export default function ForgotPasswordPage() {
-  if (!isClerkEnabled()) {
-    return (
-      <div className={registerStyles.page}>
-        <AuthNav active="signin" />
-        <main className={registerStyles.main}>
-          <div className={registerStyles.card}>
-            <p className={registerStyles.error}>
-              Clerk is not configured. Set <code>VITE_CLERK_PUBLISHABLE_KEY</code> in <code>.env</code>.
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className={registerStyles.page}>
       <AuthNav active="signin" />
       <main className={registerStyles.main}>
         <div className={registerStyles.card}>
-          <ForgotPasswordClerkFlow />
+          <ForgotPasswordAuthFlow />
           <AuthPageFooter variant="signin" />
         </div>
       </main>

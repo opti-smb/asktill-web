@@ -46,6 +46,8 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState('');
 
   const [emailHighlight, setEmailHighlight] = useState(false);
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const failedAttemptsRef = useRef(0);
 
 
 
@@ -160,19 +162,28 @@ export default function LoginPage() {
     setServerError('');
 
     setEmailHighlight(false);
+    setShowCreateAccount(false);
 
     const email = data.email.trim().toLowerCase();
     // Prefer live DOM value so password-manager autofill (often skips onChange) is used.
     const password = passwordInputRef.current?.value || data.password || '';
 
+    // Client-side backoff after repeated failures (server rate-limit is still required).
+    if (failedAttemptsRef.current >= 3) {
+      const waitMs = Math.min(8_000, 500 * 2 ** (failedAttemptsRef.current - 3));
+      await new Promise((r) => window.setTimeout(r, waitMs));
+    }
+
     try {
       await login(email, password);
+      failedAttemptsRef.current = 0;
 
       const redirectTo = getPostLoginRedirect((location.state as { from?: string } | null)?.from);
 
       navigate(redirectTo);
 
     } catch (err) {
+      failedAttemptsRef.current += 1;
 
       const notRegistered = extractNotRegistered(err);
 
@@ -180,10 +191,11 @@ export default function LoginPage() {
 
         setServerError(
           notRegistered?.message
-            ?? 'No account for this email. Check the address or register first.',
+            ?? 'No account for this email yet.',
         );
 
         setEmailHighlight(true);
+        setShowCreateAccount(true);
 
         focusEmailInput('login-email');
 
@@ -191,6 +203,7 @@ export default function LoginPage() {
 
       }
 
+      setShowCreateAccount(false);
       setServerError(
         loginCredentialErrorMessage(err) || 'Sign in failed. Check your email and password, then try again.',
       );
@@ -388,7 +401,25 @@ export default function LoginPage() {
             {serverError ? (
               <div className={styles.serverError}>
                 {serverError}
-                {emailHighlight ? (
+                {showCreateAccount ? (
+                  <div className={authFieldStyles.hint} style={{ marginTop: 8 }}>
+                    <Link
+                      to={`/register?email=${encodeURIComponent((emailValue || '').trim().toLowerCase())}`}
+                      state={location.state}
+                      className={authFieldStyles.hintButton}
+                    >
+                      Create account
+                    </Link>
+                    {' · '}
+                    <button
+                      type="button"
+                      className={authFieldStyles.hintButton}
+                      onClick={() => focusEmailInput('login-email')}
+                    >
+                      Edit email address
+                    </button>
+                  </div>
+                ) : emailHighlight ? (
                   <div className={authFieldStyles.hint} style={{ marginTop: 8 }}>
                     <button
                       type="button"
@@ -397,10 +428,6 @@ export default function LoginPage() {
                     >
                       Edit email address
                     </button>
-                    {' · '}
-                    <Link to="/register" className={authFieldStyles.hintButton}>
-                      Register first
-                    </Link>
                   </div>
                 ) : null}
               </div>
@@ -436,9 +463,20 @@ export default function LoginPage() {
             </>
           ) : null}
 
+          <div className={styles.divider}>No account yet?</div>
+          <Link
+            to={
+              (emailValue || '').trim()
+                ? `/register?email=${encodeURIComponent(emailValue.trim().toLowerCase())}`
+                : '/register'
+            }
+            state={location.state}
+            className={styles.signupBtn}
+          >
+            Create account
+          </Link>
 
-
-          <AuthPageFooter variant="signin" />
+          <AuthPageFooter variant="signin" hidePrimary />
 
         </div>
 

@@ -1,0 +1,124 @@
+.section {
+  position: relative;
+  overflow: hidden;
+  color: var(--band-fg, var(--white));
+  width: 100%;
+  height: 100%;
+}
+
+.content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 0;
+  padding-top: 0;
+  box-sizing: border-box;
+}
+
+.content :global(.section-head) {
+  gap: 0.25rem;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.content :global(.section-label) {
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+}
+
+.content :global(.section-title) {
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+}
+
+.content :global(.section-lead) {
+  max-width: none;
+  width: 100%;
+  font-size: 0.92rem;
+  margin-inline: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  margin-top: 0;
+  width: 100%;
+  align-items: stretch;
+  flex: 0 0 auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0.75rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line-light);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  box-sizing: border-box;
+  will-change: transform;
+  transition:
+    border-color var(--dur-fast) ease,
+    background-color var(--dur-base) ease,
+    box-shadow var(--dur-base) ease;
+}
+
+.card:hover {
+  border-color: rgba(124, 255, 178, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 0 28px rgba(124, 255, 178, 0.12);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-bottom: 0.45rem;
+  border-radius: 0.55rem;
+  background:
+    linear-gradient(135deg, rgba(124, 255, 178, 0.9), rgba(91, 140, 255, 0.85));
+  color: var(--ink);
+}
+
+.icon svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.card h3 {
+  flex-shrink: 0;
+  min-height: 0;
+  margin: 0 0 0.3rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--band-fg, rgba(255, 255, 255, 0.95));
+}
+
+.card p {
+  flex: 1;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--band-muted, rgba(255, 255, 255, 0.7));
+}
+
+@media (min-width: 800px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+}

@@ -1,0 +1,60 @@
+.root {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cssMotion {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+  animation: float 8s ease-in-out infinite;
+}
+
+.blobA {
+  width: 28rem;
+  height: 28rem;
+  right: 5%;
+  top: 10%;
+  background: radial-gradient(circle, rgba(47, 91, 255, 0.7), transparent 70%);
+}
+
+.blobB {
+  width: 20rem;
+  height: 20rem;
+  right: 22%;
+  bottom: 12%;
+  background: radial-gradient(circle, rgba(124, 255, 178, 0.55), transparent 70%);
+  animation-delay: -2.5s;
+  animation-duration: 10s;
+}
+
+.blobC {
+  width: 14rem;
+  height: 14rem;
+  right: 40%;
+  top: 35%;
+  background: radial-gradient(circle, rgba(255, 107, 74, 0.4), transparent 70%);
+  animation-delay: -4s;
+  animation-duration: 9s;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-30px, 24px) scale(1.08);
+  }
+}

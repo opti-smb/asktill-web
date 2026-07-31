@@ -34,7 +34,7 @@
 }
 
 .reconStatNum {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 26px;
   font-weight: 500;
   line-height: 1;
@@ -238,7 +238,7 @@
 }
 
 .decompSideNum {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 20px;
   color: var(--ink);
   font-weight: 500;
@@ -293,7 +293,7 @@
 
 .decompRowNum {
   font-weight: 600;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 }
 
 .buckets {
@@ -341,7 +341,7 @@
 }
 
 .bucketNum {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   color: var(--ink);
   font-weight: 500;
@@ -488,7 +488,7 @@
 }
 
 .healthAvgValue {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 600;
   color: #B45309;

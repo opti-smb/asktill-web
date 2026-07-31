@@ -1,0 +1,489 @@
+.section {
+  position: relative;
+  overflow: hidden;
+  color: var(--band-fg, #fff);
+  height: 100%;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 0;
+  padding-top: 0;
+}
+
+.top,
+.stage {
+  position: relative;
+  z-index: 1;
+}
+
+.introRow {
+  display: grid;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-items: center;
+  margin: 0;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 11rem);
+}
+
+.guideStage {
+  position: relative;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.guideGlow {
+  position: absolute;
+  inset: 16% 10% 8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 200, 87, 0.28),
+    rgba(124, 255, 178, 0.12) 50%,
+    transparent 72%
+  );
+  animation: rewardsGuidePulse 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.guideSpark {
+  position: absolute;
+  top: 14%;
+  right: 10%;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--amber, #ffc857);
+  box-shadow: 0 0 12px rgba(255, 200, 87, 0.75);
+  animation: rewardsGuideSpark 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.guideSparkB {
+  top: auto;
+  bottom: 20%;
+  left: 8%;
+  right: auto;
+  background: var(--mint);
+  box-shadow: 0 0 12px rgba(124, 255, 178, 0.75);
+  animation-delay: 0.7s;
+}
+
+.guideFloat {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 14px 28px rgba(255, 200, 87, 0.2));
+}
+
+.guideImg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: brightness(1.04) contrast(1.03) saturate(0.95);
+}
+
+@keyframes rewardsGuidePulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes rewardsGuideSpark {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0) scale(0.85);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-6px) scale(1.08);
+  }
+}
+
+.head {
+  width: 100%;
+  max-width: none;
+  text-align: center;
+  gap: 0.35rem;
+}
+
+.head :global(.section-label) {
+  font-size: var(--section-label-size);
+}
+
+.head :global(.section-title) {
+  font-size: var(--section-title-size);
+}
+
+.head :global(.section-lead) {
+  max-width: none;
+  font-size: var(--section-lead-size);
+}
+
+.stage {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Wallet screenshot is tall — hide so earn/redeem fit one page */
+.walletWrap {
+  display: none;
+}
+
+.walletFrame {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 480px);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.4),
+    0 0 28px rgba(14, 107, 168, 0.22);
+  transform: perspective(900px) rotateY(-5deg) rotateX(2deg);
+  transition: transform 0.35s ease;
+  background: #fff;
+}
+
+.walletFrame:hover {
+  transform: perspective(900px) rotateY(-2deg) rotateX(1deg) translateY(-3px);
+}
+
+.walletFrame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.canvas3d {
+  position: absolute;
+  left: -6%;
+  right: 18%;
+  top: -6%;
+  bottom: -8%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.lists {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 0;
+}
+
+.listsBg {
+  display: none;
+}
+
+.listsInner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+
+.listBlock {
+  padding: 0.7rem 0.75rem 0.75rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  min-height: 0;
+}
+
+.earnRow,
+.redeemRow {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.76rem;
+}
+
+.earnRow span,
+.redeemRow span {
+  line-height: 1.25;
+}
+
+.lists h3 {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8fa8c8;
+  margin: 0 0 0.65rem;
+  font-weight: 700;
+}
+
+.earnList,
+.redeemList,
+.lists ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.earnRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(8, 18, 36, 0.72);
+  border: 1px solid rgba(124, 255, 178, 0.16);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--band-muted, rgba(255, 255, 255, 0.88));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.earnRow:hover {
+  border-color: rgba(124, 255, 178, 0.4);
+  background: rgba(124, 255, 178, 0.08);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.redeemBlock {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.redeemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(8, 18, 36, 0.72);
+  border: 1px solid rgba(91, 140, 255, 0.22);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--band-muted, rgba(255, 255, 255, 0.88));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.redeemRow:hover {
+  border-color: rgba(91, 140, 255, 0.45);
+  background: rgba(91, 140, 255, 0.08);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.lists b {
+  color: #7cffb2;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.redeemClick {
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(124, 255, 178, 0.22);
+}
+
+.redeemClickOn {
+  border-color: rgba(124, 255, 178, 0.5);
+  background: rgba(124, 255, 178, 0.1);
+  box-shadow: 0 0 0 1px rgba(124, 255, 178, 0.15);
+}
+
+.redeemBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cta {
+  display: none;
+}
+
+.vouchers {
+  margin-top: 0.28rem;
+  overflow: hidden;
+}
+
+.voucherList {
+  display: grid;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voucherList li {
+  display: block;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.voucherLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(8, 18, 36, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  box-sizing: border-box;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.voucherBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.voucherLogo {
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.voucherLogoWide {
+  width: 2.35rem;
+}
+
+.voucherLogo img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  display: block;
+}
+
+.voucherName {
+  font-weight: 600;
+  color: var(--band-fg, rgba(255, 255, 255, 0.92));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voucherLink:hover {
+  background: rgba(124, 255, 178, 0.08);
+  border-color: rgba(124, 255, 178, 0.35);
+}
+
+.voucherLink b {
+  color: #7cffb2;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+@media (min-width: 960px) {
+  .introRow {
+    grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr);
+    gap: 0.75rem 1.5rem;
+    justify-items: stretch;
+    align-items: center;
+  }
+
+  .guide {
+    width: 100%;
+    max-width: 12rem;
+  }
+
+  .head {
+    max-width: none;
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .stage {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .listsInner {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .guide {
+    width: min(100%, 9.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earnRow,
+  .redeemRow,
+  .guideGlow,
+  .guideSpark {
+    transition: none;
+    animation: none;
+  }
+}

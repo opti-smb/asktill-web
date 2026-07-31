@@ -5,6 +5,7 @@ import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import { useAuth } from '../context/AuthContext';
 import { confirmCheckoutSession, primeServicesAfterCheckout } from '../lib/api';
+import { resolveBillingReturnPath } from '../lib/safeRedirect';
 import { TIER_PAID } from '../lib/subscription';
 import styles from './SubscriptionActivatingPage.module.css';
 
@@ -13,20 +14,16 @@ const MIN_NAVIGATE_MS = 600;
 
 const confirmedSessions = new Set<string>();
 
-function resolveReturnPath(raw: string | null): string {
-  if (!raw?.trim()) return '/onboarding';
-  const path = raw.trim();
-  if (!path.startsWith('/') || path.startsWith('//')) return '/onboarding';
-  return path;
-}
-
 export default function SubscriptionActivatingPage() {
   const { patchUserTier, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const sessionId = params.get('session_id')?.trim() ?? '';
   const fromParam = params.get('from');
-  const returnTo = useMemo(() => resolveReturnPath(fromParam), [fromParam]);
+  const returnTo = useMemo(
+    () => resolveBillingReturnPath(fromParam, '/onboarding'),
+    [fromParam],
+  );
   const [ready, setReady] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const navigatedRef = useRef(false);

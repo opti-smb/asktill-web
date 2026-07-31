@@ -15,7 +15,7 @@
 }
 
 .kpiValue {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 18px;
   color: var(--ink);
   font-weight: 500;
