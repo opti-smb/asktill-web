@@ -171,13 +171,16 @@ export default function SnapPages() {
 
     const main = root.querySelector("main");
     const mo =
-      main &&
-      new MutationObserver(() => {
-        const idx = currentIndex();
-        applyHeights();
-        goTo(idx);
-      });
-    mo?.observe(main, { childList: true });
+      main instanceof HTMLElement
+        ? new MutationObserver(() => {
+            const idx = currentIndex();
+            applyHeights();
+            goTo(idx);
+          })
+        : null;
+    if (main instanceof HTMLElement) {
+      mo?.observe(main, { childList: true });
+    }
 
     applyHeights();
     requestAnimationFrame(() => {
