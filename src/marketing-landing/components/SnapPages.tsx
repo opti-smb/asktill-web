@@ -10,9 +10,7 @@ export default function SnapPages() {
     if (!(root instanceof HTMLElement)) return;
 
     const pages = () =>
-      Array.from(
-        root.querySelectorAll<HTMLElement>("main > section, footer"),
-      );
+      Array.from(root.querySelectorAll<HTMLElement>("main > section"));
 
     /** Visible height of the scroll area — matches what the hero fills. */
     const pageH = () => Math.max(1, Math.round(root.clientHeight));

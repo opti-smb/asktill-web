@@ -11,7 +11,6 @@ import Features from './components/Features';
 import Trust from './components/Trust';
 import Pricing from './components/Pricing';
 import FinalCta from './components/FinalCta';
-import Footer from './components/Footer';
 import { warmupServices } from '../lib/api';
 import './styles/global.css';
 
@@ -48,7 +47,6 @@ export default function MarketingLanding() {
             <Pricing />
             <FinalCta />
           </main>
-          <Footer />
         </SmoothScroll>
       </div>
     </div>
