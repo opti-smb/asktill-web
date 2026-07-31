@@ -1,0 +1,382 @@
+.section {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.intro {
+  width: 100%;
+  text-align: left;
+  gap: 0.2rem;
+  align-items: flex-start;
+  flex: 0 0 auto;
+}
+
+.intro :global(.section-label) {
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+}
+
+.intro :global(.section-title) {
+  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+}
+
+.intro :global(.section-lead) {
+  max-width: 36ch !important;
+  margin-inline: 0 !important;
+  text-align: left;
+  font-size: 0.9rem !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: left;
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  opacity: 0.78;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.tab:hover:not(.tabOn) {
+  opacity: 0.95;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tab:focus-visible {
+  outline: 2px solid rgba(110, 245, 176, 0.65);
+  outline-offset: 2px;
+}
+
+.tabLabel {
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: inherit;
+}
+
+.tabBlurb {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tabOn {
+  opacity: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(110, 245, 176, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.tabOn .tabLabel {
+  color: #fff;
+}
+
+.tabOn .tabBlurb {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Guide — proper size, faces the product frame */
+.guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 12rem);
+  flex: 0 0 auto;
+}
+
+.guideTowardProduct .guideImg {
+  transform: scaleX(-1);
+}
+
+.guideStage {
+  position: relative;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.guideGlow {
+  position: absolute;
+  inset: 18% 12% 8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(124, 255, 178, 0.28),
+    rgba(91, 140, 255, 0.12) 48%,
+    transparent 72%
+  );
+  animation: guidePulse 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.guideSpark {
+  position: absolute;
+  top: 12%;
+  right: 8%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 12px rgba(124, 255, 178, 0.8);
+  animation: guideSpark 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.guideSparkB {
+  top: auto;
+  bottom: 18%;
+  left: 6%;
+  right: auto;
+  background: var(--sky);
+  box-shadow: 0 0 12px rgba(91, 140, 255, 0.8);
+  animation-delay: 0.8s;
+}
+
+.guideFloat {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 14px 28px rgba(91, 140, 255, 0.22));
+}
+
+.guideBody,
+.guideHead {
+  width: 100%;
+}
+
+.guideImg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes guidePulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes guideSpark {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0) scale(0.85);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translateY(-5px) scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guideGlow,
+  .guideSpark {
+    animation: none;
+  }
+}
+
+.stage {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.frame {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0b1220;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.chrome {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  background: #111827;
+  flex: 0 0 auto;
+}
+
+.chrome span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.chrome span:nth-child(2) {
+  background: #f59e0b;
+}
+
+.chrome span:nth-child(3) {
+  background: #22c55e;
+}
+
+.viewport {
+  width: 100%;
+  background: #f8fafc;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+}
+
+.viewport img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(58vh, 520px);
+  object-fit: contain;
+  object-position: top center;
+}
+
+@media (min-width: 900px) {
+  .split {
+    grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr);
+    gap: 1rem 1.25rem;
+    align-items: center;
+  }
+
+  .right {
+    display: grid;
+    grid-template-columns: 11.5rem minmax(0, 1fr);
+    gap: 0.75rem 1rem;
+    align-items: center;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .guide {
+    width: 11.5rem;
+    max-width: 11.5rem;
+  }
+
+  .stage {
+    height: 100%;
+    max-height: calc(100dvh - 6.5rem);
+  }
+
+  .frame {
+    max-height: calc(100dvh - 6.5rem);
+  }
+
+  .viewport img {
+    max-height: calc(100dvh - 8.5rem);
+  }
+}
+
+@media (max-width: 899px) {
+  .intro {
+    text-align: center;
+    align-items: center;
+  }
+
+  .intro :global(.section-lead) {
+    margin-inline: auto !important;
+    text-align: center;
+  }
+
+  .guide {
+    width: min(100%, 10rem);
+  }
+
+  .guideTowardProduct .guideImg {
+    transform: none;
+  }
+
+  .viewport img {
+    max-height: min(42vh, 360px);
+  }
+}

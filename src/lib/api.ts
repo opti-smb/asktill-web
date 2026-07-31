@@ -83,6 +83,7 @@ export interface AuthUser {
   industry?: string | null;
   country?: string | null;
   mfaEnabled?: boolean;
+  hasPassword?: boolean;
   autoRenewalEnabled?: boolean | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
@@ -1318,6 +1319,11 @@ export function normalizeUser(data: unknown): AuthUser | null {
     industry: (u.industry as string | undefined) ?? null,
     country: (u.country as string | undefined) ?? null,
     mfaEnabled: (u.mfaEnabled ?? u.mfa_enabled) as boolean | undefined,
+    hasPassword: (() => {
+      const raw = u.hasPassword ?? u.has_password;
+      if (raw === null || raw === undefined) return undefined;
+      return Boolean(raw);
+    })(),
     autoRenewalEnabled: (() => {
       const raw = u.autoRenewalEnabled ?? u.auto_renewal_enabled;
       if (raw === null || raw === undefined) return null;
@@ -1544,6 +1550,25 @@ export const forgotPasswordCompleteClerk = (sessionId: string, newPassword: stri
     newPassword,
   });
 
+/** Native Auth forgot-password (updates identity.users passwordHash used by login). */
+export const forgotPasswordSendCode = (email: string) =>
+  authApi.post<{ message: string; devCode?: string | null }>(
+    '/api/auth/forgot-password/send-code',
+    { email },
+  );
+
+export const forgotPasswordVerifyCode = (email: string, code: string) =>
+  authApi.post<{ message: string; resetToken: string }>(
+    '/api/auth/forgot-password/verify-code',
+    { email, code },
+  );
+
+export const forgotPasswordReset = (resetToken: string, newPassword: string) =>
+  authApi.post<{ message: string }>('/api/auth/forgot-password/reset', {
+    resetToken,
+    newPassword,
+  });
+
 export interface NotRegisteredInfo {
   message: string;
   code?: string;
@@ -1682,9 +1707,9 @@ export async function fetchCurrentUser() {
   }
 }
 
-export const changePassword = (currentPassword: string, newPassword: string) =>
-  authApi.post('/api/auth/change-password', {
-    currentPassword,
+export const changePassword = (currentPassword: string | null | undefined, newPassword: string) =>
+  authApi.post<{ message?: string }>('/api/auth/change-password', {
+    ...(currentPassword ? { currentPassword } : {}),
     newPassword,
   });
 

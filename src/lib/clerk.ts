@@ -9,9 +9,12 @@ export const isClerkEnabled = () => Boolean(CLERK_PUBLISHABLE_KEY);
 
 /** Absolute OAuth URLs — must match Clerk Dashboard → Paths / Redirect URLs. */
 export function clerkOAuthUrls() {
+  // Prefer the tab's real origin in the browser so localhost vs 127.0.0.1
+  // cannot split sessionStorage / Clerk cookies and look like a cancel.
   const origin =
+    (typeof window !== 'undefined' ? window.location.origin : '') ||
     import.meta.env.VITE_APP_ORIGIN?.replace(/\/$/, '') ||
-    (typeof window !== 'undefined' ? window.location.origin : '');
+    '';
   return {
     redirectUrl: `${origin}${CLERK_OAUTH_REDIRECT_PATH}`,
     redirectUrlComplete: `${origin}${CLERK_OAUTH_COMPLETE_PATH}`,

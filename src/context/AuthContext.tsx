@@ -31,6 +31,7 @@ import {
 } from '../lib/api';
 import { clearUserAtLetterOnLogout, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
+import { consumeCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS, clearSessionExpiredPersisted, markSessionExpiredPersisted, isSessionExpiredPersisted } from '../lib/session';
 
@@ -159,6 +160,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const handoff = consumeHandoffTokenFromUrl();
       if (handoff) {
         setToken(handoff);
+      } else if (!getToken() || isTokenExpired(getToken()!)) {
+        // Stripe Checkout full-page leave wipes memory JWT — restore bridge once.
+        consumeCheckoutAccessBridge();
       }
 
       // Prefer silent refresh via httpOnly cookie (no access JWT in localStorage).

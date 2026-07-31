@@ -1,0 +1,33 @@
+.wrap {
+  position: relative;
+  width: min(100%, 36rem);
+  justify-self: end;
+  z-index: 1;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  height: min(62vh, 30rem);
+  /* transparent frame — scene floats on the rich page background */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.frame :global(canvas) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (max-width: 960px) {
+  .wrap {
+    width: min(100%, 100%);
+    justify-self: center;
+  }
+
+  .frame {
+    height: min(42vh, 22rem);
+  }
+}

@@ -1,0 +1,115 @@
+.section {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.panel {
+  position: relative;
+  z-index: 3;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(1.5rem, 3vh, 2.25rem) clamp(1.25rem, 3vw, 2.5rem);
+  border-radius: 28px;
+  text-align: center;
+  color: var(--band-fg, var(--white));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line-light);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  max-width: none;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 !important;
+  font-family: var(--font-display);
+  font-size: var(--section-label-size);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mint) !important;
+  line-height: 1.15;
+}
+
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: var(--section-title-size);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  line-height: 1.2;
+  color: var(--band-fg, rgba(255, 255, 255, 0.95)) !important;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.panel h2 span {
+  display: block;
+  margin-top: 0.15em;
+  color: var(--mint) !important;
+}
+
+.lead {
+  display: block;
+  margin: 0 !important;
+  max-width: 52ch;
+  width: 100%;
+  color: var(--band-muted, rgba(255, 255, 255, 0.78)) !important;
+  font-size: 1rem;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.85rem;
+  margin-top: 0.15rem;
+  width: 100%;
+}
+
+.note {
+  margin: 0 !important;
+  max-width: none;
+  width: 100%;
+  font-size: 0.8125rem !important;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.note strong {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 600;
+}
+
+@media (min-width: 700px) {
+  .panel {
+    padding: 1.75rem 2.5rem 2rem;
+  }
+
+  .content {
+    gap: 1.05rem;
+  }
+}

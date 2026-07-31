@@ -10,6 +10,21 @@
   pointer-events: auto;
 }
 
+.bannerWrap {
+  width: 100%;
+  margin: 0 0 14px;
+}
+
+.banner {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #78350f;
+  padding: 12px 14px;
+  position: relative;
+}
+
 .card {
   width: min(520px, 100%);
   border-radius: 14px;

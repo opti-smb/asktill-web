@@ -27,6 +27,15 @@
   color: var(--ink);
 }
 
-.logoText span {
-  color: #2563eb;
+.logoMarkLarge {
+  gap: 12px;
+}
+
+.logoTextLarge {
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
 }

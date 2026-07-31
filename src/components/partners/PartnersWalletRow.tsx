@@ -2,21 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { fetchRewardsBalance, type RewardsBalance } from '../../lib/api';
+import { formatMoney, formatPoints } from '../../lib/format';
 
 import styles from '../../pages/ChannelPartnersPage.module.css';
-
-function formatMoney(usd: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(usd);
-}
-
-function formatPoints(n: number): string {
-  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(n)));
-}
 
 /** Compact live wallet + earn box above Loans / CPAs. */
 export default function PartnersWalletRow() {

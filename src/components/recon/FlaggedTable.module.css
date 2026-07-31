@@ -114,7 +114,7 @@
 }
 
 .txAmount {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-weight: 600;
   font-size: 12px;
 }

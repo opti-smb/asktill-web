@@ -7,7 +7,7 @@ import OtpInput, { type OtpInputStatus } from '../components/auth/OtpInput';
 import ClerkCaptcha, { prepareClerkCaptcha } from '../components/auth/ClerkCaptcha';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
-import { checkEmail, clerkCleanupUnregistered, getApiError, register as registerUser, warmupServices } from '../lib/api';
+import { checkEmail, getApiError, register as registerUser, warmupServices } from '../lib/api';
 import { validatePassword } from '../lib/passwordPolicy';
 import {
   clearRegisterDraft,
@@ -268,26 +268,21 @@ function RegisterClerkFlow() {
     if (!googleEmail) return;
 
     googleCleanupDoneRef.current = true;
-    const sessionId = clerk.session.id;
     const addr = normalizeEmail(googleEmail);
 
     void (async () => {
       try {
         const { data } = await checkEmail(addr);
         if (!data.registered) {
+          // Google account is new — keep Clerk user; AskTill stores them on clerk-login.
           setEmail(addr);
-          setInfo(GOOGLE_SIGNIN_NOT_REGISTERED_MSG);
+          setInfo('Continue with Google on Sign in to create your AskTill account, or finish registration below.');
           clearGoogleSignInAttempt();
           await clearClerkSession(clerk, { stayOnPage: true });
-          try {
-            await clerkCleanupUnregistered(sessionId);
-          } catch {
-            /* best-effort */
-          }
         }
       } catch {
         setEmail(addr);
-        setInfo(GOOGLE_SIGNIN_NOT_REGISTERED_MSG);
+        setInfo('Continue with Google on Sign in to create your AskTill account, or finish registration below.');
         await clearClerkSession(clerk, { stayOnPage: true });
       }
     })();

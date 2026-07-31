@@ -244,7 +244,7 @@
 }
 
 .cardBig {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 20px;
   color: var(--ink);
   font-weight: 500;
@@ -473,7 +473,7 @@
 }
 
 .upcomingAmount {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 17px;
   font-weight: 500;
 }

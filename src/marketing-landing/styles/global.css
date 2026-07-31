@@ -1,0 +1,509 @@
+@import "./tokens.css";
+
+/*
+ * Full-width landing with safe side padding — text never clips the viewport edge.
+ * No transform-scale canvas (that was pushing copy off-screen).
+ */
+.asktill-shell.asktill-mkt {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--band-void, #05080f);
+  font-family: var(--font-body);
+  color: rgba(255, 255, 255, 0.9);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.asktill-mkt-scroll {
+  box-sizing: border-box;
+  position: relative;
+  height: 100%;
+  height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  scroll-snap-type: y mandatory;
+  scroll-padding: 0;
+  scroll-behavior: auto;
+  /* Filled by SnapPages to the real scrollport height (same page as hero). */
+  --page-h: 100dvh;
+}
+
+.asktill-mkt-scroll main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+html.asktill-landing-active {
+  scrollbar-gutter: stable;
+  scroll-snap-type: none;
+  scroll-padding-top: 0;
+  scroll-behavior: auto;
+  background: #05080f;
+  overflow: hidden !important;
+  height: 100%;
+  height: 100dvh;
+}
+
+/* Beat app globals min-width:1080px — that forces sideways scroll / zoom-out */
+html.asktill-landing-active,
+html.asktill-landing-active body,
+html.asktill-landing-active #root,
+#root:has(.asktill-mkt),
+#root:has(.asktill-shell) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  background: #05080f !important;
+  height: 100% !important;
+  height: 100dvh !important;
+}
+
+html.asktill-landing-active body {
+  display: block;
+  margin: 0;
+}
+
+html.asktill-landing-active .wrap,
+.asktill-shell .wrap,
+.asktill-mkt .wrap {
+  width: 100% !important;
+  max-width: var(--max) !important;
+  min-width: 0 !important;
+  margin-inline: auto !important;
+  padding-inline: var(--page-gutter) !important;
+  box-sizing: border-box !important;
+}
+
+.asktill-mkt *,
+.asktill-mkt *::before,
+.asktill-mkt *::after {
+  box-sizing: border-box;
+}
+
+.asktill-mkt img,
+.asktill-mkt svg {
+  display: block;
+  max-width: 100%;
+}
+
+.asktill-mkt a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.asktill-mkt button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.asktill-mkt h1,
+.asktill-mkt h2,
+.asktill-mkt h3,
+.asktill-mkt h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  /* Beat app reset.css (h1–h4 { color: var(--ink) }) — ink is dark on this page. */
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+.asktill-mkt a:hover {
+  text-decoration: none;
+}
+
+.asktill-mkt p {
+  margin-block: 0;
+  line-height: 1.55;
+  font-family: var(--font-body);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.asktill-mkt ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asktill-mkt .wrap {
+  width: 100% !important;
+  max-width: var(--max) !important;
+  min-width: 0 !important;
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+  box-sizing: border-box;
+}
+
+.asktill-mkt header .wrap,
+.asktill-mkt footer .wrap {
+  max-width: var(--max);
+  padding-inline: var(--page-gutter);
+}
+
+.asktill-mkt main,
+.asktill-mkt-scroll main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: transparent;
+}
+
+.asktill-mkt main > section,
+.asktill-mkt footer {
+  position: relative;
+  z-index: 1;
+}
+
+.asktill-mkt footer {
+  background: linear-gradient(180deg, #f7fafc 0%, #eef3f9 100%) !important;
+  color: rgba(11, 18, 32, 0.72);
+  border-top: 1px solid rgba(61, 107, 255, 0.12);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  scroll-margin-top: 0;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4.5rem 0 1.25rem;
+  overflow: hidden;
+}
+
+.asktill-mkt footer p,
+.asktill-mkt footer a,
+.asktill-mkt footer h2,
+.asktill-mkt footer h3,
+.asktill-mkt footer h4 {
+  color: inherit !important;
+}
+
+/* One section = exactly one viewport — same full-page cover as #top (hero). */
+.asktill-mkt main > section,
+.asktill-mkt main > section[class],
+.asktill-mkt main > section#top,
+.asktill-mkt main > section#story,
+.asktill-mkt main > section#product,
+.asktill-mkt main > section#rewards,
+.asktill-mkt main > section#how,
+.asktill-mkt main > section#features,
+.asktill-mkt main > section#trust,
+.asktill-mkt main > section#pricing,
+.asktill-mkt main > section#cta,
+.asktill-mkt-scroll main > section,
+.asktill-mkt-scroll main > section[class] {
+  scroll-margin-top: 0 !important;
+  scroll-snap-align: start !important;
+  scroll-snap-stop: always !important;
+  box-sizing: border-box !important;
+  flex: 0 0 var(--page-h, 100dvh) !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: var(--page-h, 100dvh) !important;
+  height: var(--page-h, 100dvh) !important;
+  max-height: var(--page-h, 100dvh) !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+}
+
+.asktill-mkt main > section {
+  justify-content: flex-start;
+  padding: 4.5rem 0 1rem;
+  background: var(--band-void);
+  color: var(--white);
+  --band-accent: var(--mint);
+  --band-fg: rgba(255, 255, 255, 0.96);
+  --band-muted: rgba(255, 255, 255, 0.7);
+  --band-edge: transparent;
+}
+
+/* Hero clears fixed nav — same pad as every snap section (prevents title under bar) */
+.asktill-mkt main > section#top {
+  justify-content: center;
+  padding-top: 4.5rem;
+  padding-bottom: 1rem;
+}
+
+.asktill-mkt main > section#story,
+.asktill-mkt main > section#product,
+.asktill-mkt main > section#rewards,
+.asktill-mkt main > section#how,
+.asktill-mkt main > section#features,
+.asktill-mkt main > section#trust,
+.asktill-mkt main > section#pricing,
+.asktill-mkt main > section#cta {
+  justify-content: center;
+}
+
+.asktill-mkt footer,
+.asktill-mkt-scroll footer {
+  scroll-snap-align: start !important;
+  scroll-snap-stop: always !important;
+  box-sizing: border-box !important;
+  flex: 0 0 var(--page-h, 100dvh) !important;
+  flex-shrink: 0 !important;
+  min-height: var(--page-h, 100dvh) !important;
+  height: var(--page-h, 100dvh) !important;
+  max-height: var(--page-h, 100dvh) !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+}
+
+/* No seam gradients — they read as gaps between sections */
+.asktill-mkt main > section::before,
+.asktill-mkt main > section::after {
+  content: none;
+  display: none;
+}
+
+/*
+ * Colour story (still black-led, each section has its own tint + accent):
+ * hero mint · story sky · product teal · rewards amber · how blue ·
+ * features violet · trust mint · pricing brand · cta mint
+ */
+.asktill-mkt main > section#top {
+  background:
+    radial-gradient(ellipse 80% 60% at 70% 20%, rgba(110, 245, 176, 0.12), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 15% 80%, rgba(61, 107, 255, 0.14), transparent 50%),
+    var(--band-void) !important;
+  --band-accent: var(--mint);
+  --band-edge: rgba(5, 8, 15, 0.65);
+}
+
+.asktill-mkt main > section#story {
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 30%, rgba(106, 168, 255, 0.16), transparent 55%),
+    radial-gradient(ellipse 40% 35% at 90% 70%, rgba(139, 124, 255, 0.1), transparent 50%),
+    var(--band-midnight) !important;
+  --band-accent: var(--sky);
+  --band-edge: rgba(7, 20, 40, 0.55);
+}
+
+.asktill-mkt main > section#product {
+  background:
+    radial-gradient(ellipse 65% 55% at 80% 25%, rgba(45, 212, 191, 0.14), transparent 55%),
+    radial-gradient(ellipse 45% 40% at 10% 75%, rgba(110, 245, 176, 0.08), transparent 50%),
+    var(--band-ocean) !important;
+  --band-accent: var(--teal);
+  --band-edge: rgba(6, 24, 32, 0.55);
+}
+
+.asktill-mkt main > section#rewards {
+  background:
+    radial-gradient(ellipse 70% 50% at 75% 20%, rgba(255, 200, 87, 0.14), transparent 55%),
+    radial-gradient(ellipse 40% 40% at 15% 80%, rgba(255, 122, 92, 0.1), transparent 50%),
+    var(--band-ember) !important;
+  --band-accent: var(--amber);
+  --band-edge: rgba(20, 14, 10, 0.55);
+}
+
+.asktill-mkt main > section#how {
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 20%, rgba(61, 107, 255, 0.18), transparent 55%),
+    radial-gradient(ellipse 45% 40% at 85% 75%, rgba(106, 168, 255, 0.1), transparent 50%),
+    var(--band-midnight) !important;
+  --band-accent: var(--brand);
+  --band-edge: rgba(7, 20, 40, 0.55);
+}
+
+.asktill-mkt main > section#features {
+  background:
+    radial-gradient(ellipse 65% 50% at 70% 15%, rgba(139, 124, 255, 0.16), transparent 55%),
+    radial-gradient(ellipse 40% 40% at 15% 80%, rgba(61, 107, 255, 0.1), transparent 50%),
+    var(--band-aurora) !important;
+  --band-accent: var(--violet);
+  --band-edge: rgba(10, 16, 36, 0.55);
+}
+
+.asktill-mkt main > section#trust {
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 0%, rgba(110, 245, 176, 0.12), transparent 55%),
+    radial-gradient(ellipse 40% 35% at 90% 80%, rgba(45, 212, 191, 0.08), transparent 50%),
+    var(--band-void) !important;
+  --band-accent: var(--mint);
+  --band-edge: rgba(5, 8, 15, 0.6);
+}
+
+.asktill-mkt main > section#pricing {
+  background:
+    radial-gradient(ellipse 70% 55% at 25% 25%, rgba(61, 107, 255, 0.16), transparent 55%),
+    radial-gradient(ellipse 45% 40% at 90% 70%, rgba(110, 245, 176, 0.08), transparent 50%),
+    var(--band-midnight) !important;
+  --band-accent: var(--sky);
+  --band-edge: rgba(7, 20, 40, 0.55);
+}
+
+.asktill-mkt main > section#cta {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(110, 245, 176, 0.14), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 10% 90%, rgba(61, 107, 255, 0.12), transparent 50%),
+    var(--band-aurora) !important;
+  --band-accent: var(--mint);
+  --band-edge: rgba(10, 16, 36, 0.55);
+}
+
+/* Content above SectionMotion / veil / cosmic (those stay z ≤ 1) */
+.asktill-mkt main > section > .wrap,
+.asktill-mkt main > section > [class*="content"],
+.asktill-mkt main > section > [class*="layout"],
+.asktill-mkt main > section > [class*="grid"],
+.asktill-mkt main > section > [class*="sticky"],
+.asktill-mkt main > section > [class*="stage"],
+.asktill-mkt main > section > [class*="panel"] {
+  position: relative;
+  z-index: 3;
+}
+
+.asktill-mkt .section-head {
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--section-head-gap);
+}
+
+.asktill-mkt .section-label {
+  display: block;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--section-label-size);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--band-accent);
+  line-height: 1.15;
+}
+
+.asktill-mkt .section-title {
+  font-family: var(--font-display);
+  font-size: var(--section-title-size);
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--band-fg, rgba(255, 255, 255, 0.95)) !important;
+}
+
+.asktill-mkt .section-lead {
+  margin: 0;
+  max-width: var(--section-lead-max);
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--section-lead-size);
+  line-height: 1.55;
+  color: var(--band-muted, rgba(255, 255, 255, 0.68));
+  text-align: justify;
+  text-align-last: center;
+  text-justify: inter-word;
+  hyphens: auto;
+}
+
+.asktill-mkt .section-stack {
+  margin-top: var(--section-gap);
+  width: 100%;
+}
+
+.asktill-mkt .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0 1.5rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  transition:
+    transform var(--dur-fast) var(--ease-snappy),
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    box-shadow var(--dur-base) ease;
+}
+
+.asktill-mkt .btn:active {
+  transform: scale(0.98);
+}
+
+.asktill-mkt .btn-primary {
+  background: var(--mint);
+  color: #050b16 !important;
+  box-shadow: 0 0 0 0 var(--mint-glow);
+}
+
+.asktill-mkt .btn-primary:hover {
+  background: #8ffac0;
+  box-shadow: 0 10px 32px var(--mint-glow);
+}
+
+.asktill-mkt .btn-secondary {
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+}
+
+.asktill-mkt .btn-secondary:hover {
+  background: rgba(106, 168, 255, 0.12);
+  border-color: var(--sky);
+  color: var(--sky-soft) !important;
+}
+
+.asktill-mkt .btn-dark {
+  background: var(--mint);
+  color: #050b16 !important;
+}
+
+.asktill-mkt .btn-dark:hover {
+  background: #8ffac0;
+}
+
+.asktill-mkt .btn-outline {
+  background: transparent;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+}
+
+.asktill-mkt .btn-outline:hover {
+  border-color: var(--mint);
+  color: var(--mint) !important;
+  background: rgba(110, 245, 176, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.asktill-landing-active {
+    scroll-snap-type: none;
+  }
+
+  .asktill-mkt *,
+  .asktill-mkt *::before,
+  .asktill-mkt *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

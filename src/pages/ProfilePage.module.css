@@ -76,6 +76,39 @@
   font-weight: 500;
 }
 
+.adminBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.adminBanner strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.adminBanner p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .adminBanner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .form {
   display: grid;
   gap: 18px;

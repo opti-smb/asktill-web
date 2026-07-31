@@ -12,24 +12,17 @@ import {
   warmupSubscriptionService,
 } from '../lib/api';
 import { getPlanById } from '../lib/plans';
-import { assignStripeRedirect } from '../lib/safeRedirect';
+import { stashCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
+import { assignStripeRedirect, resolveBillingReturnPath } from '../lib/safeRedirect';
 import { isPaidTier } from '../lib/subscription';
 import styles from './CheckoutPage.module.css';
-
-function resolveReturnPath(raw: string | null): string {
-  if (!raw?.trim()) return '/dashboard/sources';
-  const path = raw.trim();
-  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) {
-    return '/dashboard/sources';
-  }
-  return path;
-}
 
 export default function CheckoutPage() {
   const { user, isAuth } = useAuth();
   const [params] = useSearchParams();
   const plan = useMemo(() => getPlanById(params.get('plan')), [params]);
-  const returnTo = resolveReturnPath(params.get('from'));
+  // After pay → activating → upload (/onboarding), not Sources.
+  const returnTo = resolveBillingReturnPath(params.get('from'), '/onboarding');
   const pricingHref = `/pricing?from=${encodeURIComponent(returnTo)}`;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +50,8 @@ export default function CheckoutPage() {
       // Keep backend warm in background after return — never await it before Stripe.
       void primeBackendBeforeCheckout();
       const checkoutUrl = await createCheckoutSession(plan.id, returnTo, user?.email);
+      // Memory JWT dies on Stripe navigation — stash for /pricing/activating return.
+      stashCheckoutAccessBridge();
       assignStripeRedirect(checkoutUrl);
     } catch (err) {
       setError(getApiError(err, 'Could not start checkout. Try again in a moment.'));

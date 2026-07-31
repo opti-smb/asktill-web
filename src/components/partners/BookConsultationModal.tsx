@@ -8,24 +8,12 @@ import {
   redeemRewards,
   type RewardsBalance,
 } from '../../lib/api';
+import { formatMoney, formatPoints } from '../../lib/format';
 
 import styles from './BookConsultationModal.module.css';
 
 const DEFAULT_REDEEM_CODE = 'CFO_CONSULT';
 const DEFAULT_REDEEM_POINTS = 3000;
-
-function formatMoney(usd: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(usd);
-}
-
-function formatPoints(n: number): string {
-  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(n)));
-}
 
 type Props = {
   advisor: TaxAdvisor | null;

@@ -1,0 +1,98 @@
+.asktill-shell,
+.asktill-mkt {
+  /* AskTill palette — black stage + mint / sky / amber energy */
+  --ink: #050b16;
+  --ink-soft: #0c1830;
+  --paper: #f4f7fc;
+  --paper-soft: #e8eef8;
+  --white: #ffffff;
+
+  --brand: #3d6bff;
+  --brand-deep: #2450e8;
+  --brand-glow: rgba(61, 107, 255, 0.4);
+
+  --mint: #6ef5b0;
+  --mint-deep: #14b86a;
+  --mint-glow: rgba(110, 245, 176, 0.28);
+
+  --sky: #6aa8ff;
+  --sky-soft: #9bc4ff;
+  --violet: #8b7cff;
+  --coral: #ff7a5c;
+  --amber: #ffc857;
+  --teal: #2dd4bf;
+
+  --text: #0b1220;
+  --text-soft: #3d4a63;
+  --muted: #6b7a94;
+  --line: rgba(11, 27, 58, 0.1);
+  --line-light: rgba(255, 255, 255, 0.14);
+
+  --font-display: Arial, Helvetica, sans-serif;
+  --font-body: Arial, Helvetica, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
+
+  /* Safe inset from viewport edges — text must never clip */
+  --max: 1200px;
+  --page-gutter: clamp(2.5rem, 6vw, 5rem);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  --section-pad-y: 1rem;
+  --section-gap: 0.45rem;
+  --section-head-gap: 0.2rem;
+  --section-label-size: 1.65rem;
+  --section-title-size: 1.3rem;
+  --section-lead-size: 0.9rem;
+  --section-body-size: 0.85rem;
+  --section-lead-max: 68ch;
+  --section-card-pad: 0.9rem 0.85rem;
+  --section-dark: #050b16;
+  --section-card: rgba(255, 255, 255, 0.06);
+  --section-card-border: rgba(255, 255, 255, 0.12);
+
+  /*
+   * Dark stage with coloured depth (not flat grey slabs).
+   * Each band keeps black as the base, tinted by brand accents.
+   */
+  --band-void: #05080f;
+  --band-midnight: #071428;
+  --band-ocean: #061820;
+  --band-ember: #140e0a;
+  --band-aurora: #0a1024;
+  --band-navy: var(--band-midnight);
+  --band-cloud: var(--band-aurora);
+  --band-ink: var(--band-void);
+  --band-paper: var(--band-ocean);
+  --band-sky: var(--band-midnight);
+  --band-forest: var(--band-ocean);
+  --band-accent: var(--mint);
+
+  --cosmic-breathe: 10s;
+  --cosmic-aurora: 12s;
+  --cosmic-orbit: 14s;
+  --cosmic-spark: 5s;
+  --cosmic-shoot: 8s;
+
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 450ms;
+  --dur-hero: 900ms;
+  --ease-snappy: cubic-bezier(0.15, 0.5, 0.5, 1);
+  --ease-wise: cubic-bezier(0.8, 0.05, 0.2, 0.95);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --shadow-soft: 0 12px 40px rgba(5, 11, 22, 0.35);
+  --shadow-lift: 0 24px 60px rgba(5, 11, 22, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .asktill-shell,
+  .asktill-mkt {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+    --dur-hero: 0ms;
+  }
+}
