@@ -267,8 +267,9 @@
 }
 
 .frame {
-  width: 100%;
+  width: min(100%, 40rem);
   max-width: 100%;
+  max-height: calc(100dvh - 6.5rem);
   border-radius: 14px;
   overflow: hidden;
   background: #0b1220;
@@ -277,7 +278,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: 100%;
+  margin-inline: auto;
 }
 
 .chrome {
@@ -305,19 +306,19 @@
 
 .viewport {
   width: 100%;
+  min-height: 0;
   background: #f8fafc;
   overflow: hidden;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  min-height: 0;
 }
 
 .viewport img {
   display: block;
   width: 100%;
   height: auto;
-  max-height: min(58vh, 520px);
+  max-height: calc(100dvh - 8.5rem);
   object-fit: contain;
   object-position: top center;
 }
@@ -346,9 +347,22 @@
   .stage {
     height: 100%;
     max-height: calc(100dvh - 6.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .panel {
+    height: auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .frame {
+    width: min(100%, 42rem);
+    height: auto;
     max-height: calc(100dvh - 6.5rem);
   }
 
@@ -376,7 +390,12 @@
     transform: none;
   }
 
+  .frame {
+    width: min(100%, 100%);
+    max-height: min(48vh, 380px);
+  }
+
   .viewport img {
-    max-height: min(42vh, 360px);
+    max-height: min(44vh, 340px);
   }
 }
