@@ -810,27 +810,7 @@
   animation: pulseScale 5s ease-in-out infinite;
 }
 
-/* ========== HOW IT WORKS — step path in side gutters ========== */
-.how {
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    #000 0%,
-    #000 14%,
-    transparent 28%,
-    transparent 72%,
-    #000 86%,
-    #000 100%
-  );
-  mask-image: linear-gradient(
-    90deg,
-    #000 0%,
-    #000 14%,
-    transparent 28%,
-    transparent 72%,
-    #000 86%,
-    #000 100%
-  );
-}
+/* How it works — full-bleed atmosphere (side mask removed; it was distorting) */
 
 .hTrack {
   position: absolute;
