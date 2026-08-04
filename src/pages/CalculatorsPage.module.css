@@ -532,7 +532,7 @@
   border-radius: 10px;
   padding: 14px 16px;
   display: grid;
-  grid-template-columns: minmax(180px, 1.35fr) minmax(120px, 0.9fr) minmax(200px, 1.7fr) 96px;
+  grid-template-columns: minmax(180px, 1.35fr) minmax(120px, 0.9fr) minmax(200px, 1.7fr) 108px;
   gap: 16px;
   align-items: center;
   text-align: left;
@@ -686,6 +686,14 @@
 
 .cPill {
   justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.panelRiskRow {
+  margin-top: 8px;
 }
 
 .pill {
@@ -806,7 +814,7 @@
   }
 
   .workbenchSplit .calcRow {
-    grid-template-columns: minmax(140px, 1.2fr) minmax(90px, 0.75fr) minmax(140px, 1.4fr) 88px;
+    grid-template-columns: minmax(140px, 1.2fr) minmax(90px, 0.75fr) minmax(140px, 1.4fr) 100px;
     gap: 10px;
     padding: 12px 14px;
   }

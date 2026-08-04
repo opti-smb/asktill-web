@@ -70,6 +70,9 @@ export type CalculatorHealthOverview = {
   groups: { id: string; title: string; rows: CalculatorHealthRow[] }[];
 };
 
+/** Allow caller to inject prefs-aware evaluateRisk (AskTill defaults + user overrides). */
+export type HealthEvaluateRisk = typeof evaluateRisk;
+
 function num(v: NumMap, key: string): number {
   return Number(v[key]);
 }
@@ -136,6 +139,7 @@ function infoRow(
 function readingFor(
   id: CalculatorId,
   result: AnalyzeResult | null | undefined,
+  evaluateRiskFn: HealthEvaluateRisk = evaluateRisk,
 ): CalculatorHealthRow {
   const meta = getCalculator(id)!;
   const v = mergeDefaults(id, statementDefaultsFor(id, result));
@@ -152,7 +156,7 @@ function readingFor(
       if (!out) {
         return infoRow(id, meta, '—', 'Need cash and monthly burn from statements.', 'Days of runway');
       }
-      return scoredRow(id, meta, evaluateRisk(id, out.days), String(Math.round(out.days)), 'days');
+      return scoredRow(id, meta, evaluateRiskFn(id, out.days), String(Math.round(out.days)), 'days');
     }
     case 'cash-flow-forecast': {
       const out = calcCashFlowForecast(num(v, 'cash'), num(v, 'inflow'), num(v, 'outflow'), {
@@ -166,7 +170,7 @@ function readingFor(
       }
       const lowest = Math.min(...out.months.map((m) => m.cash));
       const oneMonthFixed = Math.max(out.effectiveOut, 0);
-      const risk = evaluateRisk(id, lowest, {
+      const risk = evaluateRiskFn(id, lowest, {
         highRisk: 0,
         lowRisk: oneMonthFixed,
         highLabel: 'Any month < $0',
@@ -187,7 +191,7 @@ function readingFor(
       return scoredRow(
         id,
         meta,
-        evaluateRisk(id, weeksBehind),
+        evaluateRiskFn(id, weeksBehind),
         out.onTrack ? 'On target' : '1',
         out.onTrack ? '' : 'wk behind',
       );
@@ -222,7 +226,7 @@ function readingFor(
       return scoredRow(
         id,
         meta,
-        evaluateRisk(id, revenuePctOfBe),
+        evaluateRiskFn(id, revenuePctOfBe),
         `${revenuePctOfBe.toFixed(0)}%`,
         '',
         'Revenue vs break-even',
@@ -238,7 +242,7 @@ function readingFor(
       if (!out) {
         return infoRow(id, meta, '—', 'Need statement revenue.');
       }
-      return scoredRow(id, meta, evaluateRisk(id, out.marginPct), fmtPct(out.marginPct));
+      return scoredRow(id, meta, evaluateRiskFn(id, out.marginPct), fmtPct(out.marginPct));
     }
     case 'pricing-margin': {
       const out = calcTargetPrice(num(v, 'cost'), num(v, 'margin'), {
@@ -272,7 +276,7 @@ function readingFor(
       if (!out) {
         return infoRow(id, meta, '—', 'Need revenue and expenses from statements.');
       }
-      return scoredRow(id, meta, evaluateRisk(id, out.netMarginPct), fmtPct(out.netMarginPct));
+      return scoredRow(id, meta, evaluateRiskFn(id, out.netMarginPct), fmtPct(out.netMarginPct));
     }
     case 'roi': {
       const out = calcRoi(num(v, 'investment'), num(v, 'returnAmount'), {
@@ -284,7 +288,7 @@ function readingFor(
       if (!out) {
         return infoRow(id, meta, '—', 'Need money out and money in from statements.');
       }
-      return scoredRow(id, meta, evaluateRisk(id, out.roiPct), fmtPct(out.roiPct));
+      return scoredRow(id, meta, evaluateRiskFn(id, out.roiPct), fmtPct(out.roiPct));
     }
     case 'processor-compare': {
       const stmtRates = statementProcessorRates(result);
@@ -309,7 +313,7 @@ function readingFor(
         return infoRow(id, meta, '—', 'Need card volume from statements.');
       }
       const blended = rateRows.reduce((s, r) => s + r.ratePct, 0) / rateRows.length;
-      return scoredRow(id, meta, evaluateRisk(id, blended), `${blended.toFixed(2)}%`);
+      return scoredRow(id, meta, evaluateRiskFn(id, blended), `${blended.toFixed(2)}%`);
     }
     case 'mca-apr': {
       const out = calcMcaApr(num(v, 'advance'), num(v, 'factor'), num(v, 'months'), {
@@ -325,7 +329,7 @@ function readingFor(
           'Effective APR',
         );
       }
-      return scoredRow(id, meta, evaluateRisk(id, out.aprPct), `${out.aprPct.toFixed(0)}%`, 'APR');
+      return scoredRow(id, meta, evaluateRiskFn(id, out.aprPct), `${out.aprPct.toFixed(0)}%`, 'APR');
     }
     case 'late-payment-cost': {
       if (!(num(v, 'daysLate') >= 0) || v.daysLate === '') {
@@ -342,7 +346,7 @@ function readingFor(
       return scoredRow(
         id,
         meta,
-        evaluateRisk(id, num(v, 'daysLate')),
+        evaluateRiskFn(id, num(v, 'daysLate')),
         String(Math.round(num(v, 'daysLate'))),
         'days',
       );
@@ -370,7 +374,7 @@ function readingFor(
       return scoredRow(
         id,
         meta,
-        evaluateRisk(id, out.runwayAfterDays),
+        evaluateRiskFn(id, out.runwayAfterDays),
         String(Math.round(out.runwayAfterDays)),
         'days',
       );
@@ -406,7 +410,7 @@ function readingFor(
       if (!out) {
         return infoRow(id, meta, '—', 'Need payroll and revenue from statements.');
       }
-      return scoredRow(id, meta, evaluateRisk(id, out.pct), fmtPct(out.pct));
+      return scoredRow(id, meta, evaluateRiskFn(id, out.pct), fmtPct(out.pct));
     }
     case 'loan-affordability': {
       if (!v.principal || !v.rate || !v.months || v.freeCash === undefined || v.freeCash === '') {
@@ -439,7 +443,7 @@ function readingFor(
       if (dscr == null) {
         return infoRow(id, meta, fmtMoney(out.monthlyAllIn) + '/mo', 'Open for payment details.');
       }
-      return scoredRow(id, meta, evaluateRisk(id, dscr), `${dscr.toFixed(2)}×`, 'DSCR');
+      return scoredRow(id, meta, evaluateRiskFn(id, dscr), `${dscr.toFixed(2)}×`, 'DSCR');
     }
     case 'sba-eligibility': {
       const out = calcSbaEstimate(num(v, 'revenue'), num(v, 'years'), num(v, 'requested'), {
@@ -468,7 +472,7 @@ function readingFor(
           ? num(v, 'freeCash') / loan.monthlyAllIn
           : null;
       if (dscr != null) {
-        return scoredRow(id, meta, evaluateRisk(id, dscr), `${dscr.toFixed(2)}×`, 'DSCR');
+        return scoredRow(id, meta, evaluateRiskFn(id, dscr), `${dscr.toFixed(2)}×`, 'DSCR');
       }
       return infoRow(
         id,
@@ -524,7 +528,7 @@ function readingFor(
       return scoredRow(
         id,
         meta,
-        evaluateRisk(id, monthsConsumed),
+        evaluateRiskFn(id, monthsConsumed),
         monthsConsumed.toFixed(1),
         'mo of runway',
       );
@@ -543,7 +547,7 @@ function readingFor(
       return scoredRow(
         id,
         meta,
-        evaluateRisk(id, out.turns),
+        evaluateRiskFn(id, out.turns),
         `${out.turns.toFixed(1)}×`,
         'per year',
       );
@@ -555,6 +559,7 @@ function readingFor(
 
 export function buildCalculatorHealthOverview(
   result: AnalyzeResult | null | undefined,
+  evaluateRiskFn: HealthEvaluateRisk = evaluateRisk,
 ): CalculatorHealthOverview | null {
   const analysis = getAnalyzeAnalysis(result);
   if (!analysis) return null;
@@ -562,7 +567,7 @@ export function buildCalculatorHealthOverview(
   const groups = CALCULATOR_GROUPS.map((g) => ({
     id: g.id,
     title: g.title,
-    rows: g.calculatorIds.map((id) => readingFor(id, result)),
+    rows: g.calculatorIds.map((id) => readingFor(id, result, evaluateRiskFn)),
   }));
 
   const allRows = groups.flatMap((g) => g.rows);

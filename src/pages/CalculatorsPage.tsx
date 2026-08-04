@@ -3,12 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import CalculatorPerformancePanel from '../components/calculators/CalculatorPerformance';
+import CustomRiskControl from '../components/calculators/CustomRiskControl';
 import Field from '../components/calculators/Field';
 import ResultBlock from '../components/calculators/ResultBlock';
 import RiskGauge from '../components/calculators/RiskGauge';
 import Spinner from '../components/common/Spinner';
 import SectionHeader from '../components/layout/SectionHeader';
 import { useAnalysis } from '../context/AnalysisContext';
+import { useRiskThresholds } from '../context/RiskThresholdContext';
 import {
   hasRecentAnalyzeSession,
   useHasLiveDashboardAnalysis,
@@ -52,7 +54,6 @@ import {
   calcSbaEstimate,
   calcTargetPrice,
   calcWeeklyTracker,
-  evaluateRisk,
   fmtDays,
   fmtMoney,
   fmtMoney2,
@@ -89,6 +90,7 @@ export default function CalculatorsPage() {
   const navigate = useNavigate();
   const { result, loadSavedReport } = useAnalysis();
   const { historyReady, savedCount, primaryReport, savedReports } = useReportSync();
+  const { evaluate: evaluateRisk, prefs } = useRiskThresholds();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   const analysis = getAnalyzeAnalysis(result);
   /** Only set after the user clicks a calculator card — never from a leftover URL alone. */
@@ -265,7 +267,10 @@ export default function CalculatorsPage() {
     setValues({});
   };
 
-  const healthOverview = useMemo(() => buildCalculatorHealthOverview(result), [result]);
+  const healthOverview = useMemo(
+    () => buildCalculatorHealthOverview(result, evaluateRisk),
+    [result, evaluateRisk, prefs],
+  );
 
   const performance = useMemo(
     () => (monthOnly ? null : buildCalculatorPerformance(rollingResults)),
@@ -2027,7 +2032,8 @@ export default function CalculatorsPage() {
                 <div className={styles.directionsEyebrow}>How to read this</div>
                 <p className={styles.prose}>
                   Every calculator runs on this statement&apos;s numbers and is scored against
-                  Asktill&apos;s risk thresholds. The bar under each reading shows where it lands:{' '}
+                  AskTill defaults. Use <b>Custom risk</b> on a card or in the panel to set your own
+                  cutoffs (e.g. runway At risk at 45 days). Bars show:{' '}
                   <span className={styles.legendKey}>
                     <i className={styles.dotRed} />
                     <b>At risk</b>
@@ -2040,7 +2046,6 @@ export default function CalculatorsPage() {
                     <i className={styles.dotGreen} />
                     <b>Healthy</b>
                   </span>
-                  Click any row to open inputs and adjust — formulas stay the same.
                 </p>
               </div>
 
@@ -2165,9 +2170,10 @@ export default function CalculatorsPage() {
                         </div>
                         <div className={styles.healthGrid}>
                           {group.rows.map((row, ri) => (
-                            <button
+                            <div
                               key={row.id}
-                              type="button"
+                              role="button"
+                              tabIndex={0}
                               className={`${styles.calcRow} ${styles.box3d} ${styles[`band_${row.band}`]} ${
                                 active?.id === row.id ? styles.calcRowActive : ''
                               }`}
@@ -2180,6 +2186,12 @@ export default function CalculatorsPage() {
                                 }
                               }}
                               onClick={() => openCalculator(row.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  openCalculator(row.id);
+                                }
+                              }}
                             >
                               <div className={styles.calcInfo}>
                                 <div className={styles.calcName}>{row.meta.name}</div>
@@ -2207,8 +2219,11 @@ export default function CalculatorsPage() {
                                 <span className={`${styles.pill} ${styles[`pill_${row.band}`]}`}>
                                   {row.pillLabel}
                                 </span>
+                                {row.risk ? (
+                                  <CustomRiskControl calculatorId={row.id} compact />
+                                ) : null}
                               </div>
-                            </button>
+                            </div>
                           ))}
                         </div>
                       </section>
@@ -2222,6 +2237,9 @@ export default function CalculatorsPage() {
                       <div>
                         <h2 className={styles.panelTitle}>{active.name}</h2>
                         <p className={styles.panelQ}>{active.question}</p>
+                        <div className={styles.panelRiskRow}>
+                          <CustomRiskControl calculatorId={active.id} />
+                        </div>
                       </div>
                       <button type="button" className={styles.panelClose} onClick={closeCalculator}>
                         Close

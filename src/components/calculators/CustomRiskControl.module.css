@@ -1,0 +1,177 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.chip {
+  border: 1px solid #d0d7e2;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chip:hover,
+.chipOpen {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.chipCustom {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0d9488;
+}
+
+.compact .chip {
+  padding: 2px 7px;
+  font-size: 9.5px;
+}
+
+.pop {
+  position: fixed;
+  z-index: 1200;
+  width: 228px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  padding: 10px;
+}
+
+.popHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.popTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.popClose {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.popClose:hover {
+  color: #0f172a;
+}
+
+.popHint {
+  margin: 4px 0 8px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inputRow input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #d0d7e2;
+  border-radius: 6px;
+  padding: 5px 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.inputRow span {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.error {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: #b91c1c;
+  line-height: 1.35;
+}
+
+.saved {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: #0f766e;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.save,
+.reset {
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.save {
+  border: none;
+  background: #0b1f3a;
+  color: #fff;
+}
+
+.reset {
+  border: 1px solid #d0d7e2;
+  background: #fff;
+  color: #334155;
+}
+
+.reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

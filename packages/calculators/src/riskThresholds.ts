@@ -245,30 +245,83 @@ export function riskLevelFromValue(
   direction: RiskDirection,
   highRisk: number,
   lowRisk: number,
+  /** When true, value == highRisk counts as high (cash runway treats 30 as At risk). */
+  highInclusive = false,
 ): RiskLevel {
   if (!Number.isFinite(value)) return 'moderate';
   if (direction === 'higher_better') {
-    if (value < highRisk) return 'high';
+    if (highInclusive ? value <= highRisk : value < highRisk) return 'high';
     if (value > lowRisk) return 'low';
     return 'moderate';
   }
   // lower_better
-  if (value > highRisk) return 'high';
+  if (highInclusive ? value >= highRisk : value > highRisk) return 'high';
   if (value < lowRisk) return 'low';
   return 'moderate';
 }
 
+/** Rebuild edge labels when high/low boundaries change (user customization). */
+export function labelsForThresholds(
+  base: RiskThresholdSpec,
+  highRisk: number,
+  lowRisk: number,
+): { highLabel: string; lowLabel: string } {
+  const fmtBound = (n: number): string => {
+    if (base.format === 'percent') {
+      return Number.isInteger(n) ? `${n}%` : `${n.toFixed(1)}%`;
+    }
+    if (base.format === 'days') return `${Math.round(n)} days`;
+    if (base.format === 'ratio') {
+      const u = base.unit.startsWith('x') ? base.unit : ` ${base.unit}`;
+      return `${n.toFixed(2)}${u}`;
+    }
+    if (base.format === 'currency') {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0,
+      }).format(n);
+    }
+    return `${n}`;
+  };
+  if (base.direction === 'higher_better') {
+    return {
+      highLabel: `≤ ${fmtBound(highRisk)}`,
+      lowLabel: `> ${fmtBound(lowRisk)}`,
+    };
+  }
+  return {
+    highLabel: `≥ ${fmtBound(highRisk)}`,
+    lowLabel: `< ${fmtBound(lowRisk)}`,
+  };
+}
+
+export type RiskThresholdOverride = Partial<
+  Pick<RiskThresholdSpec, 'highRisk' | 'lowRisk' | 'highLabel' | 'lowLabel'>
+>;
+
 export function evaluateRisk(
   id: CalculatorId,
   value: number,
-  overrides?: Partial<Pick<RiskThresholdSpec, 'highRisk' | 'lowRisk' | 'highLabel' | 'lowLabel'>>,
+  overrides?: RiskThresholdOverride,
 ): RiskReading | null {
   if (RISK_NA_CALCULATORS.has(id)) return null;
   const base = RISK_THRESHOLDS[id];
   if (!base || !Number.isFinite(value)) return null;
   const highRisk = overrides?.highRisk ?? base.highRisk;
   const lowRisk = overrides?.lowRisk ?? base.lowRisk;
-  const level = riskLevelFromValue(value, base.direction, highRisk, lowRisk);
+  // Match AT Letter / Health: cash runway boundary is At risk (inclusive).
+  const highInclusive = id === 'cash-runway' || id === 'hiring-affordability';
+  const level = riskLevelFromValue(
+    value,
+    base.direction,
+    highRisk,
+    lowRisk,
+    highInclusive,
+  );
+  const auto = labelsForThresholds(base, highRisk, lowRisk);
+  const usingCustomBounds =
+    overrides?.highRisk != null || overrides?.lowRisk != null;
   return {
     id,
     level,
@@ -279,8 +332,12 @@ export function evaluateRisk(
     lowRisk,
     unit: base.unit,
     format: base.format,
-    highLabel: overrides?.highLabel ?? base.highLabel,
-    lowLabel: overrides?.lowLabel ?? base.lowLabel,
+    highLabel:
+      overrides?.highLabel ??
+      (usingCustomBounds ? auto.highLabel : base.highLabel),
+    lowLabel:
+      overrides?.lowLabel ??
+      (usingCustomBounds ? auto.lowLabel : base.lowLabel),
     levelLabel: LEVEL_LABEL[level],
   };
 }
