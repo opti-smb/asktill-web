@@ -5,6 +5,7 @@ import ViewBeacon from './components/analytics/ViewBeacon';
 import { AuthProvider } from './context/AuthContext';
 import { AnalysisProvider } from './context/AnalysisContext';
 import { ChatProvider } from './context/ChatContext';
+import { RiskThresholdProvider } from './context/RiskThresholdContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { ReportSyncProvider } from './hooks/useReportSync';
 
@@ -15,10 +16,12 @@ export default function App() {
         <SubscriptionProvider>
           <AnalysisProvider>
             <ReportSyncProvider>
-              <ChatProvider>
-                <ViewBeacon />
-                <AppRouter />
-              </ChatProvider>
+              <RiskThresholdProvider>
+                <ChatProvider>
+                  <ViewBeacon />
+                  <AppRouter />
+                </ChatProvider>
+              </RiskThresholdProvider>
             </ReportSyncProvider>
           </AnalysisProvider>
         </SubscriptionProvider>
