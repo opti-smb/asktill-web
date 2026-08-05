@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 
 import { getApiError } from '../lib/api';
 import {
-  AT_LETTER_HTML_CLIENT_VERSION,
   clearAtLetterHtmlCache,
   getCachedAtLetterHtml,
   prefetchAtLetterHtml,
