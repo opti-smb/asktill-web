@@ -4,7 +4,7 @@
 
 .prose {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
   font-size: 12.5px;
   line-height: 1.65;
   color: #344054;
@@ -114,7 +114,8 @@
 }
 
 .schipN {
-  font-family: ui-monospace, 'Courier New', monospace;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 24px;
   font-weight: 700;
   line-height: 1.1;
@@ -226,7 +227,8 @@
 }
 
 .cnum {
-  font-family: ui-monospace, 'Courier New', monospace;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   color: var(--letter-muted);
   background: var(--letter-surface);
@@ -312,7 +314,8 @@
 }
 
 .mval {
-  font-family: ui-monospace, 'Courier New', monospace;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.1;
@@ -326,7 +329,8 @@
 }
 
 .mvalTxt {
-  font-family: ui-monospace, 'Courier New', monospace;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.1;

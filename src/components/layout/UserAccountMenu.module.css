@@ -116,7 +116,7 @@
 }
 
 .manageTitle {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 500;
   color: var(--ink);

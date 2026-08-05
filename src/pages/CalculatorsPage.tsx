@@ -108,6 +108,8 @@ export default function CalculatorsPage() {
   const [rollingError, setRollingError] = useState<string | null>(null);
   /** Live status while opening months — month name + progress, not a vague "Loading…". */
   const [loadStatus, setLoadStatus] = useState<string | null>(null);
+  /** Months-on-file + how-to-read panels — collapsed by default to save space. */
+  const [showGuidePanels, setShowGuidePanels] = useState(false);
   /** In-component mirror; durable store is calculatorRollingCache (survives tab changes). */
   const rollingCacheRef = useRef<Map<string, AnalyzeResult>>(new Map());
 
@@ -1991,7 +1993,7 @@ export default function CalculatorsPage() {
             <div className={styles.scrollViewport}>
               {letterViewBar}
               {showViewFilters && viewMeta ? <p className={styles.emptyHint}>{viewMeta}</p> : null}
-              {monthsOnFileChip}
+              {showGuidePanels ? monthsOnFileChip : null}
               {hydrating && analysis && loadStatus ? (
                 <div className={styles.loadStatus} role="status" aria-live="polite">
                   <Spinner label={loadStatus} size="sm" />
@@ -2024,6 +2026,7 @@ export default function CalculatorsPage() {
                 )
               ) : (
                 <>
+              {showGuidePanels ? (
               <div
                 className={`${styles.directions} ${styles.animIn} ${styles.box3d}`}
                 onMouseMove={onBoxTilt}
@@ -2048,6 +2051,7 @@ export default function CalculatorsPage() {
                   </span>
                 </p>
               </div>
+              ) : null}
 
               {healthOverview ? (
                 <div
@@ -2055,6 +2059,41 @@ export default function CalculatorsPage() {
                   onMouseMove={onBoxTilt}
                   onMouseLeave={resetBoxTilt}
                 >
+                  <button
+                    type="button"
+                    className={styles.guideToggle}
+                    aria-expanded={showGuidePanels}
+                    aria-label={
+                      showGuidePanels
+                        ? 'Hide months on file and how to read this'
+                        : 'Show months on file and how to read this'
+                    }
+                    title={showGuidePanels ? 'Hide guide' : 'Show guide'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowGuidePanels((v) => !v);
+                    }}
+                  >
+                    {showGuidePanels ? (
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+                        <path
+                          fill="currentColor"
+                          d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M3.3 3.3 20.7 20.7l-1.4 1.4L1.9 4.7z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+                        <path
+                          fill="currentColor"
+                          d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
+                        />
+                      </svg>
+                    )}
+                  </button>
                   <div className={styles.gaugeWrap}>
                     <svg viewBox="0 0 220 118" width="220" className={styles.gaugeSvg} aria-hidden>
                       <path

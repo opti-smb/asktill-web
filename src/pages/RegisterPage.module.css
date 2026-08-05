@@ -3,6 +3,7 @@
   background: var(--bg-soft);
   display: flex;
   flex-direction: column;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .nav {
@@ -14,6 +15,7 @@
   top: 0;
   z-index: 100;
   flex-shrink: 0;
+  font-family: inherit;
 }
 
 .main {
@@ -23,6 +25,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px 16px 28px;
+  font-family: inherit;
 }
 
 .card {
@@ -33,6 +36,7 @@
   border-radius: 16px;
   padding: 24px 22px;
   box-shadow: 0 4px 32px rgba(30, 64, 175, 0.07);
+  font-family: inherit;
 }
 
 .cardHeader {
@@ -40,20 +44,20 @@
 }
 
 .heading {
-  font-family: var(--font-serif);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 26px;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.15;
   margin-bottom: 6px;
-  font-variation-settings: "opsz" 144, "SOFT" 40;
 }
 
 .heading em {
   font-style: italic;
   color: var(--brand);
-  font-variation-settings: "opsz" 144, "SOFT" 100;
+  font-family: inherit;
+  font-weight: 600;
 }
 
 .sub {
@@ -85,7 +89,7 @@
   padding: 9px 12px;
   border: 1.5px solid var(--rule);
   border-radius: 10px;
-  font-family: var(--font-sans);
+  font-family: inherit;
   font-size: 14px;
   color: var(--ink);
   background: var(--bg);
@@ -102,7 +106,7 @@
   padding: 11px 14px;
   border: 1.5px solid var(--rule);
   border-radius: 10px;
-  font-family: var(--font-sans);
+  font-family: inherit;
   font-size: 14px;
   color: var(--ink);
   background: var(--bg);

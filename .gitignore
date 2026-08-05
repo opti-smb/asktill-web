@@ -12,3 +12,6 @@ dist/
 # Local scratch / dev exports (not for PR)
 *.preview.html
 /_*.html
+
+*.tsbuildinfo
+

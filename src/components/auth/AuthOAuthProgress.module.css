@@ -24,14 +24,13 @@
 }
 
 .title {
-  font-family: var(--font-serif);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 26px;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
   margin: 0 0 10px;
-  font-variation-settings: 'opsz' 144, 'SOFT' 40;
 }
 
 .hint {

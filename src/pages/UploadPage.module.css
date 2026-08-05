@@ -6,6 +6,9 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-soft);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .pageBgEmbedded {
@@ -226,6 +229,7 @@
   min-height: 0;
   overflow: hidden;
   padding: 6px 0 8px;
+  font-family: var(--font-sans);
 }
 
 .pageInner {
@@ -301,16 +305,18 @@
 }
 
 .page h1 {
-  font-size: 18px;
-  font-weight: 400;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 600;
   margin-bottom: 2px;
-  font-variation-settings: "opsz" 144, "SOFT" 40;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 .page h1 em {
   font-style: italic;
   color: var(--brand);
-  font-variation-settings: "opsz" 144, "SOFT" 100;
+  font-weight: 600;
 }
 
 .pageSub {

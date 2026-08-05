@@ -2457,13 +2457,22 @@ export const downloadReconciliation = (bank?: File, pos?: File, ecommerce?: File
 /** HTML preview of the full backend AT Letter template (?preview=1). */
 export const fetchAtLetterHtmlPreview = (
   statementId: string,
-  opts?: { monthOnly?: boolean },
+  opts?: { monthOnly?: boolean; buildVersion?: number },
 ) =>
   mainApi.get<string>(`/api/reports/${encodeURIComponent(statementId)}/at-letter`, {
-    params: { preview: 1, ...(opts?.monthOnly ? { monthOnly: 1 } : {}) },
+    params: {
+      preview: 1,
+      ...(opts?.monthOnly ? { monthOnly: 1 } : {}),
+      // Cache-bust stale browser/SPA letter HTML after layout bumps.
+      ...(opts?.buildVersion != null ? { v: opts.buildVersion } : {}),
+    },
     responseType: 'text',
     transformResponse: [(data) => data],
     timeout: 120_000,
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
   });
 
 export interface AtLetterLandingMeta {
