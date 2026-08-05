@@ -37,7 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             display: 'grid',
             placeItems: 'center',
             padding: '2rem',
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: 'var(--font-sans)',
             textAlign: 'center',
             background: '#f7f5f2',
             color: '#1a1a1a',

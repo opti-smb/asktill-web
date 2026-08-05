@@ -1,3 +1,5 @@
-/** Shared dashboard typography — Inter (UI) + Lora (display numbers). */
-export const FONT_SANS = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
-export const FONT_SERIF = "'Lora', Georgia, serif";
+/** UI typography — Inter (same clean sans used in apps like Monarch Money). */
+export const FONT_SANS =
+  "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+export const FONT_SERIF =
+  "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";

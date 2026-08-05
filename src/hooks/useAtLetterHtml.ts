@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 
 import { getApiError } from '../lib/api';
-import { getCachedAtLetterHtml, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
+import {
+  AT_LETTER_HTML_CLIENT_VERSION,
+  clearAtLetterHtmlCache,
+  getCachedAtLetterHtml,
+  prefetchAtLetterHtml,
+} from '../lib/atLetterHtmlCache';
 import { LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from './useReportSync';
 
@@ -28,7 +33,10 @@ export function useAtLetterHtml(
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const onRefresh = () => setTick((n) => n + 1);
+    const onRefresh = () => {
+      clearAtLetterHtmlCache();
+      setTick((n) => n + 1);
+    };
     window.addEventListener(LETTER_UPDATED_EVENT, onRefresh);
     window.addEventListener(REPORT_HISTORY_REFRESH_EVENT, onRefresh);
     return () => {
@@ -57,7 +65,8 @@ export function useAtLetterHtml(
       setError(null);
     }
 
-    prefetchAtLetterHtml(statementId, { monthOnly })
+    // Always revalidate so layout/CSS bumps are not stuck in SPA memory.
+    prefetchAtLetterHtml(statementId, { monthOnly, force: true })
       .then((fresh) => {
         if (cancelled) return;
         if (fresh) {
@@ -88,6 +97,9 @@ export function useAtLetterHtml(
     html,
     loading,
     error,
-    refresh: () => setTick((n) => n + 1),
+    refresh: () => {
+      clearAtLetterHtmlCache();
+      setTick((n) => n + 1);
+    },
   };
 }

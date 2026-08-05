@@ -1,8 +1,8 @@
-/* Match AT Letter printed body type exactly (same as letter prose). */
+/* Match app body type — Inter everywhere. */
 .letterScope {
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-serif: Arial, Helvetica, sans-serif;
-  font-family: Arial, Helvetica, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
   color: #1b2a4a;
@@ -11,7 +11,7 @@
 
 .letterScope,
 .letterScope *:not(code):not(pre) {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-variation-settings: normal;
   font-optical-sizing: none;
 }
@@ -19,7 +19,7 @@
 /* AT Letter .prose — same as deposited/processor narrative */
 .prose {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-size: 12.5px;
   line-height: 1.65;
   color: #344054;
@@ -33,6 +33,7 @@
 
 /* AT Letter printed palette (scoped to this page) */
 .main {
+  font-family: var(--font-sans);
   --letter-ink: #1b2a4a;
   --letter-body: #344054;
   --letter-muted: #6b7e99;
@@ -59,7 +60,7 @@
   padding: 12px 0 28px;
   background: var(--letter-desk);
   min-height: calc(100vh - 88px);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   color: var(--letter-ink);
   font-size: 13px;
   line-height: 1.5;
@@ -87,7 +88,7 @@
   font-size: 12px;
   line-height: 1.4;
   margin: 0 0 8px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .loadStatus {
@@ -107,7 +108,7 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--letter-muted);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .empty {
@@ -143,7 +144,7 @@
   color: #fff;
   font-size: 11px;
   font-weight: 600;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .historyChip span {
@@ -159,7 +160,7 @@
   font-size: 12.5px;
   line-height: 1.55;
   color: #1b4d8e;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Month switcher */
@@ -197,7 +198,7 @@
   font-size: 10px;
   color: var(--letter-muted);
   cursor: pointer;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 600;
 }
 
@@ -235,7 +236,7 @@
 .directions p,
 .directions .prose {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-size: 12.5px;
   color: #344054;
   line-height: 1.65;
@@ -290,6 +291,35 @@
   box-shadow: 0 8px 24px rgba(27, 42, 74, 0.18);
   position: relative;
   overflow: hidden;
+}
+
+.guideToggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.guideToggle:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.guideToggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .overall::after {
@@ -537,7 +567,7 @@
   align-items: center;
   text-align: left;
   cursor: pointer;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   color: inherit;
   width: 100%;
   opacity: 0;
@@ -773,7 +803,7 @@
   color: var(--letter-ink);
   border-radius: 6px;
   padding: 5px 10px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -857,7 +887,7 @@
   border: 1px solid var(--letter-border);
   border-radius: 6px;
   padding: 8px 10px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   background: var(--letter-paper);
   color: var(--letter-ink);
@@ -939,7 +969,8 @@
   font-size: 11px;
   line-height: 1.45;
   white-space: pre-wrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-family: var(--font-sans) !important;
+  font-variant-numeric: tabular-nums;
   color: var(--letter-ink);
 }
 

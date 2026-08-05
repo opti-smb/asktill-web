@@ -102,13 +102,13 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
       style={{
         background: C.paper,
         color: C.ink,
-        fontFamily: 'var(--font-sans), Arial, Helvetica, sans-serif',
+        fontFamily: 'var(--font-sans)',
         borderRadius: 12,
         overflow: 'hidden',
       }}
     >
       <style>{`
-        .cb-mono { font-variant-numeric: tabular-nums; font-family: var(--font-mono), ui-monospace, Menlo, monospace; letter-spacing: -0.02em; }
+        .cb-mono { font-variant-numeric: tabular-nums; font-family: var(--font-sans); letter-spacing: -0.02em; }
         .cb-card { background: ${C.card}; border: 1px solid ${C.border}; border-radius: 14px; }
         .cb-pulse { animation: cbPulse 2s ease-in-out infinite; }
         @keyframes cbPulse { 0%,100%{opacity:1} 50%{opacity:.4} }

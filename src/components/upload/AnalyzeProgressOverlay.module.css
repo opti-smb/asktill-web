@@ -8,6 +8,7 @@
   padding: 24px;
   background: rgba(11, 18, 32, 0.55);
   backdrop-filter: blur(4px);
+  font-family: var(--font-sans);
 }
 
 .card {

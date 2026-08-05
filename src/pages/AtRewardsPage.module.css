@@ -1,6 +1,7 @@
 /* Colours from actual AT Letter template (sample-at-letter.html) */
 
 .main {
+  font-family: var(--font-sans);
   padding: 12px 0 28px;
   background: #f4f6f9;
   min-height: calc(100vh - 88px);

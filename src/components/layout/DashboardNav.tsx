@@ -68,7 +68,7 @@ export default function DashboardNav() {
                 className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover(DEFAULT_DASHBOARD_PATH, isAtLetterRoute)}
               >
-                AT Letter
+                Business Brief
               </NavLink>
 
               <NavLink
@@ -77,7 +77,7 @@ export default function DashboardNav() {
                 className={() => `${styles.navTab} ${isAtLedgerRoute ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover('/dashboard/at-ledger', isAtLedgerRoute)}
               >
-                AT Ledger
+                Financials
               </NavLink>
 
               <NavLink
@@ -85,7 +85,7 @@ export default function DashboardNav() {
                 className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover('/dashboard/calculators', isCalculatorsRoute)}
               >
-                AT Health Calculator
+                Business Health
               </NavLink>
 
               <NavLink
@@ -93,7 +93,7 @@ export default function DashboardNav() {
                 className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover('/dashboard/chargebacks', isChargebacksRoute)}
               >
-                AT Chargebacks
+                Money Reclaimed
               </NavLink>
 
               <NavLink
@@ -103,7 +103,7 @@ export default function DashboardNav() {
                   goOnHover('/dashboard/channel-partners', isChannelPartnersRoute)
                 }
               >
-                AT Channel partners
+                Business Services
               </NavLink>
 
               <NavLink
@@ -111,7 +111,7 @@ export default function DashboardNav() {
                 className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover('/dashboard/rewards', isRewardsRoute)}
               >
-                AT Rewards
+                Save Money
               </NavLink>
 
               <NavLink
@@ -119,7 +119,7 @@ export default function DashboardNav() {
                 className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
                 onMouseEnter={() => goOnHover('/dashboard/sources', isSourcesRoute)}
               >
-                AT Uploads
+                Connect Accounts
               </NavLink>
             </div>
 

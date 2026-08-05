@@ -23,6 +23,14 @@ export default function ClerkAuthProvider({ children }: { children: ReactNode })
       signInForceRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}
       signUpForceRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}
       afterSignOutUrl="/login"
+      appearance={{
+        variables: {
+          fontFamily:
+            '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontFamilyButtons:
+            '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        },
+      }}
     >
       <ClerkSessionSync />
       {children}

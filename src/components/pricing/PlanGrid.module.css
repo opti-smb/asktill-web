@@ -61,7 +61,7 @@
 }
 
 .price {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 34px;
   font-weight: 500;
   color: var(--ink);

@@ -18,10 +18,10 @@
 }
 
 .h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 19px;
-  font-weight: 400;
-  font-variation-settings: "opsz" 144, "SOFT" 40;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .periodMeta {
@@ -37,4 +37,5 @@
 .h1 em {
   font-style: italic;
   color: var(--brand);
+  font-family: var(--font-sans);
 }
