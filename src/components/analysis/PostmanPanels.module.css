@@ -1,31 +1,33 @@
 .panel {
-  margin-top: 12px;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
+  margin-top: 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .head {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
+  font-size: 15px;
+  font-weight: 750;
+  color: #0f172a;
   margin: 0 0 2px;
+  letter-spacing: -0.01em;
 }
 
 .sub {
-  font-size: 11px;
-  color: var(--muted);
+  font-size: 12px;
+  color: #64748b;
   margin: 0;
 }
 
 .sub code {
   font-size: 12px;
-  background: var(--bg-soft);
+  background: #f1f5f9;
   padding: 1px 5px;
   border-radius: 4px;
 }
@@ -44,7 +46,7 @@
   font-size: 12px;
   font-weight: 600;
   margin: 0 0 6px;
-  color: var(--ink);
+  color: #0f172a;
 }
 
 .tableWrap {
@@ -59,15 +61,17 @@
 
 .table th,
 .table td {
-  padding: 5px 8px;
-  border-bottom: 1px solid var(--rule);
+  padding: 9px 10px;
+  border-bottom: 1px solid #eef2f7;
   text-align: left;
 }
 
 .table th {
-  font-weight: 600;
-  color: var(--muted);
+  font-weight: 750;
+  color: #94a3b8;
   font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .table code {
@@ -76,21 +80,59 @@
 
 .totalRow td {
   font-weight: 600;
-  border-top: 2px solid var(--rule);
+  border-top: 2px solid #e2e8f0;
 }
 
 .fileCell {
-  max-width: 180px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.fileName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fileIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.fileIconBank {
+  background: #e8f7ef;
+  color: #0f8a57;
+}
+
+.fileIconPos {
+  background: #fff4e5;
+  color: #e0891a;
+}
+
+.fileIconEcomm {
+  background: #e8eefc;
+  color: #2f5bd8;
+}
+
+.fileIconOther {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .notesList {
   margin: 0;
   padding-left: 16px;
   font-size: 12px;
-  color: var(--body);
+  color: #64748b;
 }
 
 .notesList li + li {
@@ -106,7 +148,7 @@
 }
 
 .dl dt {
-  color: var(--muted);
+  color: #64748b;
   font-weight: 500;
 }
 
@@ -116,10 +158,47 @@
 }
 
 .empty {
-  padding: 14px;
+  padding: 28px 16px;
   text-align: center;
-  color: var(--muted);
+  color: #64748b;
+  font-size: 13px;
+  border: 1.5px dashed #d7dee8;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+.emptyState {
+  padding: 36px 20px;
+  text-align: center;
+  border: 1.5px dashed #d7dee8;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+.emptyIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f7ef;
+  color: #0f8a57;
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+
+.emptyLead {
+  font-size: 14px;
+  font-weight: 750;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.emptyCopy {
+  margin: 0;
   font-size: 12px;
+  color: #94a3b8;
 }
 
 .processorList {
@@ -132,7 +211,7 @@
 .processorList li + li {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid #eef2f7;
 }
 
 .toolbar {
@@ -146,7 +225,7 @@
 
 .toolbarHint {
   font-size: 11px;
-  color: var(--muted);
+  color: #64748b;
   margin: 0;
 }
 
@@ -156,8 +235,8 @@
   padding: 0;
   font: inherit;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--brand);
+  font-weight: 700;
+  color: #0f8a57;
   cursor: pointer;
   text-decoration: underline;
 }
@@ -172,8 +251,8 @@
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  background: var(--brand);
-  color: var(--bg);
+  background: #0f8a57;
+  color: #fff;
   border: none;
   border-radius: 6px;
   font-size: 11px;

@@ -1,220 +1,160 @@
 .standardGrid {
-
   display: grid;
-
   grid-template-columns: repeat(3, 1fr);
-
-  gap: 8px;
-
+  gap: 12px;
 }
-
-
 
 .standardCard {
-
-  background: var(--bg);
-
-  border: 1px solid var(--rule);
-
-  border-radius: 8px;
-
-  padding: 10px 12px;
-
-  border-left: 3px solid var(--brand);
-
+  --sq-accent: #2f5bd8;
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+  padding: 16px 16px 14px;
+  border-left: 4px solid var(--sq-accent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
 }
 
+.tone_blue {
+  --sq-accent: #2f5bd8;
+}
 
+.tone_green {
+  --sq-accent: #0f8a57;
+}
+
+.tone_purple {
+  --sq-accent: #7c3aed;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cardIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sq-accent) 14%, #fff);
+  color: var(--sq-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
 
 .standardTag {
-
-  font-size: 10px;
-
-  letter-spacing: 0.1em;
-
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-
-  font-weight: 600;
-
-  color: var(--brand);
-
-  margin-bottom: 8px;
-
+  font-weight: 800;
+  color: var(--sq-accent);
 }
-
-
 
 .standardQ {
-
   font-family: var(--font-sans);
-
-  font-size: 13px;
-
-  font-weight: 600;
-
-  color: var(--ink);
-
-  margin-bottom: 8px;
-
-  line-height: 1.4;
-
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+  line-height: 1.35;
 }
 
-
+.metricRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 10px;
+  margin-bottom: 10px;
+}
 
 .standardAnswer {
-
   font-size: 12px;
-
-  color: var(--body);
-
-  line-height: 1.45;
-
+  color: #64748b;
+  line-height: 1.5;
+  margin-top: auto;
 }
-
-
 
 .standardAnswer strong {
-
-  color: var(--ink);
-
+  color: #0f172a;
 }
-
-
 
 .bigNum {
-
   font-family: var(--font-sans);
-
-  font-size: 18px;
-
-  color: var(--brand-deep);
-
-  font-weight: 500;
-
-  line-height: 1;
-
-  display: block;
-
-  margin-bottom: 6px;
-
+  font-size: 26px;
+  color: #2f5bd8;
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
-
-
 
 .bigNumDelta {
-
   display: inline-block;
-
-  font-size: 11px;
-
-  font-weight: 600;
-
-  margin-left: 4px;
-
+  font-size: 14px;
+  font-weight: 700;
   font-family: var(--font-sans);
-
 }
-
-
 
 .payrollVerdict {
-
   margin-bottom: 10px;
-
 }
-
-
 
 .payrollYesNo {
-
   font-family: var(--font-sans);
-
-  font-size: 28px;
-
-  font-weight: 500;
-
+  font-size: 32px;
+  font-weight: 750;
   line-height: 1.1;
-
   display: block;
-
 }
-
-
 
 .payrollYes {
-
-  color: var(--pos);
-
+  color: #0f8a57;
 }
-
-
 
 .payrollNo {
-
-  color: var(--neg);
-
+  color: #c43c3c;
 }
-
-
 
 .payrollAmountBlock {
-
-  margin-top: 8px;
-
+  margin-top: 6px;
 }
-
-
 
 .payrollAmount {
-
   display: block;
-
   font-family: var(--font-sans);
-
   font-size: 22px;
-
-  color: var(--brand-deep);
-
-  font-weight: 500;
-
+  color: #2f5bd8;
+  font-weight: 750;
   line-height: 1.1;
-
 }
-
-
 
 .payrollAmountLabel {
-
   display: block;
-
   margin-top: 4px;
-
   font-size: 11px;
-
-  font-weight: 600;
-
+  font-weight: 650;
   letter-spacing: 0.04em;
-
   text-transform: uppercase;
-
-  color: var(--muted);
-
+  color: #94a3b8;
   font-family: var(--font-sans);
-
 }
-
-
 
 .up {
-
-  color: var(--pos);
-
+  color: #0f8a57;
 }
-
-
 
 .down {
-  color: var(--neg);
+  color: #c43c3c;
 }
 
+@media (max-width: 900px) {
+  .standardGrid {
+    grid-template-columns: 1fr;
+  }
+}

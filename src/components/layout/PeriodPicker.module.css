@@ -1,26 +1,35 @@
 .periodPicker {
-  display: flex;
-  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid #d7dee8;
+  border-radius: 10px;
 }
 
 .periodBtn {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--rule);
-  background: var(--bg);
-  font-size: 11px;
-  color: var(--body);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .periodBtn:hover {
-  border-color: var(--ink);
+  color: #0f172a;
 }
 
 .active {
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
+  background: #0f8a57;
+  color: #fff;
+}
+
+.active:hover {
+  color: #fff;
 }

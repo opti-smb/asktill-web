@@ -79,10 +79,18 @@ export default function FlaggedTable({ reconciliation }: Props) {
     { id: 'prior', label: 'Prior month', count: priorCount, show: priorCount > 0 },
   ];
 
+  const insight =
+    reconciliation?.big_question?.answer_lead?.trim() ||
+    (allRows.length === 0
+      ? null
+      : 'Review pending and flagged lines below. AskTill explains each amount against your statements.');
+
   return (
     <div className={styles.txSection} ref={tableRef}>
       <div className={styles.txHeader}>
-        <div className={styles.txTitle}>Items <em>needing your attention</em></div>
+        <div className={styles.txTitle}>
+          Items <em>needing your attention</em>
+        </div>
         <div className={styles.txFilterRow}>
           {filters
             .filter((f) => f.show)
@@ -106,56 +114,66 @@ export default function FlaggedTable({ reconciliation }: Props) {
             : `No ${activeFilter === 'all' ? '' : activeFilter} items in this view.`}
         </p>
       ) : (
-        <table className={styles.txTable}>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Source / Description</th>
-              <th>Status</th>
-              <th>What AskTill saw</th>
-              <th style={{ textAlign: 'right' }}>Amount</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleRows.map((tx, i) => (
-              <tr key={`${tx.status}-${tx.source}-${i}`}>
-                <td>{tx.date}</td>
-                <td>
-                  <strong style={{ color: 'var(--ink)' }}>{tx.source}</strong>
-                  <div className={styles.txMeta}>{tx.meta}</div>
-                </td>
-                <td>
-                  <span className={`${styles.txStatus} ${styles[tx.status]}`}>
-                    ●&nbsp;&nbsp;{tx.statusLabel}
-                  </span>
-                </td>
-                <td>{tx.description}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <span
-                    className={styles.txAmount}
-                    style={{
-                      color:
-                        tx.amountType === 'neg'
-                          ? 'var(--neg)'
-                          : tx.amountType === 'neutral'
-                            ? '#B45309'
-                            : 'var(--warn)',
-                    }}
-                  >
-                    {tx.amount}
-                  </span>
-                </td>
-                <td>
-                  {tx.action && tx.action !== 'Noted' ? (
-                    <a className={styles.txLink} href="#">{tx.action}</a>
-                  ) : null}
-                </td>
+        <div className={styles.tableWrap}>
+          <table className={styles.txTable}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Source / Description</th>
+                <th>Status</th>
+                <th>What AskTill saw</th>
+                <th style={{ textAlign: 'right' }}>Amount</th>
+                <th>Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleRows.map((tx, i) => (
+                <tr key={`${tx.status}-${tx.source}-${i}`}>
+                  <td className={styles.txDate}>{tx.date}</td>
+                  <td>
+                    <strong className={styles.txSource}>{tx.source}</strong>
+                    <div className={styles.txMeta}>{tx.meta}</div>
+                  </td>
+                  <td>
+                    <span className={`${styles.txStatus} ${styles[tx.status]}`}>
+                      {tx.statusLabel}
+                    </span>
+                  </td>
+                  <td className={styles.txDesc}>{tx.description}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span
+                      className={styles.txAmount}
+                      data-type={tx.amountType}
+                    >
+                      {tx.amount}
+                    </span>
+                  </td>
+                  <td>
+                    {tx.action && tx.action !== 'Noted' ? (
+                      <a className={styles.txLink} href="#">
+                        {tx.action.includes('→') || tx.action.includes('->')
+                          ? tx.action
+                          : `${tx.action} →`}
+                      </a>
+                    ) : (
+                      <span className={styles.txActionMuted}>—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      {insight ? (
+        <div className={styles.insight}>
+          <span className={styles.insightIcon} aria-hidden>
+            <i className="ti ti-sparkles" />
+          </span>
+          <p className={styles.insightCopy}>{insight}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

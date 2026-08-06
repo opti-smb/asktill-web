@@ -15,7 +15,7 @@ import {
   type PdfDownloadStage,
 } from '../../lib/downloadReport';
 import type { Period } from '../../types';
-import styles from './PostmanPanels.module.css';
+import styles from './DownloadReportButton.module.css';
 
 interface Props {
   files: UploadFiles;
@@ -116,30 +116,29 @@ export default function DownloadReportButton({ files, period, statementId }: Pro
     ? 'Download weekly report (PDF)'
     : 'Download monthly reconciliation report (PDF)';
 
-  const hint = isWeek
-    ? 'PDF with Week 1, Week 2, … breakdowns for this statement month.'
-    : statementId
-      ? 'Same compact reconciliation PDF as local — saved when you analyzed this month.'
-      : hasAll
-        ? 'Compact monthly report from uploaded files (may take longer while statements are processed).'
-        : 'Upload bank, POS, and ecommerce files to download.';
+  const disabled = exporting || (isWeek ? !canDownloadWeek : !canDownloadMonth);
 
   return (
-    <div className={styles.toolbar}>
-      <p className={styles.toolbarHint}>{hint}</p>
+    <div className={styles.wrap}>
       <button
         type="button"
         className={styles.downloadBtn}
         onClick={handleDownload}
-        disabled={exporting || (isWeek ? !canDownloadWeek : !canDownloadMonth)}
+        disabled={disabled}
+        title={
+          disabled && !exporting
+            ? 'Upload bank, POS, and ecommerce files, or open a saved month to download.'
+            : undefined
+        }
       >
+        <i className="ti ti-download" aria-hidden />
         {exporting ? downloadStageLabel(exportStage, clientPdf === true) : label}
       </button>
-      {error && (
-        <p className={styles.toolbarHint} style={{ color: 'var(--neg)', width: '100%' }}>
+      {error ? (
+        <p className={styles.error} role="alert">
           {error}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

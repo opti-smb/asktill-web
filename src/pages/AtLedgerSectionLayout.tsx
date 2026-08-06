@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import styles from './AtLedgerSectionLayout.module.css';
 
@@ -9,7 +9,17 @@ const LEDGER_HUB = '/dashboard/at-ledger';
 /** Thin UI chrome above ledger section pages — back to the AT Ledger hub. */
 export default function AtLedgerSectionLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinBack =
+    pathname.includes('/at-ledger/overview') ||
+    pathname.includes('/at-ledger/reports') ||
+    pathname.includes('/at-ledger/reconciliation') ||
+    pathname.includes('/at-ledger/cashflow');
+  const wideChrome =
+    pathname.includes('/at-ledger/reports') ||
+    pathname.includes('/at-ledger/reconciliation') ||
+    pathname.includes('/at-ledger/cashflow');
 
   const clearHoverTimer = useCallback(() => {
     if (hoverTimer.current) {
@@ -29,8 +39,8 @@ export default function AtLedgerSectionLayout() {
 
   return (
     <>
-      <div className={styles.backBar}>
-        <div className="wrap">
+      <div className={`${styles.backBar} ${pinBack ? styles.backBarPinned : ''}`}>
+        <div className={wideChrome ? styles.fullWrap : 'wrap'}>
           <Link
             to={LEDGER_HUB}
             className={styles.backLink}

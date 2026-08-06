@@ -1,0 +1,175 @@
+.band {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.85fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.totalsCard,
+.summaryCard {
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.totalsHead {
+  margin-bottom: 6px;
+}
+
+.totalsTitle {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 750;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.totalsSub {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rowIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tone_green {
+  background: #e8f7ef;
+  color: #0f8a57;
+}
+
+.tone_orange {
+  background: #fff4e5;
+  color: #e0891a;
+}
+
+.tone_blue {
+  background: #e8eefc;
+  color: #2f5bd8;
+}
+
+.tone_gray {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.rowLabel {
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.rowValue {
+  font-size: 13px;
+  font-weight: 750;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gapRow {
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: none;
+}
+
+.gapLabel {
+  font-size: 13px;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.gapOk {
+  color: #0f8a57;
+}
+
+.gapWarn {
+  color: #c43c3c;
+}
+
+.summaryTitle {
+  margin: 0 0 18px;
+  font-size: 16px;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.summaryBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 28px 12px 18px;
+}
+
+.summaryMark {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin-bottom: 16px;
+}
+
+.summaryOk {
+  background: #0f8a57;
+  color: #fff;
+}
+
+.summaryWarn {
+  background: #fff4e5;
+  color: #d97706;
+}
+
+.summaryCopy {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+  color: #0f172a;
+  max-width: 16rem;
+}
+
+@media (max-width: 900px) {
+  .band {
+    grid-template-columns: 1fr;
+  }
+}

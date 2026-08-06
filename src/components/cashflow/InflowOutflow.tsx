@@ -4,10 +4,7 @@ import { fmtMoney, reportMatchedDeposits } from '../../lib/analyzeResponse';
 import {
   inflows as mockInflows,
   outflows as mockOutflows,
-  inflowMonthBars,
-  outflowMonthBars,
 } from '../../data/cashflow';
-import MonthTrendChart from './MonthTrendChart';
 import styles from './InflowOutflow.module.css';
 
 interface InflowOutflowProps {
@@ -16,45 +13,10 @@ interface InflowOutflowProps {
   hasLiveAnalysis?: boolean;
 }
 
-function deltaPillClass(deltaType?: string | null): string {
-  if (deltaType === 'down') return styles.down;
-  if (deltaType === 'flat') return styles.up;
-  return styles.up;
-}
-
-function MockMonthBars({
-  bars,
-  avgY,
-  avgValue,
-}: {
-  bars: typeof inflowMonthBars;
-  avgY: number;
-  avgValue: string;
-}) {
-  const chartBars = bars.map((bar) => ({
-    label: bar.label,
-    value_usd: bar.value,
-    amount: 0,
-    x: bar.x,
-    y: bar.y,
-    width: 60,
-    height: bar.height,
-    rx: bar.rx,
-    fill: bar.fill,
-    text_fill: bar.textFill,
-  }));
-  return (
-    <MonthTrendChart
-      trend={{
-        section_label: 'Last 3 months',
-        bars: chartBars,
-        avg_usd: avgValue,
-        avg_label: '3-mo avg',
-        show_avg_line: true,
-      }}
-      avgLineY={avgY}
-    />
-  );
+function pctFromWidth(width: string | undefined): string {
+  if (!width) return '';
+  const m = String(width).match(/([\d.]+)\s*%/);
+  return m ? `${Number(m[1]).toFixed(1)}%` : width;
 }
 
 export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) {
@@ -65,22 +27,24 @@ export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) 
     ? cashFlow.inflows.map((row) => ({
         label: row.label,
         width: row.width,
-        color: row.color,
+        color: row.color || '#0f8a57',
         value: row.value_usd,
+        pct: pctFromWidth(row.width),
       }))
     : useSample
-      ? mockInflows
+      ? mockInflows.map((row) => ({ ...row, pct: pctFromWidth(row.width) }))
       : [];
 
   const outflows = cashFlow?.outflows?.length
     ? cashFlow.outflows.map((row) => ({
         label: row.label,
         width: row.width,
-        color: row.color,
+        color: row.color || '#c43c3c',
         value: row.value_usd,
+        pct: pctFromWidth(row.width),
       }))
     : useSample
-      ? mockOutflows
+      ? mockOutflows.map((row) => ({ ...row, pct: pctFromWidth(row.width) }))
       : [];
 
   const bankDebitLines = cashFlow?.bank_debit_lines ?? [];
@@ -99,14 +63,6 @@ export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) 
       ? fmtMoney(matchedDeposits)
       : cashFlow?.money_in_usd ?? (useSample ? '$58,234' : '—');
   const moneyOut = cashFlow?.money_out_usd ?? (useSample ? '$47,521' : '—');
-  const inSubtitle =
-    matchedDeposits != null
-      ? 'POS + e-commerce matched to bank (same as compact report)'
-      : cashFlow?.money_in_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see inflows');
-  const outSubtitle = cashFlow?.money_out_subtitle ?? (useSample ? 'March · vs Feb · 3-mo avg' : 'Upload and analyze to see outflows');
-  const inTrend = cashFlow?.money_in_trend;
-  const outTrend = cashFlow?.money_out_trend;
-
   const moneyOutNote = cashFlow?.money_out_note;
   const moneyInNote = cashFlow?.money_in_note;
   const debitsReconciled = cashFlow?.debits_reconciled;
@@ -115,125 +71,115 @@ export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) 
       cashFlow?.money_out_subtitle?.includes('debits on bank statement'),
   );
 
+  const inTotalPct =
+    inflows.length > 0 ? '100%' : '';
+  const outTotalPct = outflows.length > 0 ? '100%' : '';
+
   return (
     <>
       <div className={styles.grid2}>
         <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div className={`${styles.cardIcon} ${styles.in}`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5" />
-                <polyline points="5 12 12 5 19 12" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className={styles.cardTitle}>Money in</div>
-              <div className={styles.cardSubtitle}>{inSubtitle}</div>
-            </div>
-          </div>
-          <div className={styles.cardBig}>{moneyIn}</div>
-          <div className={styles.cardMeta}>
-            {hasLiveData && inTrend?.prior_delta ? (
-              <>
-                <span className={`${styles.pill} ${deltaPillClass(inTrend.prior_delta_type)}`}>{inTrend.prior_delta}</span>
-                {inTrend.avg_usd && (
-                  <span className={styles.cardMetaText}>
-                    {inTrend.avg_label ?? 'Avg'}: {inTrend.avg_usd}
-                  </span>
-                )}
-              </>
-            ) : hasLiveData ? (
-              <span className={styles.cardMetaText}>{bankBasedFlow ? 'Bank credits' : 'Revenue by channel'}</span>
-            ) : useSample ? (
-              <>
-                <span className={`${styles.pill} ${styles.up}`}>▲ 12.4% vs Feb</span>
-                <span className={styles.cardMetaText}>3-mo avg: $52,840</span>
-              </>
-            ) : null}
-          </div>
+          <div className={styles.cardTitle}>Expected Inflows</div>
+          <div className={`${styles.cardBig} ${styles.inAmount}`}>{moneyIn}</div>
+
           <div className={styles.breakdown}>
             {inflows.map((item) => (
               <div key={item.label} className={styles.breakdownRow}>
-                <div className={styles.breakdownLabel}>{item.label}</div>
-                <div className={styles.breakdownTrack}>
-                  <div className={styles.breakdownFill} style={{ width: item.width, background: item.color }} />
+                <div className={styles.breakdownLeft}>
+                  <span className={styles.dot} style={{ background: item.color }} />
+                  <span className={styles.breakdownLabel}>{item.label}</span>
                 </div>
-                <div className={styles.breakdownValue}>{item.value}</div>
-              </div>
-            ))}
-          </div>
-          {moneyInNote && hasLiveData && (
-            <div className={styles.reconNote}>{moneyInNote}</div>
-          )}
-          {hasLiveData ? (
-            <MonthTrendChart trend={inTrend} />
-          ) : useSample ? (
-            <MockMonthBars bars={inflowMonthBars} avgY={32} avgValue="$52,858" />
-          ) : null}
-        </div>
-
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div className={`${styles.cardIcon} ${styles.out}`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <polyline points="19 12 12 19 5 12" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className={styles.cardTitle}>Money out</div>
-              <div className={styles.cardSubtitle}>{outSubtitle}</div>
-            </div>
-          </div>
-          <div className={styles.cardBig}>{moneyOut}</div>
-          <div className={styles.cardMeta}>
-            {hasLiveData && outTrend?.prior_delta ? (
-              <>
-                <span className={`${styles.pill} ${deltaPillClass(outTrend.prior_delta_type)}`}>{outTrend.prior_delta}</span>
-                {outTrend.avg_usd && (
-                  <span className={styles.cardMetaText}>
-                    {outTrend.avg_label ?? 'Avg'}: {outTrend.avg_usd}
-                  </span>
-                )}
-              </>
-            ) : hasLiveData ? (
-              <span className={styles.cardMetaText}>
-                {bankBasedFlow ? 'Bank debits' : 'Fees and charges'}
-                {debitsReconciled === true && bankBasedFlow ? ' · verified against statement' : ''}
-              </span>
-            ) : useSample ? (
-              <>
-                <span className={`${styles.pill} ${styles.down}`}>▲ 15.2% vs Feb</span>
-                <span className={styles.cardMetaText}>3-mo avg: $42,180</span>
-              </>
-            ) : null}
-          </div>
-          {moneyOutNote && bankBasedFlow && (
-            <div className={debitsReconciled === false ? styles.reconNoteWarn : styles.reconNote}>
-              {moneyOutNote}
-            </div>
-          )}
-          <div className={styles.breakdown}>
-            {outflows.map((item) => (
-              <div key={item.label} className={styles.breakdownRow}>
-                <div className={styles.breakdownLabel}>{item.label}</div>
                 <div className={styles.breakdownTrack}>
                   <div
                     className={styles.breakdownFill}
                     style={{ width: item.width, background: item.color }}
                   />
                 </div>
-                <div className={styles.breakdownValue}>{item.value}</div>
+                <div className={styles.breakdownRight}>
+                  <span className={styles.breakdownValue}>{item.value}</span>
+                  {item.pct ? <span className={styles.breakdownPct}>{item.pct}</span> : null}
+                </div>
               </div>
             ))}
+            {inflows.length > 0 ? (
+              <div className={`${styles.breakdownRow} ${styles.totalRow}`}>
+                <div className={styles.breakdownLeft}>
+                  <span className={styles.breakdownLabel}>
+                    <strong>Total</strong>
+                  </span>
+                </div>
+                <div className={styles.breakdownTrack} />
+                <div className={styles.breakdownRight}>
+                  <span className={styles.breakdownValue}>
+                    <strong>{moneyIn}</strong>
+                  </span>
+                  <span className={styles.breakdownPct}>{inTotalPct}</span>
+                </div>
+              </div>
+            ) : hasLiveData ? (
+              <p className={styles.emptyRows}>No inflow breakdown for this period.</p>
+            ) : null}
           </div>
-          {bankDebitLines.length > 0 && (
+          {moneyInNote && hasLiveData ? <div className={styles.reconNote}>{moneyInNote}</div> : null}
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Expected Outflows</div>
+          <div className={`${styles.cardBig} ${styles.outAmount}`}>{moneyOut}</div>
+
+          {moneyOutNote && bankBasedFlow ? (
+            <div className={debitsReconciled === false ? styles.reconNoteWarn : styles.reconNote}>
+              {moneyOutNote}
+            </div>
+          ) : null}
+
+          <div className={styles.breakdown}>
+            {outflows.map((item) => (
+              <div key={item.label} className={styles.breakdownRow}>
+                <div className={styles.breakdownLeft}>
+                  <span className={styles.dot} style={{ background: item.color }} />
+                  <span className={styles.breakdownLabel}>{item.label}</span>
+                </div>
+                <div className={styles.breakdownTrack}>
+                  <div
+                    className={styles.breakdownFill}
+                    style={{ width: item.width, background: item.color }}
+                  />
+                </div>
+                <div className={styles.breakdownRight}>
+                  <span className={styles.breakdownValue}>{item.value}</span>
+                  {item.pct ? <span className={styles.breakdownPct}>{item.pct}</span> : null}
+                </div>
+              </div>
+            ))}
+            {outflows.length > 0 ? (
+              <div className={`${styles.breakdownRow} ${styles.totalRow}`}>
+                <div className={styles.breakdownLeft}>
+                  <span className={styles.breakdownLabel}>
+                    <strong>Total</strong>
+                  </span>
+                </div>
+                <div className={styles.breakdownTrack} />
+                <div className={styles.breakdownRight}>
+                  <span className={styles.breakdownValue}>
+                    <strong>{moneyOut}</strong>
+                  </span>
+                  <span className={styles.breakdownPct}>{outTotalPct}</span>
+                </div>
+              </div>
+            ) : hasLiveData ? (
+              <p className={styles.emptyRows}>No outflow breakdown for this period.</p>
+            ) : null}
+          </div>
+
+          {bankDebitLines.length > 0 ? (
             <div className={styles.debitTableWrap}>
               <div className={styles.debitTableHeader}>
                 <div>
                   <div className={styles.debitTableTitle}>Bank debits this period</div>
                   <div className={styles.debitTableSummary}>
-                    {bankDebitLines.length} line{bankDebitLines.length === 1 ? '' : 's'} from your statement
+                    {bankDebitLines.length} line{bankDebitLines.length === 1 ? '' : 's'} from your
+                    statement
                     {moneyOut ? ` · total ${moneyOut}` : ''}
                   </div>
                 </div>
@@ -244,23 +190,9 @@ export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) 
                   aria-expanded={debitDetailsOpen}
                 >
                   {debitDetailsOpen ? 'Hide details' : 'View more details'}
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={debitDetailsOpen ? styles.debitChevronOpen : styles.debitChevron}
-                    aria-hidden
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
                 </button>
               </div>
-              {debitDetailsOpen && (
+              {debitDetailsOpen ? (
                 <div className={styles.debitTableScroll}>
                   <table className={styles.debitTable}>
                     <thead>
@@ -283,13 +215,8 @@ export default function InflowOutflow({ cashFlow, result }: InflowOutflowProps) 
                     </tbody>
                   </table>
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
-          {hasLiveData ? (
-            <MonthTrendChart trend={outTrend} />
-          ) : useSample ? (
-            <MockMonthBars bars={outflowMonthBars} avgY={36} avgValue="$42,500" />
           ) : null}
         </div>
       </div>

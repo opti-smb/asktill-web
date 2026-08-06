@@ -1312,7 +1312,8 @@ export function normalizeUser(data: unknown): AuthUser | null {
   return {
     userId,
     email,
-    name: fullName?.trim() || businessName?.trim() || null,
+    // Personal name only — never fall back to businessName (Brief greeting / admin).
+    name: fullName?.trim() || null,
     businessName: businessName?.trim() || null,
     tier: normalizeTier(u.tier as string | undefined),
     roles: u.roles as string[] | undefined,

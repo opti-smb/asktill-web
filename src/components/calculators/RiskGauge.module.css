@@ -11,6 +11,14 @@
   border-top: 0;
 }
 
+.compact .top {
+  display: none;
+}
+
+.compact .bottom .value {
+  display: none;
+}
+
 .top {
   display: flex;
   align-items: baseline;

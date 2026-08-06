@@ -10,7 +10,7 @@ interface PeriodPickerProps {
 
 export default function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
   return (
-    <div className={styles.periodPicker}>
+    <div className={styles.periodPicker} role="group" aria-label="Report period">
       {periods.map((p) => (
         <button
           key={p}

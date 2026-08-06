@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import SectionHeader from '../components/layout/SectionHeader';
 import PeriodPicker from '../components/layout/PeriodPicker';
 import ChannelReconciliationView from '../components/analysis/ChannelReconciliationView';
 import DownloadReportButton from '../components/analysis/DownloadReportButton';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
+import ReportsTotalsBand from '../components/analysis/ReportsTotalsBand';
 import WeekReportPanel from '../components/analysis/WeekReportPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
@@ -14,10 +14,35 @@ import { periodKeyFromLabel } from '../lib/atLetterStatement';
 import type { Period } from '../types';
 import styles from './ReportsPage.module.css';
 import postmanStyles from '../components/analysis/PostmanPanels.module.css';
+import headerStyles from '../components/layout/SectionHeader.module.css';
 
 function hasUploadFiles(files: { bank?: File; pos?: File; ecommerce?: File }) {
   return Boolean(files.bank || files.pos || files.ecommerce);
 }
+
+function fileIconClass(role: string | null | undefined): string {
+  const r = (role ?? '').toLowerCase();
+  if (r.includes('bank')) return postmanStyles.fileIconBank;
+  if (r.includes('pos') || r.includes('card')) return postmanStyles.fileIconPos;
+  if (r.includes('ecomm') || r.includes('e-comm') || r.includes('online')) {
+    return postmanStyles.fileIconEcomm;
+  }
+  return postmanStyles.fileIconOther;
+}
+
+function fileGlyph(role: string | null | undefined) {
+  const r = (role ?? '').toLowerCase();
+  if (r.includes('bank')) return 'ti-building-bank';
+  if (r.includes('pos') || r.includes('card')) return 'ti-shopping-bag';
+  if (r.includes('ecomm') || r.includes('e-comm') || r.includes('online')) return 'ti-shopping-cart';
+  return 'ti-file-type-pdf';
+}
+
+/** Force full main-pane width (global `.wrap` is locked at 1080px). */
+const reportsWidthStyle = {
+  width: 'calc(100vw - var(--sidebar-width, 220px))',
+  maxWidth: 'none',
+} as const;
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('Month');
@@ -145,15 +170,17 @@ export default function ReportsPage() {
 
   if (!hasLiveAnalysis) {
     return (
-      <div className={styles.main}>
-        <div className="wrap">
-          <div className={styles.card}>
-            <div className={styles.scrollViewport}>
-              <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.sectionSub} />
-              <PreviousReportsPanel
-                excludePeriodKey={currentPeriodKey}
-                onLoadReport={loadSavedReport}
-              />
+      <div className={styles.reportsPage} style={reportsWidthStyle}>
+        <div className={styles.main}>
+          <div className={styles.fullWrap}>
+            <div className={styles.card}>
+              <div className={styles.scrollViewport}>
+                <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.sectionSub} />
+                <PreviousReportsPanel
+                  excludePeriodKey={currentPeriodKey}
+                  onLoadReport={loadSavedReport}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -162,71 +189,103 @@ export default function ReportsPage() {
   }
 
   return (
-    <>
-      <SectionHeader
-        periodMeta={analysis?.period_label ?? 'REPORTS'}
-        title={<>Your uploaded <em>reports.</em></>}
-        actions={<PeriodPicker period={period} onPeriodChange={setPeriod} />}
-      />
+    <div className={styles.reportsPage} style={reportsWidthStyle}>
       <div className={styles.main}>
-        <div className="wrap">
+        <div className={styles.fullWrap}>
           <div className={styles.card}>
             <div className={styles.scrollViewport}>
-              <DownloadReportButton files={files} period={period} statementId={reportStatementId} />
+              <ReportsTotalsBand result={result} periodLabel={analysis?.period_label} />
 
-              {period === 'Month' && (
-                <>
-                  {documents.length > 0 && (
-                    <section className={postmanStyles.panel}>
-                      <div className={postmanStyles.head}>
-                        <h2 className={postmanStyles.title}>Uploaded files</h2>
-                        <p className={postmanStyles.sub}>Statements included in this analysis</p>
-                      </div>
-                      <div className={postmanStyles.tableWrap}>
-                        <table className={postmanStyles.table}>
-                          <thead>
-                            <tr>
-                              <th>File</th>
-                              <th>Type</th>
-                              <th>Business</th>
-                              <th>Period</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {documents.map((doc) => (
-                              <tr key={doc.filename}>
-                                <td>{doc.filename}</td>
-                                <td>{doc.detected_role ?? '—'}</td>
-                                <td>{doc.business_name?.trim() || fallbackBusinessName || '—'}</td>
-                                <td>{doc.period ?? '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </section>
-                  )}
-
-                  <ChannelReconciliationView result={result} />
-                </>
-              )}
-
-              {period === 'Week' && (
-                <WeekReportPanel
-                  weekReports={activeWeekReports}
-                  loading={weekLoading}
-                  error={weekError}
+              <div className={styles.prevWrap}>
+                <PreviousReportsPanel
+                  excludePeriodKey={currentPeriodKey}
+                  onLoadReport={loadSavedReport}
                 />
-              )}
+              </div>
 
-              <PreviousReportsPanel
-                excludePeriodKey={currentPeriodKey}
-                onLoadReport={loadSavedReport}
-              />
+              <div className={styles.uploadedSection}>
+                <div className={styles.titleChrome}>
+                  <div className={headerStyles.headerRow}>
+                    <div>
+                      <div className={headerStyles.periodMeta}>
+                        {analysis?.period_label ?? 'REPORTS'}
+                      </div>
+                      <h1 className={headerStyles.h1}>
+                        Your uploaded <em>reports.</em>
+                      </h1>
+                    </div>
+                    <div className={styles.headerActions}>
+                      <PeriodPicker period={period} onPeriodChange={setPeriod} />
+                      <DownloadReportButton
+                        files={files}
+                        period={period}
+                        statementId={reportStatementId}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {period === 'Month' && (
+                  <div className={styles.monthStack}>
+                    {documents.length > 0 ? (
+                      <section className={postmanStyles.panel}>
+                        <div className={postmanStyles.head}>
+                          <h2 className={postmanStyles.title}>Uploaded files</h2>
+                          <p className={postmanStyles.sub}>Statements included in this analysis</p>
+                        </div>
+                        <div className={postmanStyles.tableWrap}>
+                          <table className={postmanStyles.table}>
+                            <thead>
+                              <tr>
+                                <th>File</th>
+                                <th>Type</th>
+                                <th>Business</th>
+                                <th>Period</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {documents.map((doc) => (
+                                <tr key={doc.filename}>
+                                  <td>
+                                    <span className={postmanStyles.fileName}>
+                                      <span
+                                        className={`${postmanStyles.fileIcon} ${fileIconClass(doc.detected_role)}`}
+                                        aria-hidden
+                                      >
+                                        <i className={`ti ${fileGlyph(doc.detected_role)}`} />
+                                      </span>
+                                      <span className={postmanStyles.fileCell}>{doc.filename}</span>
+                                    </span>
+                                  </td>
+                                  <td>{doc.detected_role ?? '—'}</td>
+                                  <td>{doc.business_name?.trim() || fallbackBusinessName || '—'}</td>
+                                  <td>{doc.period ?? '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    ) : null}
+
+                    <div className={styles.detailsFull}>
+                      <ChannelReconciliationView result={result} />
+                    </div>
+                  </div>
+                )}
+
+                {period === 'Week' && (
+                  <WeekReportPanel
+                    weekReports={activeWeekReports}
+                    loading={weekLoading}
+                    error={weekError}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

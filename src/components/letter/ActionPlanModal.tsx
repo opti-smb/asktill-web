@@ -6,6 +6,7 @@ import {
   type ActionPlanItem,
   type ClosedPriorityItem,
 } from '../../lib/api';
+import { ASKTILL_MARK_SRC } from '../common/Logo';
 import styles from './ActionPlanModal.module.css';
 
 const SLOT_COUNT = 5;
@@ -27,9 +28,9 @@ function emptyPlans(): ActionPlanItem[] {
 }
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -40,6 +41,7 @@ function formatDate(iso: string | null | undefined): string {
 export default function ActionPlanModal({ open, onClose }: Props) {
   const [plans, setPlans] = useState<ActionPlanItem[]>(emptyPlans);
   const [closedItems, setClosedItems] = useState<ClosedPriorityItem[]>([]);
+  const [showClosed, setShowClosed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +80,7 @@ export default function ActionPlanModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
+    setShowClosed(false);
     void load();
   }, [open, load]);
 
@@ -148,10 +151,24 @@ export default function ActionPlanModal({ open, onClose }: Props) {
         aria-labelledby="action-plan-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="action-plan-title" className={styles.title}>
-          Your action plan
-        </h2>
-        <p className={styles.sub}>Open date on write · close when done</p>
+        <header className={styles.header}>
+          <span className={styles.brandMark} aria-hidden>
+            <img
+              src={ASKTILL_MARK_SRC}
+              alt=""
+              className={styles.brandSvg}
+              draggable={false}
+            />
+          </span>
+          <div className={styles.headerCopy}>
+            <h2 id="action-plan-title" className={styles.title}>
+              Your action plan
+            </h2>
+            <p className={styles.sub}>
+              Open date on write <span className={styles.subDot}>•</span> Close when done
+            </p>
+          </div>
+        </header>
 
         {loading ? (
           <p className={styles.status}>Loading…</p>
@@ -159,17 +176,18 @@ export default function ActionPlanModal({ open, onClose }: Props) {
           <>
             <div className={styles.colHead} aria-hidden="true">
               <span />
-              <span>Action</span>
-              <span>Open</span>
-              <span>Close</span>
-              <span>Done</span>
+              <span className={styles.colAction}>Action</span>
+              <span className={styles.colOpen}>Open</span>
+              <span className={styles.colClosed}>Closed</span>
+              <span className={styles.colDone}>Done</span>
             </div>
+
             <div className={styles.list}>
               {plans.map((plan) => {
                 const openLabel = formatDate(plan.openAt ?? plan.writtenAt);
-                const closeLabel = plan.closed ? formatDate(plan.closeAt) : '—';
+                const closeLabel = plan.closed ? formatDate(plan.closeAt) : '';
                 return (
-                  <label key={plan.slot} className={styles.row}>
+                  <div key={plan.slot} className={styles.row}>
                     <span className={styles.slotLabel}>{plan.slot}</span>
                     <input
                       className={styles.input}
@@ -179,32 +197,82 @@ export default function ActionPlanModal({ open, onClose }: Props) {
                       placeholder={`Action ${plan.slot}…`}
                       disabled={saving}
                       onChange={(e) => updateText(plan.slot, e.target.value)}
+                      aria-label={`Action ${plan.slot}`}
                     />
-                    <span className={styles.dateLine} title={openLabel !== '—' ? `Opened ${openLabel}` : undefined}>
-                      {openLabel}
+                    <span
+                      className={`${styles.dateBadge} ${styles.dateOpen} ${
+                        openLabel ? '' : styles.dateEmpty
+                      }`}
+                      title={openLabel ? `Opened ${openLabel}` : undefined}
+                    >
+                      {openLabel ? (
+                        <>
+                          <i className="ti ti-calendar-event" aria-hidden />
+                          {openLabel}
+                        </>
+                      ) : (
+                        '–'
+                      )}
                     </span>
-                    <span className={styles.dateLine} title={closeLabel !== '—' ? `Closed ${closeLabel}` : undefined}>
-                      {closeLabel}
+                    <span
+                      className={`${styles.dateBadge} ${styles.dateClosed} ${
+                        closeLabel ? '' : styles.dateEmpty
+                      }`}
+                      title={closeLabel ? `Closed ${closeLabel}` : undefined}
+                    >
+                      {closeLabel ? (
+                        <>
+                          <i className="ti ti-calendar-event" aria-hidden />
+                          {closeLabel}
+                        </>
+                      ) : (
+                        '–'
+                      )}
                     </span>
-                    <input
-                      className={styles.check}
-                      type="checkbox"
-                      checked={Boolean(plan.closed)}
-                      disabled={saving || !plan.text.trim()}
-                      title="Mark closed"
-                      onChange={(e) => toggleClosed(plan.slot, e.target.checked)}
-                    />
-                  </label>
+                    <label className={styles.checkWrap}>
+                      <input
+                        className={styles.checkInput}
+                        type="checkbox"
+                        checked={Boolean(plan.closed)}
+                        disabled={saving || !plan.text.trim()}
+                        onChange={(e) => toggleClosed(plan.slot, e.target.checked)}
+                        aria-label={`Mark action ${plan.slot} done`}
+                      />
+                      <span className={styles.checkBox} aria-hidden>
+                        <i className="ti ti-check" />
+                      </span>
+                    </label>
+                  </div>
                 );
               })}
             </div>
 
             <div className={styles.closedBlock}>
-              <div className={styles.closedTitle}>Top closed priorities</div>
-              {closedItems.length === 0 ? (
-                <p className={styles.closedEmpty}>
-                  Resolved Critical/Watch items from your letter will show here.
-                </p>
+              <span className={styles.closedIcon} aria-hidden>
+                <i className="ti ti-star" />
+              </span>
+              <div className={styles.closedCopy}>
+                <div className={styles.closedTitle}>Top closed priorities</div>
+                {showClosed && closedItems.length > 0 ? null : (
+                  <p className={styles.closedEmpty}>
+                    Resolved Critical/Watch items from your letter will show here.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                className={styles.viewClosedBtn}
+                disabled={loading}
+                onClick={() => setShowClosed((v) => !v)}
+              >
+                <i className="ti ti-filter" aria-hidden />
+                {showClosed ? 'Hide closed' : 'View closed'}
+              </button>
+            </div>
+
+            {showClosed ? (
+              closedItems.length === 0 ? (
+                <p className={styles.closedListEmpty}>No closed priorities yet.</p>
               ) : (
                 <ul className={styles.closedList}>
                   {closedItems.slice(0, 5).map((item) => (
@@ -216,12 +284,12 @@ export default function ActionPlanModal({ open, onClose }: Props) {
                         aria-hidden="true"
                       />
                       <span className={styles.closedName}>{item.title}</span>
-                      <span className={styles.dateLine}>{formatDate(item.closedAt)}</span>
+                      <span className={styles.closedWhen}>{formatDate(item.closedAt) || '–'}</span>
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
+              )
+            ) : null}
           </>
         )}
 
@@ -246,6 +314,7 @@ export default function ActionPlanModal({ open, onClose }: Props) {
             disabled={saving || loading}
             onClick={() => void onSave()}
           >
+            <i className="ti ti-device-floppy" aria-hidden />
             {saving ? 'Saving…' : 'Save plans'}
           </button>
         </div>

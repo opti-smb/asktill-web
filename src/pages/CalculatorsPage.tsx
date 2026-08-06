@@ -68,6 +68,31 @@ import styles from './CalculatorsPage.module.css';
 const ROLLING_VIEW = 'rolling';
 const HOVER_VIEW_MS = 120;
 
+/** Decorative row icons only — no effect on scoring or thresholds. */
+function healthRowIcon(id: string): string {
+  const map: Record<string, string> = {
+    'cash-runway': 'ti-calendar-stats',
+    'cash-flow-forecast': 'ti-chart-arrows-vertical',
+    'break-even': 'ti-target',
+    'weekly-cash-flow': 'ti-calendar-week',
+    'gross-margin': 'ti-percentage',
+    'pricing-margin': 'ti-tag',
+    'net-margin': 'ti-chart-pie',
+    roi: 'ti-trending-up',
+    'processor-compare': 'ti-credit-card',
+    'mca-apr': 'ti-receipt-2',
+    'late-payment-cost': 'ti-clock-exclamation',
+    'hiring-affordability': 'ti-user-plus',
+    'employee-true-cost': 'ti-user-dollar',
+    'payroll-pct-revenue': 'ti-users',
+    'loan-affordability': 'ti-building-bank',
+    'sba-eligibility': 'ti-certificate',
+    'buy-vs-lease': 'ti-truck',
+    'inventory-turnover': 'ti-packages',
+  };
+  return map[id] ?? 'ti-calculator';
+}
+
 function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): string {
   const label = periodLabel?.trim();
   if (!label) return 'This month only';
@@ -1963,14 +1988,6 @@ export default function CalculatorsPage() {
     );
   }
 
-  const scoreColor =
-    healthOverview?.band === 'green'
-      ? '#4DC8A0'
-      : healthOverview?.band === 'amber'
-        ? '#F5B942'
-        : healthOverview?.band === 'red'
-          ? '#E24B4A'
-          : 'rgba(255,255,255,0.85)';
   const scoreFrac = Math.max(0, Math.min(1, (healthOverview?.score ?? 0) / 100));
   const gaugeR = 88;
   const gaugeCx = 110;
@@ -2054,93 +2071,99 @@ export default function CalculatorsPage() {
               ) : null}
 
               {healthOverview ? (
-                <div
-                  className={`${styles.overall} ${styles.animIn} ${styles.animDelay1} ${styles.box3d}`}
-                  onMouseMove={onBoxTilt}
-                  onMouseLeave={resetBoxTilt}
-                >
-                  <button
-                    type="button"
-                    className={styles.guideToggle}
-                    aria-expanded={showGuidePanels}
-                    aria-label={
-                      showGuidePanels
-                        ? 'Hide months on file and how to read this'
-                        : 'Show months on file and how to read this'
-                    }
-                    title={showGuidePanels ? 'Hide guide' : 'Show guide'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowGuidePanels((v) => !v);
-                    }}
-                  >
-                    {showGuidePanels ? (
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-                        <path
-                          fill="currentColor"
-                          d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
-                        />
-                        <path
-                          fill="currentColor"
-                          d="M3.3 3.3 20.7 20.7l-1.4 1.4L1.9 4.7z"
-                        />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-                        <path
-                          fill="currentColor"
-                          d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                  <div className={styles.gaugeWrap}>
-                    <svg viewBox="0 0 220 118" width="220" className={styles.gaugeSvg} aria-hidden>
-                      <path
-                        d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
-                        fill="none"
-                        stroke="var(--letter-border)"
-                        strokeWidth="14"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        className={styles.gaugeProgress}
-                        d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
-                        fill="none"
-                        stroke={scoreColor}
-                        strokeWidth="14"
-                        strokeLinecap="round"
-                        strokeDasharray={`${scoreFrac * gaugeLen} ${gaugeLen}`}
-                        style={
-                          {
-                            '--gauge-len': gaugeLen,
-                            '--gauge-drawn': scoreFrac * gaugeLen,
-                          } as CSSProperties
+                <>
+                  <div className={`${styles.scoreboard} ${styles.animIn} ${styles.animDelay1}`}>
+                    <div
+                      className={`${styles.overall} ${styles.box3d}`}
+                      onMouseMove={onBoxTilt}
+                      onMouseLeave={resetBoxTilt}
+                    >
+                      <button
+                        type="button"
+                        className={styles.guideToggle}
+                        aria-expanded={showGuidePanels}
+                        aria-label={
+                          showGuidePanels
+                            ? 'Hide months on file and how to read this'
+                            : 'Show months on file and how to read this'
                         }
-                      />
-                    </svg>
-                    <div className={styles.gaugeScoreBlock}>
-                      <div className={styles.gaugeScore} style={{ color: scoreColor }}>
-                        {healthOverview.score}
+                        title={showGuidePanels ? 'Hide guide' : 'Show guide'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowGuidePanels((v) => !v);
+                        }}
+                      >
+                        {showGuidePanels ? (
+                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+                            <path
+                              fill="currentColor"
+                              d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
+                            />
+                            <path
+                              fill="currentColor"
+                              d="M3.3 3.3 20.7 20.7l-1.4 1.4L1.9 4.7z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+                            <path
+                              fill="currentColor"
+                              d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      <div className={styles.gaugeWrap}>
+                        <svg viewBox="0 0 220 118" width="220" className={styles.gaugeSvg} aria-hidden>
+                          <path
+                            d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.22)"
+                            strokeWidth="14"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            className={styles.gaugeProgress}
+                            d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
+                            fill="none"
+                            stroke="#fff"
+                            strokeWidth="14"
+                            strokeLinecap="round"
+                            strokeDasharray={`${scoreFrac * gaugeLen} ${gaugeLen}`}
+                            style={
+                              {
+                                '--gauge-len': gaugeLen,
+                                '--gauge-drawn': scoreFrac * gaugeLen,
+                              } as CSSProperties
+                            }
+                          />
+                        </svg>
+                        <div className={styles.gaugeScoreBlock}>
+                          <div className={styles.gaugeScore}>
+                            {healthOverview.score}
+                            <span className={styles.gaugeOf}> / 100</span>
+                          </div>
+                          <div className={styles.gaugeBand}>{healthOverview.bandLabel}</div>
+                        </div>
                       </div>
-                      <div className={styles.gaugeOf}>out of 100</div>
-                      <div className={styles.gaugeBand} style={{ color: scoreColor }}>
-                        {healthOverview.bandLabel}
+                      <div className={styles.ovRight}>
+                        <h2 className={styles.ovTitle}>Overall calculator health</h2>
+                        <p className={styles.ovMeta}>
+                          {healthOverview.periodLabel} · {healthOverview.scored} of{' '}
+                          {healthOverview.total} scored
+                        </p>
                       </div>
                     </div>
-                  </div>
-                  <div className={styles.ovRight}>
-                    <h2 className={styles.ovTitle}>Overall calculator health</h2>
-                    <p className={styles.ovMeta}>
-                      {healthOverview.periodLabel} · {healthOverview.scored} of{' '}
-                      {healthOverview.total} scored
-                    </p>
+
                     <div className={styles.counts}>
                       <div
                         className={`${styles.count} ${styles.countGreen} ${styles.box3d}`}
                         onMouseMove={onBoxTilt}
                         onMouseLeave={resetBoxTilt}
                       >
+                        <span className={`${styles.countIcon} ${styles.countIconGreen}`} aria-hidden>
+                          <i className="ti ti-circle-check" />
+                        </span>
                         <div className={styles.countN}>{healthOverview.healthy}</div>
                         <div className={styles.countL}>
                           <b>Healthy</b>
@@ -2151,6 +2174,9 @@ export default function CalculatorsPage() {
                         onMouseMove={onBoxTilt}
                         onMouseLeave={resetBoxTilt}
                       >
+                        <span className={`${styles.countIcon} ${styles.countIconAmber}`} aria-hidden>
+                          <i className="ti ti-eye" />
+                        </span>
                         <div className={styles.countN}>{healthOverview.watch}</div>
                         <div className={styles.countL}>
                           <b>Watch</b>
@@ -2161,15 +2187,18 @@ export default function CalculatorsPage() {
                         onMouseMove={onBoxTilt}
                         onMouseLeave={resetBoxTilt}
                       >
+                        <span className={`${styles.countIcon} ${styles.countIconRed}`} aria-hidden>
+                          <i className="ti ti-alert-triangle" />
+                        </span>
                         <div className={styles.countN}>{healthOverview.atRisk}</div>
                         <div className={styles.countL}>
                           <b>At risk</b>
                         </div>
                       </div>
                     </div>
-                    <p className={`${styles.ovSummary} ${styles.prose}`}>{healthOverview.summary}</p>
                   </div>
-                </div>
+                  <p className={`${styles.ovSummary} ${styles.prose} ${styles.animIn}`}>{healthOverview.summary}</p>
+                </>
               ) : null}
 
               <div className={`${styles.workbench} ${active ? styles.workbenchSplit : ''}`}>
@@ -2233,17 +2262,27 @@ export default function CalculatorsPage() {
                               }}
                             >
                               <div className={styles.calcInfo}>
-                                <div className={styles.calcName}>{row.meta.name}</div>
-                                <div className={styles.calcQ}>{row.meta.question}</div>
+                                <span
+                                  className={`${styles.calcIcon} ${styles[`icon_${row.band}`]}`}
+                                  aria-hidden
+                                >
+                                  <i className={`ti ${healthRowIcon(row.id)}`} />
+                                </span>
+                                <div className={styles.calcText}>
+                                  <div className={styles.calcName}>{row.meta.name}</div>
+                                  <div className={styles.calcQ}>{row.meta.question}</div>
+                                </div>
                               </div>
                               <div className={styles.calcRead}>
-                                <div className={styles.metricLab}>{row.metricLabel}</div>
                                 <div className={styles.reading}>
                                   <span className={styles.readingV}>{row.displayMain}</span>
                                   {row.displayUnit ? (
                                     <span className={styles.readingU}>{row.displayUnit}</span>
                                   ) : null}
                                 </div>
+                                {row.metricLabel ? (
+                                  <div className={styles.metricLab}>{row.metricLabel}</div>
+                                ) : null}
                               </div>
                               <div className={styles.calcMeter}>
                                 {row.risk ? (
@@ -2255,6 +2294,17 @@ export default function CalculatorsPage() {
                                 )}
                               </div>
                               <div className={styles.cPill}>
+                                {row.risk ? (
+                                  <span
+                                    className={`${styles.statusWord} ${styles[`statusWord_${row.risk.level}`]}`}
+                                  >
+                                    {row.risk.level === 'low' ? 'Good' : row.risk.levelLabel}
+                                  </span>
+                                ) : (
+                                  <span className={`${styles.statusWord} ${styles.statusWord_na}`}>
+                                    —
+                                  </span>
+                                )}
                                 <span className={`${styles.pill} ${styles[`pill_${row.band}`]}`}>
                                   {row.pillLabel}
                                 </span>
