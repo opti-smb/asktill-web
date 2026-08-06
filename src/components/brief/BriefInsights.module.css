@@ -138,17 +138,22 @@
 .cta,
 .ctaMuted {
   margin-top: auto;
-  padding-top: 14px;
   display: inline-flex;
   align-items: center;
-  height: 32px;
-  padding-left: 12px;
-  padding-right: 12px;
-  border-radius: 8px;
+  justify-content: center;
+  align-self: flex-start;
+  box-sizing: border-box;
+  min-height: 40px;
+  height: auto;
+  padding: 10px 16px;
+  border-radius: 9px;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.25;
   text-decoration: none !important;
   width: fit-content;
+  border: none;
+  cursor: pointer;
 }
 
 .toneGreen .cta {
