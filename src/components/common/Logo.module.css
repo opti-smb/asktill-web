@@ -1,41 +1,45 @@
 .logoMark {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-decoration: none;
+  line-height: 1;
+  min-width: 0;
 }
 
 .logoMark:hover {
   text-decoration: none;
-}
-
-.logoIcon {
-  background: #2563eb;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: #fff;
-}
-
-.logoText {
-  font-family: var(--font-sans);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--ink);
+  opacity: 0.92;
 }
 
 .logoMarkLarge {
   gap: 12px;
 }
 
-.logoTextLarge {
-  font-size: 40px;
-  font-weight: 600;
+.markImg {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.logoText {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 750;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--ink);
   white-space: nowrap;
+}
+
+.logoTextLarge {
+  font-size: 28px;
+  font-weight: 750;
+}
+
+.logoAsk {
+  color: #1b2129;
+}
+
+.logoTill {
+  color: #00a651;
 }

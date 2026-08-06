@@ -1,7 +1,5 @@
 import { reconSummary } from '../../data/recon';
 import type { ReconciliationUiApi } from '../../lib/analyzeResponse';
-import { FONT_SANS } from '../../lib/fonts';
-import { getReconAnswerSections } from './reconAnswerDisplay';
 import styles from './ReconSummary.module.css';
 
 interface Props {
@@ -9,37 +7,110 @@ interface Props {
   hasLiveAnalysis?: boolean;
 }
 
-function StatTrend({
-  avgLabel,
-  avgValue,
-  vsLabel,
-  priorValue,
-  fallback,
-}: {
-  avgLabel?: string | null;
-  avgValue?: string | null;
-  vsLabel?: string | null;
-  priorValue?: string | null;
-  fallback?: string | null;
-}) {
-  if (avgLabel && avgValue) {
-    return (
-      <div className={styles.reconStatTrend}>
-        <div className={styles.reconStatTrendRow}>
-          <span className={styles.reconStatTrendLabel}>{avgLabel}</span>
-          <span className={styles.reconStatTrendValue}>{avgValue}</span>
-        </div>
-        {vsLabel && priorValue ? (
-          <div className={styles.reconStatTrendRow}>
-            <span className={styles.reconStatTrendLabel}>{vsLabel}</span>
-            <span className={styles.reconStatTrendValue}>{priorValue}</span>
-          </div>
-        ) : null}
-      </div>
-    );
+function parseMatchedPct(bucketsPct: string | undefined, matched: number, total: number): number {
+  if (bucketsPct) {
+    const n = Number(String(bucketsPct).replace(/%/g, '').trim());
+    if (!Number.isNaN(n)) return Math.max(0, Math.min(100, n));
   }
-  if (!fallback) return null;
-  return <div className={styles.reconStat3mo}>{fallback}</div>;
+  if (total > 0) return Math.round((matched / total) * 10000) / 100;
+  return 0;
+}
+
+function HealthDonut({
+  matchedPct,
+  pendingPct,
+  flaggedPct,
+  note,
+}: {
+  matchedPct: number;
+  pendingPct: number;
+  flaggedPct: number;
+  note?: string | null;
+}) {
+  const size = 168;
+  const stroke = 14;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const m = Math.max(0, Math.min(100, matchedPct));
+  const p = Math.max(0, Math.min(100 - m, pendingPct));
+  const f = Math.max(0, Math.min(100 - m - p, flaggedPct));
+  const dashM = (m / 100) * c;
+  const dashP = (p / 100) * c;
+  const dashF = (f / 100) * c;
+
+  return (
+    <div className={styles.healthCard}>
+      <h3 className={styles.panelTitle}>Reconciliation health</h3>
+      <div className={styles.donutWrap}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke="#eef2f7"
+            strokeWidth={stroke}
+          />
+          <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke="#0f8a57"
+              strokeWidth={stroke}
+              strokeDasharray={`${dashM} ${c - dashM}`}
+              strokeLinecap="butt"
+            />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke="#e0891a"
+              strokeWidth={stroke}
+              strokeDasharray={`${dashP} ${c - dashP}`}
+              strokeDashoffset={-dashM}
+              strokeLinecap="butt"
+            />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke="#c43c3c"
+              strokeWidth={stroke}
+              strokeDasharray={`${dashF} ${c - dashF}`}
+              strokeDashoffset={-(dashM + dashP)}
+              strokeLinecap="butt"
+            />
+          </g>
+        </svg>
+        <div className={styles.donutCenter}>
+          <div className={styles.donutPct}>{m.toFixed(m % 1 === 0 ? 0 : 2)}%</div>
+          <div className={styles.donutLabel}>Healthy</div>
+        </div>
+      </div>
+      <ul className={styles.healthLegend}>
+        <li>
+          <span className={`${styles.legDot} ${styles.legMatched}`} />
+          Matched
+          <strong>{m.toFixed(2)}%</strong>
+        </li>
+        <li>
+          <span className={`${styles.legDot} ${styles.legPending}`} />
+          Pending
+          <strong>{p.toFixed(2)}%</strong>
+        </li>
+        <li>
+          <span className={`${styles.legDot} ${styles.legFlagged}`} />
+          Flagged
+          <strong>{f.toFixed(2)}%</strong>
+        </li>
+      </ul>
+      {note ? <p className={styles.healthNote}>{note}</p> : null}
+    </div>
+  );
 }
 
 export default function ReconSummary({ reconciliation }: Props) {
@@ -60,12 +131,9 @@ export default function ReconSummary({ reconciliation }: Props) {
     flagged_amount_usd: '$0.00',
   });
   const bq = reconciliation?.big_question;
-  const answerSections = getReconAnswerSections(bq);
   const buckets = reconciliation?.buckets;
   const health = reconciliation?.health_chart;
-  const showTrends = Boolean(buckets?.show_trends);
   const showCash = Boolean(reconciliation?.hero?.cash_count && reconciliation.hero.cash_count > 0);
-  const flaggedAmount = Number(bq?.flagged_usd?.replace(/[$,]/g, '') ?? 0);
   const pendingAtBank = Number(bq?.in_flight_usd?.replace(/[$,]/g, '') ?? 0);
   const priorMonthTotal = Number(
     reconciliation?.prior_month_total_usd?.replace(/[$,]/g, '') ?? 0,
@@ -74,293 +142,203 @@ export default function ReconSummary({ reconciliation }: Props) {
   const refundsAdj = Number(bq?.refunds_usd?.replace(/[$,]/g, '') ?? 0);
   const otherAdj = Number(bq?.other_adjustments_usd?.replace(/[$,]/g, '') ?? 0);
 
+  const matchedPct = parseMatchedPct(buckets?.matched_pct, hero.matched, hero.total);
+  const latestBar = health?.bars?.length ? health.bars[health.bars.length - 1] : null;
+  const donutMatched = latestBar?.matched_pct ?? matchedPct;
+  const donutFlagged =
+    hero.total > 0 ? Math.min(100 - donutMatched, (hero.flagged / hero.total) * 100) : 0;
+  const donutPending = Math.max(0, 100 - donutMatched - donutFlagged);
+
+  const matchedSub =
+    buckets?.matched_meta ??
+    (hero.total > 0
+      ? `${matchedPct.toFixed(2)}% of transactions matched to bank`
+      : 'No transactions in this period');
+  const inFlightSub =
+    buckets?.pending_meta ??
+    (pendingAtBank === 0
+      ? 'Net payouts match bank deposits this period'
+      : `Across ${hero.in_flight_batches} card processor batch${hero.in_flight_batches === 1 ? '' : 'es'}`);
+  const unmatchedSub =
+    buckets?.flagged_meta ??
+    (hero.flagged === 0
+      ? 'No unmatched bank/report lines'
+      : `Bank/report lines · ${hero.flagged_amount_usd} total`);
+
+  const bannerText =
+    bq?.answer_lead ||
+    (hero.flagged === 0 && pendingAtBank === 0
+      ? 'Processor deposits match your uploaded reports for this period.'
+      : null);
+
   return (
     <>
-      <div className={`${styles.reconHero} ${showCash ? styles.reconHeroFour : ''}`}>
-        <div className={styles.reconStatBlock}>
-          <div className={styles.reconStatLabel}>Matched</div>
-          <div className={`${styles.reconStatNum} ${styles.matched}`}>{hero.matched.toLocaleString()}</div>
-          <div className={styles.reconStatSub}>
-            {buckets?.matched_meta ?? (
-              <>
-                of <strong>{hero.total.toLocaleString()}</strong> transactions
-              </>
-            )}
-          </div>
-          <StatTrend
-            avgLabel={showTrends ? buckets?.matched_avg_label : null}
-            avgValue={showTrends ? buckets?.matched_avg_value : null}
-            vsLabel={showTrends ? buckets?.matched_vs_label : null}
-            priorValue={showTrends ? buckets?.matched_prior_value : null}
-            fallback={reconciliation?.hero?.matched_footnote}
-          />
-        </div>
-        <div className={styles.reconDivider} />
-        <div className={styles.reconStatBlock}>
-          <div className={styles.reconStatLabel}>In flight</div>
-          <div className={`${styles.reconStatNum} ${styles.pending}`}>{hero.in_flight_usd}</div>
-          <div className={styles.reconStatSub}>
-            {buckets?.pending_meta ?? (
-              <>
-                across <strong>{hero.in_flight_batches} card processor batches</strong>
-              </>
-            )}
-          </div>
-          <StatTrend
-            avgLabel={showTrends ? buckets?.pending_avg_label : null}
-            avgValue={showTrends ? buckets?.pending_avg_value : null}
-            vsLabel={showTrends ? buckets?.pending_vs_label : null}
-            priorValue={showTrends ? buckets?.pending_prior_value : null}
-            fallback={reconciliation?.hero?.in_flight_footnote}
-          />
-        </div>
+      <div className={`${styles.kpiGrid} ${showCash ? styles.kpiGridFour : ''}`}>
+        <article className={styles.kpiCard}>
+          <span className={`${styles.kpiIcon} ${styles.kpiIconOk}`} aria-hidden>
+            <i className="ti ti-circle-check" />
+          </span>
+          <div className={styles.kpiLabel}>Matched</div>
+          <div className={`${styles.kpiValue} ${styles.matched}`}>{hero.matched.toLocaleString()}</div>
+          <p className={styles.kpiSub}>{matchedSub}</p>
+        </article>
+
+        <article className={styles.kpiCard}>
+          <span className={`${styles.kpiIcon} ${styles.kpiIconWarn}`} aria-hidden>
+            <i className="ti ti-clock" />
+          </span>
+          <div className={styles.kpiLabel}>In Flight</div>
+          <div className={`${styles.kpiValue} ${styles.pending}`}>{hero.in_flight_usd}</div>
+          <p className={styles.kpiSub}>{inFlightSub}</p>
+        </article>
+
         {showCash ? (
-          <>
-            <div className={styles.reconDivider} />
-            <div className={styles.reconStatBlock}>
-              <div className={styles.reconStatLabel}>Cash on hand</div>
-              <div className={`${styles.reconStatNum} ${styles.cash}`}>
-                {reconciliation?.hero?.cash_on_hand_usd}
-              </div>
-              <div className={styles.reconStatSub}>
-                {buckets?.cash_meta ?? (
-                  <>
-                    walk-in sales · <strong>not a bank deposit</strong>
-                  </>
-                )}
-              </div>
+          <article className={styles.kpiCard}>
+            <span className={`${styles.kpiIcon} ${styles.kpiIconCash}`} aria-hidden>
+              <i className="ti ti-cash" />
+            </span>
+            <div className={styles.kpiLabel}>Cash on hand</div>
+            <div className={`${styles.kpiValue} ${styles.cash}`}>
+              {reconciliation?.hero?.cash_on_hand_usd}
             </div>
-          </>
+            <p className={styles.kpiSub}>{buckets?.cash_meta ?? 'Walk-in sales · not a bank deposit'}</p>
+          </article>
         ) : null}
-        <div className={styles.reconDivider} />
-        <div className={styles.reconStatBlock}>
-          <div className={styles.reconStatLabel}>Unmatched</div>
-          <div className={`${styles.reconStatNum} ${styles.flagged}`}>{hero.flagged}</div>
-          <div className={styles.reconStatSub}>
-            {buckets?.flagged_meta ?? (
-              <>
-                bank/report lines · <strong>{hero.flagged_amount_usd} total</strong>
-              </>
-            )}
-          </div>
-          <StatTrend
-            avgLabel={showTrends ? buckets?.flagged_avg_label : null}
-            avgValue={showTrends ? buckets?.flagged_avg_value : null}
-            vsLabel={showTrends ? buckets?.flagged_vs_label : null}
-            priorValue={showTrends ? buckets?.flagged_prior_value : null}
-            fallback={reconciliation?.hero?.flagged_footnote}
-          />
-        </div>
+
+        <article className={styles.kpiCard}>
+          <span className={`${styles.kpiIcon} ${styles.kpiIconBad}`} aria-hidden>
+            <i className="ti ti-flag" />
+          </span>
+          <div className={styles.kpiLabel}>Unmatched</div>
+          <div className={`${styles.kpiValue} ${styles.flagged}`}>{hero.flagged}</div>
+          <p className={styles.kpiSub}>{unmatchedSub}</p>
+        </article>
       </div>
 
-      <div className={styles.bigQ}>
-        <div className={styles.bigQHeader}>
-          <span className={styles.bigQTag}>The big question</span>
-        </div>
-        <div className={styles.bigQTitle}>{bq?.title ?? '"Why does my POS say $58,234 but my bank shows $52,909?"'}</div>
+      <div className={styles.midGrid}>
+        <section className={styles.summaryCard}>
+          <h3 className={styles.panelTitle}>Reconciliation summary</h3>
 
-        <div className={styles.decomp}>
-          <div className={`${styles.decompSide} ${styles.start}`}>
-            <div className={styles.decompSideLabel}>{bq?.sales_side_label ?? 'POS revenue'}</div>
-            <div className={styles.decompSideNum}>{bq?.pos_revenue_usd ?? '$58,234'}</div>
-            <div className={styles.decompSideSub}>{bq?.pos_revenue_subtitle ?? 'Square + Stripe gross'}</div>
-          </div>
-
-          <div className={styles.decompMiddle}>
-            <div className={styles.decompFlow}>— equals these components —</div>
-            <div className={styles.decompRow}>
-              <div className={styles.decompRowLabel}>
-                <span className={styles.decompRowDot} style={{ background: 'var(--pos)' }} />
-                {bq?.deposited_label ?? 'Deposited to bank in March'}
+          <div className={styles.flow}>
+            <div className={`${styles.flowSide} ${styles.flowStart}`}>
+              <div className={styles.flowSideLabel}>Expected settlement</div>
+              <div className={styles.flowSideNum}>{bq?.pos_revenue_usd ?? '—'}</div>
+              <div className={styles.flowSideSub}>
+                {bq?.pos_revenue_subtitle ?? bq?.sales_side_label ?? 'POS + E-commerce'}
               </div>
-              <div className={styles.decompRowNum} style={{ color: 'var(--pos)' }}>{bq?.deposited_usd ?? '$52,909'}</div>
             </div>
-            {pendingAtBank > 0 ? (
-              <div className={styles.decompRow}>
-                <div className={styles.decompRowLabel}>
-                  <span className={styles.decompRowDot} style={{ background: 'var(--warn)' }} />
-                  {bq?.in_flight_label ?? 'Pending at bank (net payouts)'}
+
+            <div className={styles.flowMiddle}>
+              <div className={styles.flowRow}>
+                <div className={styles.flowRowLabel}>
+                  <span className={styles.flowDot} style={{ background: '#0f8a57' }} />
+                  {bq?.deposited_label ?? 'Deposited to bank'}
                 </div>
-                <div className={styles.decompRowNum} style={{ color: 'var(--warn)' }}>{bq?.in_flight_usd}</div>
-              </div>
-            ) : null}
-            {priorMonthTotal > 0 ? (
-              <div className={styles.decompRow}>
-                <div className={styles.decompRowLabel}>
-                  <span className={styles.decompRowDot} style={{ background: '#B45309' }} />
-                  Prior month credits on bank statement
-                </div>
-                <div className={styles.decompRowNum} style={{ color: '#B45309' }}>
-                  {reconciliation?.prior_month_total_usd}
-                  {priorMonthCount > 0 ? (
-                    <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', marginLeft: 6 }}>
-                      ({priorMonthCount} item{priorMonthCount === 1 ? '' : 's'})
-                    </span>
-                  ) : null}
+                <div className={styles.flowRowNum} style={{ color: '#0f8a57' }}>
+                  {bq?.deposited_usd ?? '—'}
                 </div>
               </div>
-            ) : null}
-            {refundsAdj > 0 ? (
-              <div className={styles.decompRow}>
-                <div className={styles.decompRowLabel}>
-                  <span className={styles.decompRowDot} style={{ background: '#64748B' }} />
-                  Refunds (POS + e-commerce reports)
+              {pendingAtBank > 0 ? (
+                <div className={styles.flowRow}>
+                  <div className={styles.flowRowLabel}>
+                    <span className={styles.flowDot} style={{ background: '#e0891a' }} />
+                    {bq?.in_flight_label ?? 'Pending at bank (net payouts)'}
+                  </div>
+                  <div className={styles.flowRowNum} style={{ color: '#e0891a' }}>
+                    {bq?.in_flight_usd}
+                  </div>
                 </div>
-                <div className={styles.decompRowNum} style={{ color: '#64748B' }}>{bq?.refunds_usd}</div>
-              </div>
-            ) : null}
-            {otherAdj > 0 ? (
-              <div className={styles.decompRow}>
-                <div className={styles.decompRowLabel}>
-                  <span className={styles.decompRowDot} style={{ background: '#94A3B8' }} />
-                  {bq?.other_adjustments_label ?? 'Other report adjustments'}
+              ) : null}
+              {priorMonthTotal > 0 ? (
+                <div className={styles.flowRow}>
+                  <div className={styles.flowRowLabel}>
+                    <span className={styles.flowDot} style={{ background: '#B45309' }} />
+                    Prior month credits on bank statement
+                  </div>
+                  <div className={styles.flowRowNum} style={{ color: '#B45309' }}>
+                    {reconciliation?.prior_month_total_usd}
+                    {priorMonthCount > 0 ? (
+                      <span className={styles.flowRowHint}>
+                        ({priorMonthCount} item{priorMonthCount === 1 ? '' : 's'})
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-                <div className={styles.decompRowNum} style={{ color: '#94A3B8' }}>{bq?.other_adjustments_usd}</div>
-              </div>
-            ) : null}
-            {bq?.cash_on_hand_usd ? (
-              <div className={styles.decompRow}>
-                <div className={styles.decompRowLabel}>
-                  <span className={styles.decompRowDot} style={{ background: '#B45309' }} />
-                  {bq.cash_on_hand_label ?? 'Cash on hand (not a bank deposit)'}
+              ) : null}
+              {refundsAdj > 0 ? (
+                <div className={styles.flowRow}>
+                  <div className={styles.flowRowLabel}>
+                    <span className={styles.flowDot} style={{ background: '#e0891a' }} />
+                    Refunds
+                  </div>
+                  <div className={styles.flowRowNum} style={{ color: '#64748b' }}>
+                    {bq?.refunds_usd}
+                  </div>
                 </div>
-                <div className={styles.decompRowNum} style={{ color: '#B45309' }}>{bq.cash_on_hand_usd}</div>
-              </div>
-            ) : null}
-            {(flaggedAmount > 0 || !bq?.cash_on_hand_usd) && (
-              <div className={styles.decompRow}>
-                <div className={styles.decompRowLabel}>
-                  <span className={styles.decompRowDot} style={{ background: 'var(--neg)' }} />
+              ) : null}
+              {otherAdj > 0 ? (
+                <div className={styles.flowRow}>
+                  <div className={styles.flowRowLabel}>
+                    <span className={styles.flowDot} style={{ background: '#94A3B8' }} />
+                    {bq?.other_adjustments_label ?? 'Other adjustments'}
+                  </div>
+                  <div className={styles.flowRowNum} style={{ color: '#64748b' }}>
+                    {bq?.other_adjustments_usd}
+                  </div>
+                </div>
+              ) : null}
+              {bq?.cash_on_hand_usd ? (
+                <div className={styles.flowRow}>
+                  <div className={styles.flowRowLabel}>
+                    <span className={styles.flowDot} style={{ background: '#B45309' }} />
+                    {bq.cash_on_hand_label ?? 'Cash on hand (not a bank deposit)'}
+                  </div>
+                  <div className={styles.flowRowNum} style={{ color: '#B45309' }}>
+                    {bq.cash_on_hand_usd}
+                  </div>
+                </div>
+              ) : null}
+              <div className={styles.flowRow}>
+                <div className={styles.flowRowLabel}>
+                  <span className={styles.flowDot} style={{ background: '#c43c3c' }} />
                   {bq?.flagged_label ?? 'Unmatched items'}
                 </div>
-                <div className={styles.decompRowNum} style={{ color: 'var(--neg)' }}>{bq?.flagged_usd ?? '$0'}</div>
-              </div>
-            )}
-            <div className={styles.decompRow} style={{ background: 'var(--brand-tint)', borderColor: 'var(--brand-soft)' }}>
-              <div className={styles.decompRowLabel}>
-                <span className={styles.decompRowDot} style={{ background: 'var(--brand)' }} />
-                {bq?.fees_label ?? 'Card processor fees'}
-              </div>
-              <div className={styles.decompRowNum} style={{ color: 'var(--brand-deep)' }}>{bq?.fees_usd ?? '-$1,154'}</div>
-            </div>
-          </div>
-
-          <div className={`${styles.decompSide} ${styles.end}`}>
-            <div className={styles.decompSideLabel}>Bank deposits</div>
-            <div className={styles.decompSideNum}>{bq?.bank_deposits_usd ?? '$52,909'}</div>
-            <div className={styles.decompSideSub}>{bq?.bank_deposits_subtitle ?? 'Cleared in Chase'}</div>
-          </div>
-        </div>
-
-        <div className={styles.bigQAnswer}>
-          <p className={styles.bigQAnswerLead}>{bq?.answer_lead ?? 'Nothing is missing.'}</p>
-          {answerSections.length > 0 ? (
-            <div className={styles.bigQSections}>
-              {answerSections.map((section) => (
-                <div key={section.title} className={styles.bigQSection}>
-                  <h4 className={styles.bigQSectionTitle}>{section.title}</h4>
-                  <ul
-                    className={
-                      section.ordered ? styles.bigQBulletsNumbered : styles.bigQBullets
-                    }
-                  >
-                    {section.items.map((line, index) => (
-                      <li key={`${section.title}-${index}`}>{line}</li>
-                    ))}
-                  </ul>
+                <div className={styles.flowRowNum} style={{ color: '#c43c3c' }}>
+                  {bq?.flagged_usd ?? '$0.00'}
                 </div>
-              ))}
+              </div>
+              <div className={styles.flowRow}>
+                <div className={styles.flowRowLabel}>
+                  <span className={styles.flowDot} style={{ background: '#2f5bd8' }} />
+                  {bq?.fees_label ?? 'Processing fees'}
+                </div>
+                <div className={styles.flowRowNum} style={{ color: '#2f5bd8' }}>
+                  {bq?.fees_usd ?? '—'}
+                </div>
+              </div>
             </div>
-          ) : (
-            <p>
-              The <span className={styles.bigQNum}>{bq?.answer_gap_usd ?? '$5,325'} gap</span> is fully
-              accounted for.
-            </p>
-          )}
-        </div>
-      </div>
 
-      <div className={styles.health}>
-        <div className={styles.healthTitle}>Reconciliation health <em>· {health?.section_label ?? 'last 3 months'}</em></div>
-        {health?.note && <p className={styles.healthNote}>{health.note}</p>}
-        <div className={styles.healthChartWrap}>
-          <svg className={styles.healthSvg} viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet">
-            <line x1="30" y1="10" x2="640" y2="10" stroke="#F1F5F9" strokeWidth="1" />
-            <line x1="30" y1="50" x2="640" y2="50" stroke="#F1F5F9" strokeWidth="1" />
-            <line x1="30" y1="90" x2="640" y2="90" stroke="#F1F5F9" strokeWidth="1" />
-            <line x1="30" y1="130" x2="640" y2="130" stroke="#F1F5F9" strokeWidth="1" />
-            <text x="0" y="14" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">100%</text>
-            <text x="0" y="54" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">99%</text>
-            <text x="0" y="94" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">98%</text>
-            <text x="0" y="134" fontFamily={FONT_SANS} fontSize="10" fill="#94A3B8">97%</text>
-            {(health?.bars?.length ? health.bars : []).map((bar) => (
-              <g key={`${bar.label}-${bar.matched_pct_label}`}>
-                <rect x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx="3" fill={bar.matched_fill} />
-                {bar.pending_height > 0 && (
-                  <rect x={bar.x} y={bar.pending_y} width={bar.width} height={bar.pending_height} fill={bar.pending_fill} />
-                )}
-                {bar.flagged_height > 0 && (
-                  <rect x={bar.x} y={bar.flagged_y} width={bar.width} height={bar.flagged_height} fill={bar.flagged_fill} />
-                )}
-                <text
-                  x={bar.x + bar.width / 2}
-                  y={bar.pct_text_y}
-                  textAnchor="middle"
-                  fontFamily={FONT_SANS}
-                  fontSize="11"
-                  fill="#047857"
-                  fontWeight="700"
-                >
-                  {bar.matched_pct_label}
-                </text>
-                <text
-                  x={bar.x + bar.width / 2}
-                  y="148"
-                  textAnchor="middle"
-                  fontFamily={FONT_SANS}
-                  fontSize="11"
-                  fill="#1E40AF"
-                  fontWeight="700"
-                >
-                  {bar.label}
-                </text>
-              </g>
-            ))}
-            {health?.show_avg_line && health.avg_line_y != null && (
-              <line
-                x1="50"
-                y1={health.avg_line_y}
-                x2="640"
-                y2={health.avg_line_y}
-                stroke="#B45309"
-                strokeWidth="1.5"
-                strokeDasharray="4 3"
-              />
-            )}
-          </svg>
-        </div>
-        <div className={styles.healthFooter}>
-          <div className={styles.healthLegend}>
-            <div className={styles.healthLegendItem}>
-              <span className={`${styles.healthLegendSwatch} ${styles.healthLegendSwatchMatched}`} />
-              <span className={styles.healthLegendText}>Matched</span>
-            </div>
-            <div className={styles.healthLegendItem}>
-              <span className={`${styles.healthLegendSwatch} ${styles.healthLegendSwatchPending}`} />
-              <span className={styles.healthLegendText}>Pending</span>
-            </div>
-            <div className={styles.healthLegendItem}>
-              <span className={`${styles.healthLegendSwatch} ${styles.healthLegendSwatchFlagged}`} />
-              <span className={styles.healthLegendText}>Flagged</span>
+            <div className={`${styles.flowSide} ${styles.flowEnd}`}>
+              <div className={styles.flowSideLabel}>Bank deposits</div>
+              <div className={styles.flowSideNum}>{bq?.bank_deposits_usd ?? '—'}</div>
+              <div className={styles.flowSideSub}>{bq?.bank_deposits_subtitle ?? 'Cleared'}</div>
             </div>
           </div>
-          {health?.show_avg_line && health.avg_pct_label ? (
-            <div className={styles.healthAvg}>
-              <span className={styles.healthAvgLabel}>3-mo avg</span>
-              <span className={styles.healthAvgValue}>{health.avg_pct_label}</span>
+
+          {bannerText ? (
+            <div className={styles.okBanner}>
+              <i className="ti ti-circle-check" aria-hidden />
+              <span>{bannerText}</span>
             </div>
           ) : null}
-        </div>
+        </section>
+
+        <HealthDonut
+          matchedPct={donutMatched}
+          pendingPct={donutPending}
+          flaggedPct={donutFlagged}
+          note={health?.note ?? (health?.section_label ? `Your ${health.section_label} on file.` : null)}
+        />
       </div>
     </>
   );

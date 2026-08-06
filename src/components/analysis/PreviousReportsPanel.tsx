@@ -185,7 +185,13 @@ export default function PreviousReportsPanel({
             <p className={postmanStyles.sub}>Saved months appear here after analyze.</p>
           </div>
         )}
-        <p className={postmanStyles.empty}>No prior months saved yet.</p>
+        <div className={postmanStyles.emptyState}>
+          <span className={postmanStyles.emptyIcon} aria-hidden>
+            <i className="ti ti-file-text" />
+          </span>
+          <div className={postmanStyles.emptyLead}>No prior months saved yet.</div>
+          <p className={postmanStyles.emptyCopy}>Your analyzed reports will appear here.</p>
+        </div>
       </section>
     );
   }

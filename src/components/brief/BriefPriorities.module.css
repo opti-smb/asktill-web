@@ -1,0 +1,165 @@
+.section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  margin-bottom: 16px;
+}
+
+.head {
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  color: #141b25;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  min-height: 120px;
+}
+
+.critical {
+  background: #fff5f5;
+  border-color: #fecaca;
+}
+
+.high {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.watch {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.iconWrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+}
+
+.critical .iconWrap {
+  color: #b91c1c;
+}
+
+.high .iconWrap {
+  color: #c2410c;
+}
+
+.watch .iconWrap {
+  color: #a16207;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.badge_critical {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.badge_high {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.badge_watch {
+  background: #fde68a;
+  color: #854d0e;
+}
+
+.cardTitle {
+  font-size: 12px;
+  font-weight: 650;
+  color: #64748b;
+}
+
+.cardValue {
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 750;
+  color: #141b25;
+  letter-spacing: -0.02em;
+}
+
+.caption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.planBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 148px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1.5px solid #0f8a57;
+  background: #fff;
+  color: #0f8a57;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  align-self: center;
+  height: 44px;
+  white-space: nowrap;
+}
+
+.planBtn:hover {
+  background: #eef9f2;
+}
+
+.empty {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  align-self: center;
+}

@@ -1,26 +1,76 @@
 .kpi {
-  background: var(--bg);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  padding: 10px 12px;
+  --kpi-accent: #2f5bd8;
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 132px;
+}
+
+.tone_blue {
+  --kpi-accent: #2f5bd8;
+}
+
+.tone_green {
+  --kpi-accent: #0f8a57;
+}
+
+.tone_orange {
+  --kpi-accent: #e0891a;
+}
+
+.tone_slate {
+  --kpi-accent: #64748b;
+}
+
+.kpiTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kpiIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--kpi-accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
 }
 
 .kpiLabel {
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  color: #64748b;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-weight: 750;
+  line-height: 1.2;
 }
 
 .kpiValue {
   font-family: var(--font-sans);
-  font-size: 18px;
-  color: var(--ink);
-  font-weight: 500;
-  margin-bottom: 4px;
-  line-height: 1;
+  font-size: 24px;
+  color: #0f172a;
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.accentBar {
+  height: 4px;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--kpi-accent);
+  opacity: 0.9;
+  margin-top: 2px;
 }
 
 .kpiComparison {
@@ -28,6 +78,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 10px;
+  gap: 8px;
 }
 
 .kpiDelta {
@@ -36,53 +87,48 @@
   gap: 2px;
   padding: 1px 6px;
   border-radius: 999px;
-  font-weight: 600;
+  font-weight: 650;
   font-size: 10px;
 }
 
 .up {
-  background: var(--pos-bg);
-  color: var(--pos);
+  background: #e8f7ef;
+  color: #0f8a57;
 }
 
 .down {
-  background: var(--neg-soft);
-  color: var(--neg);
+  background: #fdeaea;
+  color: #c43c3c;
 }
 
 .flat {
-  background: var(--bg-soft);
-  color: var(--muted);
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .kpiPrev {
-  color: var(--muted);
+  color: #94a3b8;
   font-size: 10px;
 }
 
-.spark {
-  width: 100%;
-  height: 16px;
-  margin-top: 6px;
-}
-
 .kpiAvg {
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 2px;
+  margin-top: auto;
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.35;
 }
 
 .avgNote_pos {
-  color: var(--pos);
-  font-weight: 600;
+  color: #0f8a57;
+  font-weight: 650;
 }
 
 .avgNote_neg {
-  color: var(--neg);
-  font-weight: 600;
+  color: #c43c3c;
+  font-weight: 650;
 }
 
 .avgNote_muted {
-  color: var(--muted);
-  font-weight: 600;
+  color: #94a3b8;
+  font-weight: 650;
 }

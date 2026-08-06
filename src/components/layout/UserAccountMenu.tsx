@@ -14,9 +14,28 @@ type Props = {
   /** Show business/name beside the avatar (upload page). */
   showName?: boolean;
   showProfile?: boolean;
+  /** Where the account dropdown opens relative to the trigger. */
+  menuPlacement?: 'below' | 'above';
+  /** Dashboard sidebar row: green initials, name, role, chevron. */
+  variant?: 'default' | 'sidebar';
 };
 
-export default function UserAccountMenu({ showName = false, showProfile = true }: Props) {
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
+  }
+  const compact = name.replace(/[^a-zA-Z0-9]/g, '');
+  if (compact.length >= 2) return compact.slice(0, 2).toUpperCase();
+  return (compact.charAt(0) || '?').toUpperCase();
+}
+
+export default function UserAccountMenu({
+  showName = false,
+  showProfile = true,
+  menuPlacement = 'below',
+  variant = 'default',
+}: Props) {
   const { user, logout, refreshUser, isAdmin } = useAuth();
   const { isPaid } = useSubscription();
   const clerk = useClerk();
@@ -34,9 +53,16 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
   const [manageMessage, setManageMessage] = useState('');
 
   const displayName = user?.businessName || user?.name || user?.email || 'Your account';
-  const avatar = displayName.charAt(0).toUpperCase();
+  const avatar = variant === 'sidebar' ? initialsFromName(displayName) : displayName.charAt(0).toUpperCase();
+  const roleLabel =
+    user?.roles?.includes('owner') || user?.roles?.includes('Owner')
+      ? 'Owner'
+      : user?.roles?.[0]
+        ? user.roles[0].charAt(0).toUpperCase() + user.roles[0].slice(1)
+        : 'Owner';
   const paid = isPaid || isPaidTier(user?.tier);
   const renewalsOn = paid && user?.autoRenewalEnabled !== false;
+  const isSidebar = variant === 'sidebar';
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -125,25 +151,54 @@ export default function UserAccountMenu({ showName = false, showProfile = true }
   return (
     <>
       <div
-        className={styles.wrap}
+        className={`${styles.wrap} ${isSidebar ? styles.wrapSidebar : ''}`}
         ref={menuRef}
         onMouseEnter={openMenu}
         onMouseLeave={scheduleCloseMenu}
       >
-        {showName ? <span className={styles.name}>{displayName}</span> : null}
-        <button
-          type="button"
-          className={styles.avatar}
-          onClick={() => setMenuOpen((open) => !open)}
-          title="Account menu"
-          aria-label="Account menu"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-        >
-          {avatar}
-        </button>
+        {isSidebar ? (
+          <button
+            type="button"
+            className={styles.sidebarTrigger}
+            onClick={() => setMenuOpen((open) => !open)}
+            title="Account menu"
+            aria-label="Account menu"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <span className={styles.avatarSidebar} aria-hidden>
+              {avatar}
+            </span>
+            <span className={styles.sidebarCopy}>
+              <span className={styles.sidebarName}>{displayName}</span>
+              <span className={styles.sidebarRole}>{roleLabel}</span>
+            </span>
+            <i
+              className={`ti ${menuOpen ? 'ti-chevron-up' : 'ti-chevron-down'} ${styles.sidebarChevron}`}
+              aria-hidden
+            />
+          </button>
+        ) : (
+          <>
+            {showName ? <span className={styles.name}>{displayName}</span> : null}
+            <button
+              type="button"
+              className={styles.avatar}
+              onClick={() => setMenuOpen((open) => !open)}
+              title="Account menu"
+              aria-label="Account menu"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              {avatar}
+            </button>
+          </>
+        )}
         {menuOpen ? (
-          <div className={styles.menu} role="menu">
+          <div
+            className={`${styles.menu} ${menuPlacement === 'above' ? styles.menuAbove : ''}`}
+            role="menu"
+          >
             <div className={styles.menuHeader}>
               <div className={styles.menuName}>{displayName}</div>
               {user?.email ? <div className={styles.menuEmail}>{user.email}</div> : null}

@@ -1,61 +1,77 @@
+.overviewPage {
+  background: #f4f6f9;
+}
+
+.titleChrome {
+  position: sticky;
+  top: 34px; /* sits under Overview-pinned back bar */
+  z-index: 35;
+  background: #f4f6f9;
+}
+
 .main {
   font-family: var(--font-sans);
-  padding: 12px 0 28px;
-  background: var(--bg-soft);
-  min-height: calc(100vh - 88px);
+  padding: 8px 0 20px;
+  background: #f4f6f9;
+  min-height: 0;
 }
 
 .card {
   background: #fff;
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .scrollViewport {
-  background: var(--bg-soft);
+  background: #f4f6f9;
   max-height: min(85vh, 920px);
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 12px;
+  padding: 14px;
 }
 
 .kpiBand {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 22px;
 }
 
 .sectionHead {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 8px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
+  margin-top: 8px;
 }
 
 .sectionH {
   font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.01em;
+  font-size: 18px;
+  font-weight: 750;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .sectionH em {
   font-style: italic;
-  color: var(--brand);
+  color: #2f5bd8;
+  font-weight: 700;
 }
 
 .sectionSub {
-  font-size: 11px;
-  color: var(--muted);
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .emptyHint {
-  color: var(--muted);
+  color: #64748b;
   font-size: 12px;
   line-height: 1.4;
   margin: 0;
@@ -64,6 +80,73 @@
 .processorGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
+.encryptBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #eef9f2;
+  border: 1px solid #d5f0e0;
+}
+
+.encryptIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #0f8a57;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.encryptCopy {
+  min-width: 0;
+}
+
+.encryptTitle {
+  font-size: 13px;
+  font-weight: 750;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.encryptBody {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+@media (max-width: 980px) {
+  .kpiBand {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .processorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .kpiBand {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sectionSub {
+    white-space: normal;
+  }
+}

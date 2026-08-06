@@ -1,17 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import SectionHeader from '../components/layout/SectionHeader';
-import AtLetterTemplateFrame from '../components/landing/AtLetterTemplateFrame';
 import ActionPlanModal from '../components/letter/ActionPlanModal';
+import BriefActionCenter from '../components/brief/BriefActionCenter';
+import BriefBreakdown from '../components/brief/BriefBreakdown';
+import BriefCashMovement from '../components/brief/BriefCashMovement';
+import BriefHeader from '../components/brief/BriefHeader';
+import BriefHealth, { type HealthCard } from '../components/brief/BriefHealth';
+import BriefInsights, { type InsightCard } from '../components/brief/BriefInsights';
+import BriefKpis from '../components/brief/BriefKpis';
+import BriefPriorities, { type PriorityItem } from '../components/brief/BriefPriorities';
+import BriefTrends from '../components/brief/BriefTrends';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useAnalysis } from '../context/AnalysisContext';
-import { useAtLetterHtml } from '../hooks/useAtLetterHtml';
 import { useAtLetterTemplate } from '../hooks/useAtLetterTemplate';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
+import { ROLLING_VIEW, useRollingReports } from '../hooks/useRollingReports';
+import { fmtMoney, getAnalyzeAnalysis } from '../lib/analyzeResponse';
+import {
+  absDelta,
+  extractBriefMetrics,
+  feesPct as calcFeesPct,
+  metricsSeries,
+  pctDelta,
+  ptsDelta,
+} from '../lib/briefMetrics';
+import { downloadMonthlyReportPdf } from '../lib/api';
+import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
 import styles from './AtLetterPage.module.css';
-
-const ROLLING_VIEW = 'rolling';
-const HOVER_VIEW_MS = 120;
 
 function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): string {
   const label = periodLabel?.trim();
@@ -30,141 +45,537 @@ function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): strin
   return `${label.split(/\s+/)[0]} only`;
 }
 
+function parseUsd(s?: string | null): number | null {
+  if (s == null || s === '—') return null;
+  const n = Number(String(s).replace(/[$,()\s]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function dashMoney(n: number | null | undefined): string {
+  return n != null && Number.isFinite(n) ? fmtMoney(n) : '—';
+}
+
+function channelCount(pos: number | null, ecom: number | null): number {
+  return (pos != null && pos > 0 ? 1 : 0) + (ecom != null && ecom > 0 ? 1 : 0);
+}
+
+const SPEND_COLORS = ['#dc2626', '#f97316', '#fbbf24', '#fdba74', '#fb7185', '#f43f5e'];
+const INCOME_COLORS = ['#0f8a57', '#86efac', '#34d399', '#059669'];
+
+const briefWidthStyle = {
+  width: '100%',
+  maxWidth: 'none',
+} as const;
+
 export default function AtLetterPage() {
   const { result } = useAnalysis();
-  const { historyReady, savedCount } = useReportSync();
+  const { historyReady, savedReports } = useReportSync();
   const { statementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
-  /** null = default to latest month only; user picks rolling quarter explicitly. */
-  const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
   const [actionPlanOpen, setActionPlanOpen] = useState(false);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const letterStatementId = statementId ?? undefined;
+  const canSelectMonth = Boolean(letterStatementId || result);
+  const analysis = getAnalyzeAnalysis(result);
+  const cashFlow = analysis?.cash_flow ?? null;
 
-  const activeView = viewMode ?? (letterStatementId ? 'month' : ROLLING_VIEW);
-  const monthOnly = activeView !== ROLLING_VIEW;
+  const {
+    monthOnly,
+    showViewFilters,
+    rollingResults,
+    trendResults,
+    rollingLoading,
+    trendLoading,
+    rollingError,
+    loadStatus,
+    selectView,
+    selectViewOnHover,
+    clearHoverTimer,
+    monthsOnFile,
+  } = useRollingReports({
+    result,
+    savedReports,
+    historyReady,
+    canSelectMonth,
+  });
 
-  const { html, loading, error } = useAtLetterHtml(letterStatementId, { monthOnly });
+  const series = useMemo(() => {
+    if (!monthOnly && rollingResults.length) return metricsSeries(rollingResults);
+    return result ? [extractBriefMetrics(result)] : [];
+  }, [monthOnly, rollingResults, result]);
 
-  const showViewFilters = Boolean(letterStatementId);
-
-  const clearHoverTimer = useCallback(() => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
+  const trendSeries = useMemo(() => {
+    if (monthOnly) {
+      return result ? [extractBriefMetrics(result)] : [];
     }
-  }, []);
+    if (trendResults.length) return metricsSeries(trendResults);
+    return result ? [extractBriefMetrics(result)] : [];
+  }, [monthOnly, trendResults, result]);
 
-  const selectViewOnHover = useCallback(
-    (mode: 'rolling' | 'month') => {
-      clearHoverTimer();
-      if (mode === 'month' && !letterStatementId) return;
-      const already =
-        mode === ROLLING_VIEW ? activeView === ROLLING_VIEW : activeView !== ROLLING_VIEW;
-      if (already) return;
-      hoverTimer.current = setTimeout(() => {
-        setViewMode(mode);
-      }, HOVER_VIEW_MS);
-    },
-    [activeView, clearHoverTimer, letterStatementId],
-  );
+  const latest = series[series.length - 1] ?? null;
+  // Single-month view: no prior / MoM comparison — that month only.
+  const prior = monthOnly
+    ? null
+    : series.length > 1
+      ? series[series.length - 2]!
+      : null;
 
-  useEffect(() => {
-    setViewMode(null);
-  }, [result?.statement_id, letterStatementId]);
+  const moneyIn = latest?.moneyIn ?? null;
+  const moneyOut = latest?.moneyOut ?? null;
+  const cashAvailable = latest?.cashAvailable ?? null;
+  const netMarginPct = latest?.netMarginPct ?? null;
+  const runwayDays = latest?.runwayDays ?? null;
+  const posIn = latest?.posIn ?? null;
+  const ecomIn = latest?.ecomIn ?? null;
+  const feesTotal = latest?.feesTotal ?? null;
+  const feesPct = calcFeesPct(moneyIn, feesTotal);
+  const startBalance =
+    cashAvailable != null && moneyIn != null && moneyOut != null
+      ? Math.max(0, cashAvailable - moneyIn + moneyOut)
+      : null;
 
-  useEffect(() => {
-    if (viewMode !== 'month') return;
-    if (!letterStatementId) {
-      setViewMode(null);
-    }
-  }, [letterStatementId, viewMode]);
+  const moneyInDelta = pctDelta(moneyIn, prior?.moneyIn ?? null);
+  const moneyOutDelta = pctDelta(moneyOut, prior?.moneyOut ?? null);
+  const marginDelta = ptsDelta(netMarginPct, prior?.netMarginPct ?? null);
+  const runwayDelta = absDelta(runwayDays, prior?.runwayDays ?? null, ' days');
+  const cashDelta = pctDelta(cashAvailable, prior?.cashAvailable ?? null);
+  const healthDeltaPts =
+    runwayDays != null && prior?.runwayDays != null
+      ? Math.round(runwayDays - prior.runwayDays)
+      : moneyIn != null && prior?.moneyIn != null && prior.moneyIn !== 0
+        ? Math.round(((moneyIn - prior.moneyIn) / Math.abs(prior.moneyIn)) * 100)
+        : null;
 
-  useEffect(() => () => clearHoverTimer(), [clearHoverTimer]);
+  const periodMeta =
+    latest?.periodLabel || periodLabel?.trim() || analysis?.period_label?.trim() || 'This period';
+  const priorLabel = prior?.shortLabel ?? null;
 
   const viewMeta = useMemo(() => {
     if (!monthOnly) {
-      const monthsOnFile = Math.min(Math.max(savedCount, letterStatementId ? 1 : 0), 3);
       if (monthsOnFile >= 3) {
         return 'Quarter view — comparing your latest 3 months on file.';
       }
       if (monthsOnFile === 2) {
         return 'Comparing your latest 2 months on file.';
       }
-      return 'Upload more months to unlock a 3-month quarter comparison.';
+      if (monthsOnFile === 1) {
+        return 'Only 1 month on file — upload more months for a fuller comparison.';
+      }
+      return 'Upload more months to unlock a multi-month comparison.';
     }
-    const label = periodLabel?.trim() || 'Selected month';
-    return `${label} only — single-month letter, no rolling comparison.`;
-  }, [monthOnly, savedCount, periodLabel, letterStatementId]);
+    return `${periodMeta} only — single-month brief, no rolling comparison.`;
+  }, [monthOnly, monthsOnFile, periodMeta]);
+
+  const trendMonths = useMemo(() => trendSeries.map((m) => m.shortLabel), [trendSeries]);
+  const trendMonthTitles = useMemo(
+    () => trendSeries.map((m) => m.periodLabel || m.shortLabel),
+    [trendSeries],
+  );
+
+  const trendChartSeries = useMemo(() => {
+    if (!trendSeries.length) return [];
+    const cashOk = trendSeries.some((m) => m.cashAvailable != null);
+    const revOk = trendSeries.some((m) => m.moneyIn != null);
+    const expOk = trendSeries.some((m) => m.moneyOut != null);
+    const out = [];
+    if (cashOk) {
+      out.push({
+        id: 'cash',
+        label: 'Cash balance',
+        caption: 'Ending balance each month',
+        values: trendSeries.map((m) => m.cashAvailable ?? 0),
+        color: '#0f8a57',
+        fill: '#34d399',
+      });
+    }
+    if (revOk) {
+      out.push({
+        id: 'rev',
+        label: 'Revenue',
+        caption: 'Monthly inflow',
+        values: trendSeries.map((m) => m.moneyIn ?? 0),
+        color: '#0f8a57',
+        fill: '#6ee7b7',
+      });
+    }
+    if (expOk) {
+      out.push({
+        id: 'exp',
+        label: 'Expenses',
+        caption: 'Monthly outflow',
+        values: trendSeries.map((m) => m.moneyOut ?? 0),
+        color: '#e11d48',
+        fill: '#fb7185',
+      });
+    }
+    return out;
+  }, [trendSeries]);
+
+  const healthScore = useMemo(() => {
+    if (runwayDays == null && netMarginPct == null) return null;
+    let score = 50;
+    if (runwayDays != null) {
+      score = Math.max(20, Math.min(98, Math.round(40 + runwayDays * 0.9)));
+    }
+    if (netMarginPct != null) {
+      score = Math.max(20, Math.min(99, score + Math.round((netMarginPct - 10) * 1.2)));
+    }
+    return score;
+  }, [runwayDays, netMarginPct]);
+
+  const kpiItems = useMemo(() => {
+    const channels = channelCount(posIn, ecomIn);
+    const vs = monthOnly
+      ? 'This period'
+      : priorLabel
+        ? `vs ${priorLabel}`
+        : 'Latest month';
+    return [
+      {
+        id: 'in',
+        label: monthOnly ? 'Money In' : 'Money In (latest)',
+        value: dashMoney(moneyIn),
+        delta: monthOnly ? null : moneyInDelta,
+        deltaTone: (moneyInDelta?.startsWith('-') ? 'down' : 'up') as 'up' | 'down',
+        footnote: channels > 0 ? `${channels} channel${channels > 1 ? 's' : ''} · ${vs}` : vs,
+        icon: 'ti-arrow-down-left',
+        iconTone: 'green' as const,
+      },
+      {
+        id: 'out',
+        label: monthOnly ? 'Money Out' : 'Money Out (latest)',
+        value: dashMoney(moneyOut),
+        delta: monthOnly ? null : moneyOutDelta,
+        deltaTone: (moneyOutDelta?.startsWith('+') ? 'up' : 'down') as 'up' | 'down',
+        footnote: monthOnly
+          ? vs
+          : (cashFlow?.money_out_subtitle ?? vs),
+        icon: 'ti-arrow-up-right',
+        iconTone: 'red' as const,
+      },
+      {
+        id: 'cash',
+        label: 'Cash Available',
+        value: dashMoney(cashAvailable),
+        delta: monthOnly
+          ? runwayDays != null
+            ? `${Math.round(runwayDays)} days runway`
+            : null
+          : (cashDelta ??
+            (runwayDays != null ? `${Math.round(runwayDays)} days runway` : null)),
+        deltaTone: (monthOnly
+          ? 'muted'
+          : cashDelta?.startsWith('-')
+            ? 'down'
+            : cashDelta
+              ? 'up'
+              : 'muted') as 'up' | 'down' | 'muted',
+        footnote:
+          !monthOnly && runwayDelta && priorLabel ? `Runway ${runwayDelta} · ${vs}` : vs,
+        icon: 'ti-wallet',
+        iconTone: 'blue' as const,
+      },
+      {
+        id: 'margin',
+        label: 'Net Margin',
+        value: netMarginPct != null ? `${netMarginPct.toFixed(1)}%` : '—',
+        delta: monthOnly ? null : marginDelta,
+        deltaTone: (marginDelta?.startsWith('-') ? 'down' : 'up') as 'up' | 'down',
+        footnote: vs,
+        icon: 'ti-chart-pie',
+        iconTone: 'teal' as const,
+      },
+    ];
+  }, [
+    monthOnly,
+    moneyIn,
+    moneyOut,
+    cashAvailable,
+    netMarginPct,
+    runwayDays,
+    moneyInDelta,
+    moneyOutDelta,
+    cashDelta,
+    marginDelta,
+    runwayDelta,
+    posIn,
+    ecomIn,
+    priorLabel,
+    cashFlow?.money_out_subtitle,
+  ]);
+
+  const payrollFromOutflows = useMemo(() => {
+    const rows = cashFlow?.outflows ?? [];
+    const hit = rows.find((r) => /payroll|wages|salary/i.test(r.label));
+    return hit ? parseUsd(hit.value_usd) : null;
+  }, [cashFlow?.outflows]);
+
+  const payrollPct =
+    payrollFromOutflows != null && moneyIn != null && moneyIn > 0
+      ? (payrollFromOutflows / moneyIn) * 100
+      : null;
+
+  const priorities = useMemo(() => {
+    const items: PriorityItem[] = [];
+    if (runwayDays != null) {
+      items.push({
+        id: 'runway',
+        title: 'Cash runway',
+        value: `${Math.round(runwayDays)} days remaining`,
+        caption: !monthOnly && runwayDelta && priorLabel ? `${runwayDelta} vs ${priorLabel}` : null,
+        badge: runwayDays < 30 ? 'CRITICAL' : runwayDays < 45 ? 'HIGH' : 'OK',
+        tone: runwayDays < 30 ? 'critical' : runwayDays < 45 ? 'high' : 'watch',
+        icon: 'ti-hourglass',
+      });
+    }
+    if (payrollPct != null) {
+      items.push({
+        id: 'payroll',
+        title: 'Payroll vs revenue',
+        value: `${payrollPct.toFixed(1)}%`,
+        caption: 'From statement outflows',
+        badge: payrollPct > 28 ? 'HIGH' : 'OK',
+        tone: payrollPct > 28 ? 'high' : 'watch',
+        icon: 'ti-users',
+      });
+    }
+    if (feesPct != null) {
+      items.push({
+        id: 'fees',
+        title: 'Processing fees',
+        value: `${feesPct.toFixed(2)}%`,
+        caption: feesTotal != null ? `${fmtMoney(feesTotal)} this period` : null,
+        badge: feesPct > 3 ? 'WATCH' : 'OK',
+        tone: 'watch',
+        icon: 'ti-receipt-2',
+      });
+    }
+    return items;
+  }, [monthOnly, runwayDays, runwayDelta, priorLabel, payrollPct, feesPct, feesTotal]);
+
+  const incomeSlices = useMemo(() => {
+    const slices: { id: string; label: string; value: number; color: string }[] = [];
+    if (posIn != null && posIn > 0) {
+      slices.push({ id: 'pos', label: 'POS (In-store)', value: posIn, color: INCOME_COLORS[0]! });
+    }
+    if (ecomIn != null && ecomIn > 0) {
+      slices.push({
+        id: 'ecom',
+        label: 'E-commerce (Online)',
+        value: ecomIn,
+        color: INCOME_COLORS[1]!,
+      });
+    }
+    if (!slices.length && moneyIn != null && moneyIn > 0) {
+      slices.push({ id: 'in', label: 'Money in', value: moneyIn, color: INCOME_COLORS[0]! });
+    }
+    return slices;
+  }, [posIn, ecomIn, moneyIn]);
+
+  const spendSlices = useMemo(() => {
+    const rows = cashFlow?.outflows ?? [];
+    const parsed = rows
+      .map((row, i) => ({
+        id: `out-${i}`,
+        label: row.label,
+        value: parseUsd(row.value_usd) ?? 0,
+        color: SPEND_COLORS[i % SPEND_COLORS.length]!,
+      }))
+      .filter((r) => r.value > 0);
+    if (parsed.length) return parsed;
+    if (moneyOut != null && moneyOut > 0) {
+      return [{ id: 'out', label: 'Money out', value: moneyOut, color: SPEND_COLORS[0]! }];
+    }
+    return [];
+  }, [cashFlow?.outflows, moneyOut]);
+
+  const insights = useMemo(() => {
+    const tones = ['green', 'blue', 'orange', 'purple'] as const;
+    const icons = ['ti-bulb', 'ti-cash', 'ti-alert-triangle', 'ti-chart-line'];
+    const live = analysis?.standard_insights ?? [];
+    return live.slice(0, 3).map((insight, i): InsightCard => {
+      const highlight = insight.highlight_value?.trim() || '';
+      const headline = insight.headline?.trim() || '';
+      const value =
+        highlight && highlight.length <= 28
+          ? highlight
+          : headline || highlight || '—';
+      const body =
+        insight.answer?.trim() ||
+        (highlight && highlight !== value ? highlight : '') ||
+        insight.question ||
+        '';
+      return {
+        id: insight.id || `insight-${i}`,
+        title: insight.tag || headline || 'Insight',
+        value,
+        body,
+        cta: 'View details',
+        tone: tones[i % tones.length]!,
+        icon: icons[i % icons.length]!,
+        to:
+          /fee|commission|reconcil/i.test(`${insight.id} ${insight.tag}`)
+            ? /reconcil/i.test(`${insight.id} ${insight.tag}`)
+              ? '/dashboard/at-ledger/reconciliation'
+              : '/dashboard/rewards'
+            : /cash|runway|flow/i.test(`${insight.id} ${insight.tag}`)
+              ? '/dashboard/at-ledger/cashflow'
+              : '/dashboard/at-ledger/overview',
+      };
+    });
+  }, [analysis?.standard_insights]);
+
+  const healthCards = useMemo(() => {
+    const cards: HealthCard[] = [];
+    if (runwayDays != null) {
+      const tone = runwayDays < 30 ? 'bad' : runwayDays < 45 ? 'watch' : 'good';
+      cards.push({
+        id: 'cash',
+        label: 'Cash Position',
+        status: tone === 'good' ? 'Good' : tone === 'watch' ? 'Watch' : 'At risk',
+        score: Math.max(20, Math.min(99, Math.round(runwayDays * 2))),
+        tone,
+      });
+    }
+    if (moneyInDelta) {
+      const down = moneyInDelta.startsWith('-');
+      cards.push({
+        id: 'rev',
+        label: 'Revenue Growth',
+        status: down ? 'Watch' : 'Good',
+        score: Math.max(20, Math.min(99, 70 + Math.round(Number(moneyInDelta.replace('%', '')) || 0))),
+        tone: down ? 'watch' : 'good',
+      });
+    }
+    if (payrollPct != null) {
+      cards.push({
+        id: 'payroll',
+        label: 'Payroll Ratio',
+        status: payrollPct > 28 ? 'Watch' : 'Good',
+        score: Math.max(20, Math.min(99, Math.round(100 - payrollPct * 1.5))),
+        tone: payrollPct > 28 ? 'watch' : 'good',
+      });
+    }
+    const recon = analysis?.reconciliation?.hero;
+    if (recon && recon.total > 0) {
+      const pct = Math.round((recon.matched / recon.total) * 100);
+      cards.push({
+        id: 'recon',
+        label: 'Reconciliation',
+        status: pct >= 90 ? 'Good' : pct >= 70 ? 'Watch' : 'At risk',
+        score: pct,
+        tone: pct >= 90 ? 'good' : pct >= 70 ? 'watch' : 'bad',
+      });
+    }
+    if (feesPct != null) {
+      cards.push({
+        id: 'fees',
+        label: 'Processing Fees',
+        status: feesPct > 3 ? 'Watch' : 'Good',
+        score: Math.max(20, Math.min(99, Math.round(100 - feesPct * 12))),
+        tone: feesPct > 3 ? 'watch' : 'good',
+      });
+    }
+    return cards;
+  }, [runwayDays, moneyInDelta, payrollPct, analysis?.reconciliation?.hero, feesPct]);
+
+  const onExport = useCallback(async () => {
+    if (!letterStatementId) return;
+    const fallbackName = `Business_Brief_${periodMeta.replace(/\s+/g, '_')}.pdf`;
+    try {
+      await downloadPdfWithSaveDialog({
+        suggestedFilename: fallbackName,
+        fetchBlob: async () => {
+          const { data, headers } = await downloadMonthlyReportPdf(letterStatementId);
+          const disposition = headers?.['content-disposition'] as string | undefined;
+          const filename = filenameFromDisposition(disposition, fallbackName);
+          return new File([data], filename, { type: 'application/pdf' });
+        },
+      });
+    } catch {
+      /* keep brief usable if export fails */
+    }
+  }, [letterStatementId, periodMeta]);
 
   if (!hasLiveAnalysis) {
     return (
-      <div className={styles.main}>
-        <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.emptyHint} />
+      <div className={styles.briefPage} style={briefWidthStyle}>
+        <div className={styles.main}>
+          <div className={styles.fullWrap}>
+            <DashboardEmptyState historyReady={historyReady} loadingHintClassName={styles.emptyHint} />
+          </div>
+        </div>
       </div>
     );
   }
 
-  const periodMeta = periodLabel?.trim() || 'AT LETTER';
-  const showLoading = loading || !letterStatementId;
-  const showLetter = Boolean(html) && !showLoading;
+  const spark =
+    series.length >= 2
+      ? series.map((m) => m.cashAvailable).filter((v): v is number => v != null)
+      : cashAvailable != null
+        ? [cashAvailable]
+        : [];
 
   return (
     <>
-      <SectionHeader
-        periodMeta={periodMeta}
-        title={<>Your monthly <em>letter.</em></>}
-      />
-      <div className={styles.main}>
-        <div className="wrap">
-          {showViewFilters ? (
-            <div className={styles.viewBar}>
-              <div className={styles.viewTitle}>
-                Letter view
-              </div>
-              <div className={styles.viewFilterRow} onMouseLeave={clearHoverTimer}>
-                <button
-                  type="button"
-                  className={`${styles.viewFilter} ${activeView === ROLLING_VIEW ? styles.viewFilterActive : ''}`}
-                  onMouseEnter={() => selectViewOnHover('rolling')}
-                  onClick={() => setViewMode('rolling')}
-                >
-                  Last 3 months
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.viewFilter} ${activeView !== ROLLING_VIEW ? styles.viewFilterActive : ''}`}
-                  onMouseEnter={() => selectViewOnHover('month')}
-                  onClick={() => {
-                    if (letterStatementId) setViewMode('month');
-                  }}
-                >
-                  {monthOnlyLabelFromPeriod(periodLabel)}
-                </button>
-              </div>
+      <div className={styles.briefPage} style={briefWidthStyle}>
+        <div className={styles.main}>
+          <div className={styles.fullWrap}>
+            <div className={styles.titleChrome}>
+              <BriefHeader
+                periodLabel={periodMeta}
+                healthScore={healthScore}
+                healthDelta={healthDeltaPts != null ? Math.abs(healthDeltaPts) : null}
+                healthDeltaDown={(healthDeltaPts ?? 0) < 0}
+                healthPrevLabel={priorLabel}
+                monthOnly={monthOnly}
+                monthFilterLabel={monthOnlyLabelFromPeriod(periodLabel)}
+                showViewFilters={showViewFilters}
+                viewMeta={viewMeta}
+                footerMeta={footerMeta}
+                loadStatus={loadStatus}
+                rollingError={rollingError}
+                rollingLoading={rollingLoading && !monthOnly}
+                onSelectRolling={() => selectView(ROLLING_VIEW)}
+                onSelectMonth={() => selectView('month')}
+                onHoverRolling={() => selectViewOnHover(ROLLING_VIEW)}
+                onHoverMonth={() => selectViewOnHover('month')}
+                onFilterMouseLeave={clearHoverTimer}
+                onExport={letterStatementId ? onExport : undefined}
+              />
             </div>
-          ) : null}
-          {footerMeta || viewMeta ? (
-            <p className={styles.meta}>
-              {footerMeta}
-              {footerMeta && viewMeta ? ' · ' : null}
-              {showViewFilters ? viewMeta : null}
-            </p>
-          ) : null}
-          {error && !showLetter ? (
-            <p className={styles.error} role="alert">
-              {error}
-            </p>
-          ) : null}
-          <div className={styles.card}>
-            <AtLetterTemplateFrame
-              html={html}
-              loading={showLoading}
-              empty={false}
-              emptyMessage="Upload and analyze your statements to generate your AT Letter — the same full Monthly Business Review with your numbers, charts, and reconciliation."
-              onViewActionPlan={() => setActionPlanOpen(true)}
-            />
+
+            <div className={styles.scrollViewport}>
+              <BriefKpis items={kpiItems} />
+              <BriefPriorities items={priorities} onViewActionPlan={() => setActionPlanOpen(true)} />
+              <BriefCashMovement
+                model={{
+                  start: startBalance,
+                  posIn,
+                  ecomIn,
+                  billsOut: moneyOut,
+                  end: cashAvailable,
+                }}
+              />
+              <BriefBreakdown
+                income={incomeSlices}
+                incomeTotal={moneyIn}
+                spend={spendSlices}
+                spendTotal={moneyOut}
+              />
+              <BriefHealth cards={healthCards} overall={healthScore} spark={spark} />
+              <BriefInsights items={insights} />
+              {trendChartSeries.length && trendMonths.length ? (
+                <BriefTrends
+                  months={trendMonths}
+                  monthTitles={trendMonthTitles}
+                  series={trendChartSeries}
+                  loading={!monthOnly && trendLoading}
+                  rangeLabel={monthOnly ? periodMeta : 'last 6 months'}
+                />
+              ) : null}
+              <BriefActionCenter />
+            </div>
           </div>
         </div>
       </div>

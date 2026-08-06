@@ -1,14 +1,52 @@
-.main {
-  font-family: var(--font-sans);
-  padding: 12px 0 28px;
-  background: var(--bg-soft);
-  min-height: calc(100vh - 88px);
+.chargePage {
+  background: #f4f6f9;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-.page {
-  max-width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
+.fullWrap {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 28px 24px;
+  box-sizing: border-box;
+}
+
+.main {
+  font-family: var(--font-sans);
+  padding: 8px 0 20px;
+  background: #f4f6f9;
+  min-height: 0;
+  width: 100%;
+}
+
+.titleChrome {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  background: #f4f6f9;
+  padding: 4px 0 10px;
+  margin: 0 0 4px;
+  width: 100%;
+}
+
+.periodMeta {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: #0f8a57;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 750;
+  margin-bottom: 6px;
+}
+
+.titleAccent {
+  color: #0f8a57;
+  font-style: normal;
+  font-weight: inherit;
 }
 
 .scrollViewport {
@@ -16,4 +54,5 @@
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
 }

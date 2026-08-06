@@ -1,14 +1,32 @@
 .backBar {
   padding: 10px 0 0;
-  background: var(--bg-soft, #f8fafc);
+  background: #f4f6f9;
+}
+
+/* Overview only — keep back link fixed while data scrolls */
+.backBarPinned {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-bottom: 2px;
+}
+
+/* Reports — match fluid content width (ignore global 1080px .wrap) */
+.fullWrap {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 28px;
+  box-sizing: border-box;
 }
 
 .backLink {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
-  font-weight: 600;
-  color: #2563eb;
+  font-weight: 700;
+  color: #0f8a57;
   text-decoration: none !important;
 }
 
@@ -17,7 +35,7 @@
 }
 
 .backLink:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #0f8a57;
   outline-offset: 2px;
   border-radius: 4px;
 }

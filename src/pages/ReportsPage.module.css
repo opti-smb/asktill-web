@@ -1,35 +1,119 @@
+.reportsPage {
+  background: #f4f6f9;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/*
+ * Fill the entire main pane (viewport minus sidebar).
+ * Global `.wrap` is 1080px — do not use it on this page.
+ */
+.fullWrap {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 28px 24px;
+  box-sizing: border-box;
+}
+
+.titleChrome {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  background: #f4f6f9;
+  padding: 4px 0 12px;
+  margin: 0 0 4px;
+  width: 100%;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .main {
   font-family: var(--font-sans);
-  padding: 12px 0 28px;
-  background: var(--bg-soft);
-  min-height: calc(100vh - 88px);
+  padding: 8px 0 20px;
+  background: #f4f6f9;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .card {
-  background: #fff;
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 12px;
-  overflow: hidden;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  width: 100%;
+  max-width: none;
 }
 
 .scrollViewport {
-  background: var(--bg-soft);
+  background: transparent;
   max-height: min(85vh, 920px);
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 12px;
+  padding: 0 0 4px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.prevWrap {
+  margin: 0 0 4px;
+  width: 100%;
+}
+
+.uploadedSection {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  width: 100%;
+}
+
+.monthStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.detailsFull {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.detailsFull > * {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box;
 }
 
 .sectionSub {
   font-size: 12px;
-  color: var(--body);
+  color: #64748b;
   line-height: 1.45;
 }
 
 .sectionSub code {
   font-size: 11px;
-  background: var(--bg);
+  background: #fff;
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+@media (max-width: 980px) {
+  .headerActions {
+    width: 100%;
+  }
 }

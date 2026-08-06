@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import Logo from '../common/Logo';
@@ -25,17 +25,21 @@ export default function DashboardNav() {
   const isChargebacksRoute = pathname.startsWith('/dashboard/chargebacks');
   const isChannelPartnersRoute = pathname.startsWith('/dashboard/channel-partners');
   const isRewardsRoute = pathname.startsWith('/dashboard/rewards');
-  const isProfileRoute = pathname.startsWith('/dashboard/profile');
   const isSourcesRoute = pathname.startsWith('/dashboard/sources');
-  const usePageScrollShell =
-    isAtLetterRoute ||
-    isAtLedgerRoute ||
-    isCalculatorsRoute ||
-    isChargebacksRoute ||
-    isChannelPartnersRoute ||
-    isRewardsRoute ||
-    isProfileRoute ||
-    isSourcesRoute;
+
+  // Prevent document scroll so left nav names never move with the page.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, []);
 
   const clearHoverTimer = useCallback(() => {
     if (hoverTimer.current) {
@@ -56,79 +60,78 @@ export default function DashboardNav() {
   );
 
   return (
-    <div className={usePageScrollShell ? styles.shellAtLetter : styles.shell}>
-      <nav className={`${styles.nav} ${usePageScrollShell ? styles.navSticky : ''}`}>
-        <div className="wrap">
-          <div className={styles.navInner}>
-            <Logo to={ready && isAuth ? DEFAULT_DASHBOARD_PATH : '/'} />
+    <div className={styles.shell}>
+      <nav className={styles.sidebar} aria-label="Main">
+        <div className={styles.sidebarTop}>
+          <Logo to={ready && isAuth ? DEFAULT_DASHBOARD_PATH : '/'} size={42} large />
+          <div className={styles.navTabs} onMouseLeave={clearHoverTimer}>
+            <NavLink
+              to={DEFAULT_DASHBOARD_PATH}
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() => goOnHover(DEFAULT_DASHBOARD_PATH, isAtLetterRoute)}
+            >
+              Business Brief
+            </NavLink>
 
-            <div className={styles.navTabs} onMouseLeave={clearHoverTimer}>
-              <NavLink
-                to={DEFAULT_DASHBOARD_PATH}
-                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-                onMouseEnter={() => goOnHover(DEFAULT_DASHBOARD_PATH, isAtLetterRoute)}
-              >
-                Business Brief
-              </NavLink>
+            <NavLink
+              to="/dashboard/at-ledger"
+              end={false}
+              className={() => `${styles.navTab} ${isAtLedgerRoute ? styles.active : ''}`}
+              onMouseEnter={() => goOnHover('/dashboard/at-ledger', isAtLedgerRoute)}
+            >
+              Financials
+            </NavLink>
 
-              <NavLink
-                to="/dashboard/at-ledger"
-                end={false}
-                className={() => `${styles.navTab} ${isAtLedgerRoute ? styles.active : ''}`}
-                onMouseEnter={() => goOnHover('/dashboard/at-ledger', isAtLedgerRoute)}
-              >
-                Financials
-              </NavLink>
+            <NavLink
+              to="/dashboard/calculators"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() => goOnHover('/dashboard/calculators', isCalculatorsRoute)}
+            >
+              Business Health
+            </NavLink>
 
-              <NavLink
-                to="/dashboard/calculators"
-                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-                onMouseEnter={() => goOnHover('/dashboard/calculators', isCalculatorsRoute)}
-              >
-                Business Health
-              </NavLink>
+            <NavLink
+              to="/dashboard/chargebacks"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() => goOnHover('/dashboard/chargebacks', isChargebacksRoute)}
+            >
+              Money Reclaimed
+            </NavLink>
 
-              <NavLink
-                to="/dashboard/chargebacks"
-                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-                onMouseEnter={() => goOnHover('/dashboard/chargebacks', isChargebacksRoute)}
-              >
-                Money Reclaimed
-              </NavLink>
+            <NavLink
+              to="/dashboard/channel-partners"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() =>
+                goOnHover('/dashboard/channel-partners', isChannelPartnersRoute)
+              }
+            >
+              Business Services
+            </NavLink>
 
-              <NavLink
-                to="/dashboard/channel-partners"
-                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-                onMouseEnter={() =>
-                  goOnHover('/dashboard/channel-partners', isChannelPartnersRoute)
-                }
-              >
-                Business Services
-              </NavLink>
+            <NavLink
+              to="/dashboard/rewards"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() => goOnHover('/dashboard/rewards', isRewardsRoute)}
+            >
+              Save Money
+            </NavLink>
 
-              <NavLink
-                to="/dashboard/rewards"
-                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-                onMouseEnter={() => goOnHover('/dashboard/rewards', isRewardsRoute)}
-              >
-                Save Money
-              </NavLink>
-
-              <NavLink
-                to="/dashboard/sources"
-                className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-                onMouseEnter={() => goOnHover('/dashboard/sources', isSourcesRoute)}
-              >
-                Connect Accounts
-              </NavLink>
-            </div>
-
-            <UserAccountMenu />
+            <NavLink
+              to="/dashboard/sources"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() => goOnHover('/dashboard/sources', isSourcesRoute)}
+            >
+              Connect Accounts
+            </NavLink>
           </div>
+        </div>
+
+        <div className={styles.sidebarBottom}>
+          <UserAccountMenu variant="sidebar" menuPlacement="above" />
         </div>
       </nav>
 
-      <div className={usePageScrollShell ? styles.pageBodyAtLetter : styles.pageBody}>
+      <div className={styles.pageBody}>
         <Outlet />
       </div>
 

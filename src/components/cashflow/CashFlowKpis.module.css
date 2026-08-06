@@ -1,0 +1,109 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: auto;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.value {
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.valuePos {
+  color: #0f8a57;
+}
+
+.valueWarn {
+  color: #c2410c;
+}
+
+.valueBad {
+  color: #c43c3c;
+}
+
+.meta {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  margin-top: 2px;
+}
+
+.badgeOk {
+  background: #e8f7ef;
+  color: #0f8a57;
+}
+
+.badgeWarn {
+  background: #fff4e5;
+  color: #c2410c;
+}
+
+.badgeMuted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.footerLink {
+  margin-top: 4px;
+  padding-top: 0;
+  font-size: 12px;
+  font-weight: 750;
+  color: #0f8a57;
+  text-decoration: none !important;
+}
+
+.footerLink:hover {
+  text-decoration: underline !important;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
