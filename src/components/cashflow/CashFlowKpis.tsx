@@ -40,6 +40,8 @@ export default function CashFlowKpis({ cashFlow, result, kpis }: Props) {
   const runway = findRunway(kpis);
   const runwayValue = runway?.formatted_value ?? '—';
   const runwayNote = runway?.helper_text ?? runway?.footnote ?? runway?.comparison_note ?? null;
+  const runwayNoteShort =
+    runwayNote && runwayNote.length > 110 ? `${runwayNote.slice(0, 107).trimEnd()}…` : runwayNote;
   const tone = runwayTone(runwayValue, runwayNote);
 
   return (
@@ -91,7 +93,7 @@ export default function CashFlowKpis({ cashFlow, result, kpis }: Props) {
             </>
           )}
         </span>
-        {runwayNote ? <p className={styles.meta}>{runwayNote}</p> : null}
+        {runwayNoteShort ? <p className={styles.meta}>{runwayNoteShort}</p> : null}
       </article>
 
       <article className={styles.card}>
