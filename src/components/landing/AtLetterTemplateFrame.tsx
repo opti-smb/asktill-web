@@ -7,6 +7,7 @@ type Props = {
   loading: boolean;
   empty?: boolean;
   emptyMessage?: string;
+  onViewActionPlan?: () => void;
 };
 
 const INTER_STACK =
@@ -93,15 +94,47 @@ function resizeFrame(frame: HTMLIFrameElement | null) {
   }
 }
 
-export default function AtLetterTemplateFrame({ html, loading, empty, emptyMessage }: Props) {
+function wireActionPlanClicks(
+  frame: HTMLIFrameElement | null,
+  onViewActionPlan?: () => void,
+): (() => void) | undefined {
+  if (!frame || !onViewActionPlan) return undefined;
+  const doc = frame.contentDocument;
+  if (!doc) return undefined;
+
+  const handler = (event: Event) => {
+    const target = event.target as Element | null;
+    const hit = target?.closest?.('[data-asktill-action="view-action-plan"], .health-aside-foot');
+    if (!hit) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onViewActionPlan();
+  };
+
+  doc.addEventListener('click', handler, true);
+  return () => doc.removeEventListener('click', handler, true);
+}
+
+export default function AtLetterTemplateFrame({
+  html,
+  loading,
+  empty,
+  emptyMessage,
+  onViewActionPlan,
+}: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
+  const unwireRef = useRef<(() => void) | undefined>(undefined);
+  const onViewRef = useRef(onViewActionPlan);
+  onViewRef.current = onViewActionPlan;
 
   const syncFrame = useCallback(() => {
     const frame = frameRef.current;
     resizeFrame(frame);
     observerRef.current?.disconnect();
     observerRef.current = null;
+    unwireRef.current?.();
+    unwireRef.current = wireActionPlanClicks(frame, () => onViewRef.current?.());
     const body = frame?.contentDocument?.body;
     if (!body || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => resizeFrame(frame));
@@ -113,6 +146,8 @@ export default function AtLetterTemplateFrame({ html, loading, empty, emptyMessa
     return () => {
       observerRef.current?.disconnect();
       observerRef.current = null;
+      unwireRef.current?.();
+      unwireRef.current = undefined;
     };
   }, []);
 
@@ -121,7 +156,16 @@ export default function AtLetterTemplateFrame({ html, loading, empty, emptyMessa
     const timers = [120, 400, 1000, 2000].map((ms) =>
       window.setTimeout(() => resizeFrame(frameRef.current), ms),
     );
-    return () => timers.forEach((id) => window.clearTimeout(id));
+    const wireTimers = [150, 450, 1100].map((ms) =>
+      window.setTimeout(() => {
+        unwireRef.current?.();
+        unwireRef.current = wireActionPlanClicks(frameRef.current, () => onViewRef.current?.());
+      }, ms),
+    );
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      wireTimers.forEach((id) => window.clearTimeout(id));
+    };
   }, [html]);
 
   if (loading) {

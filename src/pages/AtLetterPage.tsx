@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import SectionHeader from '../components/layout/SectionHeader';
 import AtLetterTemplateFrame from '../components/landing/AtLetterTemplateFrame';
+import ActionPlanModal from '../components/letter/ActionPlanModal';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAtLetterHtml } from '../hooks/useAtLetterHtml';
@@ -36,6 +37,7 @@ export default function AtLetterPage() {
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
   /** null = default to latest month only; user picks rolling quarter explicitly. */
   const [viewMode, setViewMode] = useState<'rolling' | 'month' | null>(null);
+  const [actionPlanOpen, setActionPlanOpen] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const letterStatementId = statementId ?? undefined;
@@ -161,10 +163,12 @@ export default function AtLetterPage() {
               loading={showLoading}
               empty={false}
               emptyMessage="Upload and analyze your statements to generate your AT Letter — the same full Monthly Business Review with your numbers, charts, and reconciliation."
+              onViewActionPlan={() => setActionPlanOpen(true)}
             />
           </div>
         </div>
       </div>
+      <ActionPlanModal open={actionPlanOpen} onClose={() => setActionPlanOpen(false)} />
     </>
   );
 }
