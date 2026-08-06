@@ -2625,3 +2625,42 @@ export async function fetchRewardsMonthly(limit = 24): Promise<{ months: Rewards
   });
   return res.data;
 }
+
+export type ActionPlanItem = {
+  slot: number;
+  text: string;
+  writtenAt: string | null;
+  openAt?: string | null;
+  closeAt?: string | null;
+  closed?: boolean;
+};
+
+export type ClosedPriorityItem = {
+  key: string;
+  title: string;
+  tone: string;
+  detail?: string;
+  openAt?: string | null;
+  closedAt?: string | null;
+};
+
+export type ActionPlansResponse = {
+  plans: ActionPlanItem[];
+  closedItems?: ClosedPriorityItem[];
+};
+
+export async function fetchActionPlans(): Promise<ActionPlansResponse> {
+  const res = await mainApi.get<ActionPlansResponse>('/api/action-plans', { timeout: 30_000 });
+  return res.data;
+}
+
+export async function saveActionPlans(
+  plans: Array<{ slot: number; text: string; closed?: boolean }>,
+): Promise<ActionPlansResponse> {
+  const res = await mainApi.put<ActionPlansResponse>(
+    '/api/action-plans',
+    { plans },
+    { timeout: 30_000 },
+  );
+  return res.data;
+}

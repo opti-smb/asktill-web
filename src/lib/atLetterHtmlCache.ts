@@ -7,7 +7,7 @@ import { LETTER_WIPED_EVENT } from './atLetterCache';
  * if the SPA tab stayed open).
  * Keep in sync with backend AT_LETTER_HTML_BUILD_VERSION.
  */
-export const AT_LETTER_HTML_CLIENT_VERSION = 65;
+export const AT_LETTER_HTML_CLIENT_VERSION = 66;
 
 const VERSION_STORAGE_KEY = 'asktill:at-letter-html-client-v';
 
