@@ -160,17 +160,6 @@ export default function ChannelReconciliationView({
               </ul>
             </div>
           )}
-
-          {hasNotes && (
-            <div className={notesOnly ? styles.notesOnly : styles.block}>
-              <h3 className={styles.blockTitle}>Notes</h3>
-              <ul className={styles.notesList}>
-                {report.notes!.map((n, i) => (
-                  <li key={i}>{typeof n === 'string' ? n : JSON.stringify(n)}</li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
 
         {showBankAside ? (
@@ -199,6 +188,17 @@ export default function ChannelReconciliationView({
           </aside>
         ) : null}
       </div>
+
+      {hasNotes ? (
+        <div className={notesOnly ? styles.notesOnly : styles.notesBlock}>
+          <h3 className={styles.blockTitle}>Notes</h3>
+          <ul className={styles.notesList}>
+            {report.notes!.map((n, i) => (
+              <li key={i}>{typeof n === 'string' ? n : JSON.stringify(n)}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

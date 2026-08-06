@@ -49,13 +49,22 @@
 }
 
 .notesOnly {
+  display: block;
   width: 100%;
-  max-width: none;
+  max-width: none !important;
   box-sizing: border-box;
   padding: 14px 16px;
   border: 1px solid #e8edf5;
   border-radius: 12px;
   background: #f8fafc;
+}
+
+.notesBlock {
+  display: block;
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+  margin-top: 16px;
 }
 
 .block + .block {
@@ -176,15 +185,26 @@
 }
 
 .notesList {
+  display: block;
+  width: 100%;
+  max-width: none !important;
   margin: 0;
   padding-left: 18px;
-  font-size: 12px;
+  box-sizing: border-box;
+  font-size: 13px;
   color: #64748b;
-  line-height: 1.45;
+  line-height: 1.5;
+}
+
+.notesList li {
+  display: list-item;
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
 }
 
 .notesList li + li {
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .bankCard {
