@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { warmupServices } from '../lib/api';
-import SnapPages from './components/SnapPages';
 import rawHtml from './Asktill_Landing_Page_V8_1_Final_Page_Aligned.html?raw';
 
 // Monarch.com uses licensed ABC Oracle (UI) + Copernicus (display).
@@ -311,57 +310,6 @@ const MOTION_CSS = `
   }
 `;
 
-/** Full-viewport snap: each main section (+ footer) is one page. */
-const SNAP_CSS = `
-  html.asktill-landing-v81-active,
-  html.asktill-landing-v81-active body{
-    overflow:hidden!important;
-    height:100%!important;
-    min-height:100%!important;
-  }
-  #asktill-landing-v81-host{
-    position:fixed;
-    inset:0;
-    z-index:30;
-    background:#fff;
-  }
-  .asktill-v81-root{
-    height:100%;
-    overflow-x:hidden;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior-y:contain;
-  }
-  .asktill-v81-root.asktill-snap-on main{
-    display:flex;
-    flex-direction:column;
-  }
-  .asktill-v81-root.asktill-snap-on #site-header,
-  .asktill-v81-root.asktill-snap-on header{
-    position:fixed!important;
-    top:0;left:0;right:0;
-    z-index:60;
-  }
-  .asktill-v81-root.asktill-snap-on main > section,
-  .asktill-v81-root.asktill-snap-on > footer{
-    box-sizing:border-box!important;
-    width:100%;
-    overflow-x:hidden;
-    overflow-y:auto;
-    overscroll-behavior:contain;
-    display:flex!important;
-    flex-direction:column!important;
-    justify-content:center!important;
-    padding-top:calc(var(--header-offset,72px) + 8px)!important;
-    padding-bottom:28px!important;
-  }
-  .asktill-v81-root.asktill-snap-on .hero-v8{
-    justify-content:center!important;
-    padding-top:calc(var(--header-offset,72px) + 4px)!important;
-    padding-bottom:16px!important;
-  }
-`;
-
 /**
  * Exact Asktill Landing V8.1 HTML mounting at `/`.
  * Local-only swap of the previous marketing landing; app routes unchanged.
@@ -369,7 +317,6 @@ const SNAP_CSS = `
 export default function MarketingLanding() {
   const hostRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const [snapReady, setSnapReady] = useState(false);
 
   useEffect(() => {
     warmupServices();
@@ -426,12 +373,6 @@ export default function MarketingLanding() {
     motion.textContent = MOTION_CSS;
     document.head.appendChild(motion);
     styleNodes.push(motion);
-
-    const snap = document.createElement('style');
-    snap.id = 'asktill-v81-snap';
-    snap.textContent = SNAP_CSS;
-    document.head.appendChild(snap);
-    styleNodes.push(snap);
 
     // Body markup (header → footer)
     const root = document.createElement('div');
@@ -571,12 +512,9 @@ export default function MarketingLanding() {
 
     document.documentElement.classList.add('asktill-landing-v81-active');
     document.body.style.margin = '0';
-    setSnapReady(true);
 
     return () => {
-      setSnapReady(false);
       document.documentElement.classList.remove('asktill-landing-v81-active');
-      document.body.style.overflow = '';
       styleNodes.forEach((node) => node.remove());
       windowListeners.forEach(([type, listener]) => origRemove(type, listener));
       if (brief) {
@@ -587,10 +525,5 @@ export default function MarketingLanding() {
     };
   }, [navigate]);
 
-  return (
-    <>
-      <div ref={hostRef} id="asktill-landing-v81-host" />
-      {snapReady ? <SnapPages rootSelector=".asktill-v81-root" /> : null}
-    </>
-  );
+  return <div ref={hostRef} id="asktill-landing-v81-host" />;
 }
