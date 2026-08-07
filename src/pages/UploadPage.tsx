@@ -16,7 +16,7 @@ import {
   fetchReportHistory,
   fetchSavedReport,
   freeTierLimitNotice,
-  freeTierNoticeFromStoredMonth,
+  freeTierNoticeFromUploadThisMonth,
   getApiError,
   getApiErrorAsync,
   hasFreeTierLimitConflict,
@@ -284,8 +284,8 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   }, [location.pathname, navigate]);
   const [showPreviousReports, setShowPreviousReports] = useState(false);
   const [savedReportCount, setSavedReportCount] = useState<number | null>(null);
-  /** Free-tier: period_key → label from report history (for instant upgrade UX). */
-  const [storedFreePeriods, setStoredFreePeriods] = useState<Record<string, string>>({});
+  /** Free-tier early gate: uploaded_at timestamps from report history. */
+  const [savedUploadedAts, setSavedUploadedAts] = useState<string[]>([]);
   const [duplicateBusy, setDuplicateBusy] = useState(false);
   const [validation, setValidation] = useState<UploadValidationResult | null>(null);
   const [pinnedSlotWarnings, setPinnedSlotWarnings] = useState<
@@ -309,11 +309,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   const validatedFileKeysRef = useRef('');
   const validationRequestRef = useRef(0);
   const uploadFilesRef = useRef<{ bank?: File; pos?: File; ecommerce?: File }>({});
-  const storedFreePeriodsRef = useRef(storedFreePeriods);
-  const savedReportCountRef = useRef(savedReportCount);
+  const savedUploadedAtsRef = useRef(savedUploadedAts);
   const isPaidRef = useRef(isPaid);
-  storedFreePeriodsRef.current = storedFreePeriods;
-  savedReportCountRef.current = savedReportCount;
+  savedUploadedAtsRef.current = savedUploadedAts;
   isPaidRef.current = isPaid;
 
   const rejectFreeTierUpload = useCallback(
@@ -488,7 +486,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
   useEffect(() => {
     if (!authReady || !isAuth) {
       setSavedReportCount(isAuth ? null : 0);
-      setStoredFreePeriods({});
+      setSavedUploadedAts([]);
       return undefined;
     }
 
@@ -500,30 +498,16 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
         if (cancelled) return;
         const reports = data.reports ?? [];
         setSavedReportCount(reports.length);
-        const periods: Record<string, string> = {};
-        for (const row of reports) {
-          const key =
-            (row.period_key?.trim() || periodKeyFromLabel(row.period_label) || '').trim();
-          const label = (row.period_label?.trim() || key).trim();
-          if (key && label) periods[key] = label;
-        }
-        // Avoid new object identity when unchanged — that used to re-fire validate.
-        setStoredFreePeriods((prev) => {
-          const prevKeys = Object.keys(prev);
-          const nextKeys = Object.keys(periods);
-          if (
-            prevKeys.length === nextKeys.length
-            && nextKeys.every((key) => prev[key] === periods[key])
-          ) {
-            return prev;
-          }
-          return periods;
-        });
+        setSavedUploadedAts(
+          reports
+            .map((row) => row.uploaded_at)
+            .filter((iso): iso is string => Boolean(iso?.trim())),
+        );
       })
       .catch(() => {
         if (!cancelled) {
           setSavedReportCount(null);
-          setStoredFreePeriods({});
+          setSavedUploadedAts([]);
         }
       });
     return () => {
@@ -559,48 +543,14 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     });
     setValidationError(null);
 
-    // Free tier with a month already on file: show upgrade immediately when the
-    // drop looks like a new month — do not leave the first box spinning on cold validate.
+    // Free tier: one upload per calendar month — block ASAP from report history
+    // so we don't leave the first box spinning while validate cold-starts.
     const earlyFreeTierNotice = (): FreeTierLimitNotice | null => {
       if (isPaidRef.current) return null;
-      const storedPeriods = storedFreePeriodsRef.current;
-      const reportCount = savedReportCountRef.current;
-      const storedKeys = Object.keys(storedPeriods);
-      if (storedKeys.length < 1 && (reportCount ?? 0) < 1) return null;
       const files = uploadFilesRef.current;
-      const candidates = [files.bank, files.pos, files.ecommerce].filter(
-        (f): f is File => Boolean(f),
-      );
-      const storedLabel =
-        Object.values(storedPeriods)[0]
-        ?? (reportCount && reportCount > 0 ? 'one month' : null);
-      let sawNewMonth = false;
-      let newLabel: string | null = null;
-      for (const file of candidates) {
-        const key = periodKeyFromLabel(file.name);
-        const label = periodLabelFromFilename(file.name);
-        if (key && storedPeriods[key]) {
-          continue;
-        }
-        if (key && !storedPeriods[key]) {
-          sawNewMonth = true;
-          newLabel = label ?? key;
-          break;
-        }
-        // No month in filename — free users with a month on file are almost always
-        // uploading another month; show upgrade instead of a long checking spinner.
-        if (!key && (storedKeys.length > 0 || (reportCount ?? 0) > 0)) {
-          sawNewMonth = true;
-          break;
-        }
-      }
-      if (sawNewMonth) {
-        return freeTierNoticeFromStoredMonth(
-          storedLabel === 'one month' ? null : storedLabel,
-          newLabel,
-        );
-      }
-      return null;
+      const hasFile = Boolean(files.bank || files.pos || files.ecommerce);
+      if (!hasFile) return null;
+      return freeTierNoticeFromUploadThisMonth(savedUploadedAtsRef.current);
     };
 
     // Short debounce — keep rules, start the API ASAP. Slightly longer when adding
@@ -1074,16 +1024,26 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
               />
             ) : null}
             {freeTierNotice ? (
-              <div className={styles.freeTierBanner} role="alert">
-                <p className={styles.freeTierTitle}>Free plan: one month on file</p>
-                <p className={styles.freeTierMessage}>{freeTierNotice.message}</p>
-                <button
-                  type="button"
-                  className={styles.freeTierUpgradeBtn}
-                  onClick={goToPricing}
-                >
-                  Upgrade to Paid
-                </button>
+              <div className={styles.freeTierBanner} role="alert" aria-labelledby="free-tier-title">
+                <div className={styles.freeTierHeader}>
+                  <h2 id="free-tier-title" className={styles.freeTierTitle}>
+                    Come back next month
+                  </h2>
+                </div>
+                <p className={styles.freeTierMessage}>
+                  {freeTierNotice.storedLabel
+                    ? `You've used your free upload for ${freeTierNotice.storedLabel}. Upgrade anytime for unlimited uploads.`
+                    : "You've used this month's free upload. Upgrade anytime for unlimited uploads."}
+                </p>
+                <div className={styles.freeTierActions}>
+                  <button
+                    type="button"
+                    className={styles.freeTierUpgradeBtn}
+                    onClick={goToPricing}
+                  >
+                    Upgrade to Paid
+                  </button>
+                </div>
               </div>
             ) : headerNotice ? (
               <div className={styles.duplicateBanner} role="alert">
