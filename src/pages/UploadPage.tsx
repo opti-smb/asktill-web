@@ -37,7 +37,7 @@ import {
   type UploadValidationResult,
 } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
-import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from '../lib/atLetterStatement';
+import { pickMostRecentlyUploadedReport } from '../lib/atLetterStatement';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
 import { prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import type { FileUploadState } from '../types';
