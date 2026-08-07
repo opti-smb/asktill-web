@@ -8,10 +8,10 @@ interface Props {
 
 function paywallCopy(featureLabel?: string): { title: string; body: string } {
   const label = featureLabel?.trim() ?? '';
-  if (/multi-month|statement upload/i.test(label)) {
+  if (/multi-month|statement upload|upload/i.test(label)) {
     return {
-      title: 'One month on Free plan',
-      body: 'Free includes one statement month. Upgrade to Paid to upload more months.',
+      title: 'Come back next month',
+      body: "You've used this month's free upload. Upgrade anytime for unlimited uploads.",
     };
   }
   if (label) {

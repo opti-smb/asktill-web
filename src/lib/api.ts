@@ -572,42 +572,66 @@ export function freeTierLimitNotice(
   const warning = warnings.find((w) => w.message?.trim()) ?? warnings[0];
   const storedLabel = warning.stored_period_label?.trim() || null;
   const newLabel = warning.period_label?.trim() || null;
-  const message = warning.message?.trim() ?? '';
-  if (storedLabel && newLabel) {
-    return {
-      storedLabel,
-      newLabel,
-      message: `You have ${storedLabel} on file. Upgrade to add ${newLabel}.`,
-    };
-  }
+  const message =
+    warning.message?.trim()
+    || (storedLabel
+      ? `You've already used your free upload for ${storedLabel}. ` +
+        'Come back next month to upload again — or upgrade anytime for unlimited uploads.'
+      : "You've already used your free upload this month. " +
+        'Come back next month to upload again — or upgrade anytime for unlimited uploads.');
   return { storedLabel, newLabel, message };
 }
 
-/** Client-side free-tier notice when history already shows a month on file. */
+/** Client-side free-tier notice when user already uploaded this calendar month. */
+export function freeTierNoticeFromUploadThisMonth(
+  uploadedAts: Array<string | null | undefined>,
+  now: Date = new Date(),
+): FreeTierLimitNotice | null {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const hit = uploadedAts.some((iso) => {
+    if (!iso?.trim()) return false;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.getUTCFullYear() === y && d.getUTCMonth() === m;
+  });
+  if (!hit) return null;
+  const label = now.toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+  return {
+    storedLabel: label,
+    newLabel: null,
+    message:
+      `You've already used your free upload for ${label}. ` +
+      'Come back next month to upload again — or upgrade anytime for unlimited uploads.',
+  };
+}
+
+/** @deprecated Prefer freeTierNoticeFromUploadThisMonth — kept for older call sites. */
 export function freeTierNoticeFromStoredMonth(
   storedLabel: string | null,
   newLabel?: string | null,
 ): FreeTierLimitNotice {
   const stored = storedLabel?.trim() || null;
   const next = newLabel?.trim() || null;
-  if (stored && next) {
-    return {
-      storedLabel: stored,
-      newLabel: next,
-      message: `You have ${stored} on file. Upgrade to add ${next}.`,
-    };
-  }
   if (stored) {
     return {
       storedLabel: stored,
       newLabel: next,
-      message: `You have ${stored} on file. Free plan covers one statement month — upgrade to add another.`,
+      message:
+        `You've already used your free upload for ${stored}. ` +
+        'Come back next month to upload again — or upgrade anytime for unlimited uploads.',
     };
   }
   return {
     storedLabel: null,
     newLabel: next,
-    message: 'Free plan covers one statement month. Upgrade to add another month.',
+    message:
+      "You've already used your free upload this month. " +
+      'Come back next month to upload again — or upgrade anytime for unlimited uploads.',
   };
 }
 
@@ -624,17 +648,23 @@ function freeTierNoticeFromDetail(data: unknown): FreeTierLimitNotice | null {
   const newLabel =
     (typeof d.newPeriodLabel === 'string' ? d.newPeriodLabel.trim() : null) || null;
   const message = String(d.message ?? '').trim();
-  if (storedLabel && newLabel) {
+  if (storedLabel) {
     return {
       storedLabel,
       newLabel,
-      message: `You have ${storedLabel} on file. Upgrade to add ${newLabel}.`,
+      message:
+        message ||
+        `You've already used your free upload for ${storedLabel}. ` +
+          'Come back next month to upload again — or upgrade anytime for unlimited uploads.',
     };
   }
   return {
     storedLabel,
     newLabel,
-    message: message || 'Free plan covers one statement month. Upgrade to add another month.',
+    message:
+      message ||
+      "You've already used your free upload this month. " +
+        'Come back next month to upload again — or upgrade anytime for unlimited uploads.',
   };
 }
 
