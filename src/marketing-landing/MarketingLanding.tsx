@@ -24,7 +24,6 @@ const FONT_CSS = `
   .asktill-v81-root p,
   .asktill-v81-root li,
   .asktill-v81-root small,
-  .asktill-v81-root span,
   .asktill-v81-root .eyebrow,
   .asktill-v81-root .hero-pill,
   .asktill-v81-root .category-chip,
@@ -54,49 +53,252 @@ const FONT_CSS = `
 
 /** Tighten vertical rhythm — applied last so it wins over stacked V3–V8.1 rules. */
 const DENSITY_CSS = `
-  .section-head{margin-bottom:28px!important;}
-  .pricing .section-head,.pricing-v8 .section-head{margin:0 auto 28px!important;}
-  .hero-v8{padding:44px 0 40px!important;}
-  .hero-v8-grid{gap:36px!important;}
-  .hero-v8 .positioning{margin-top:16px!important;}
-  .hero-v8 .category-claim{margin-top:14px!important;padding:11px 14px!important;}
-  .hero-v8-actions{margin-top:18px!important;}
-  .hero-v8-trust{margin-top:14px!important;}
-  .hero-pulse-bg{height:100px!important;}
-  .problem,.how,.at-letter,.founder{padding:56px 0!important;}
+  .section-head{margin-bottom:18px!important;}
+  .pricing .section-head,.pricing-v8 .section-head{margin:0 auto 18px!important;}
+  .hero-v8{padding:32px 0 28px!important;}
+  .hero-v8-grid{gap:28px!important;}
+  .hero-v8 .positioning{margin-top:12px!important;}
+  .hero-v8 .category-claim{margin-top:12px!important;padding:10px 12px!important;}
+  .hero-v8-actions{margin-top:14px!important;}
+  .hero-v8-trust{margin-top:12px!important;}
+  .hero-pulse-bg{height:80px!important;}
+  .problem,.how,.at-letter,.founder{padding:40px 0!important;}
   .qa-section,.suite,.commercial-pillars,.chargeback-model,
-  .pulse-section,.coming-soon,.pricing-v8{padding:60px 0!important;}
-  .integrations{padding:40px 0!important;}
-  .integrations .int-label{margin-bottom:18px!important;}
-  .cta-v8{padding:52px 0 48px!important;}
-  .cta-v8 p{margin:0 auto 18px!important;}
-  .cta-v8 h2{margin-bottom:12px!important;}
-  .qa-grid{gap:32px!important;}
-  .chargeback-layout{gap:32px!important;}
-  .at-letter .wrap-inner{gap:36px!important;}
-  .pulse-inner{gap:40px!important;}
-  .pulse-caption{margin-top:20px!important;}
-  .security-strip{margin-top:18px!important;padding:14px 18px!important;}
-  .roadmap{margin-top:20px!important;padding:18px!important;}
-  .partner-trust{margin-top:16px!important;padding:12px 16px!important;}
-  .footer-main{padding:44px 0 32px!important;}
-  .footer-grid{gap:28px!important;}
-  .problem-grid,.suite-grid,.coming-grid{gap:14px!important;}
-  .suite-card{min-height:0!important;padding:20px!important;}
-  .suite-icon{margin-bottom:14px!important;}
-  .suite-card p{margin:0 0 12px!important;}
-  .future-card{min-height:0!important;padding:20px!important;}
-  .pillar-card{padding:26px!important;}
-  .pillar-icon{margin-bottom:14px!important;}
-  .pillar-card>p{margin:0 0 16px!important;}
-  .partner-features{margin-bottom:16px!important;}
-  .reveal{transform:translateY(10px);}
+  .pulse-section,.coming-soon,.pricing-v8{padding:42px 0!important;}
+  .integrations{padding:28px 0!important;}
+  .integrations .int-label{margin-bottom:14px!important;}
+  .cta-v8{padding:40px 0 36px!important;}
+  .cta-v8 p{margin:0 auto 14px!important;}
+  .cta-v8 h2{margin-bottom:10px!important;}
+  .qa-grid{gap:24px!important;}
+  .chargeback-layout{gap:24px!important;}
+  .at-letter .wrap-inner{gap:28px!important;}
+  .pulse-inner{gap:28px!important;}
+  .pulse-caption{margin-top:14px!important;}
+  .security-strip{margin-top:14px!important;padding:12px 16px!important;}
+  .roadmap{margin-top:14px!important;padding:16px!important;}
+  .partner-trust{margin-top:12px!important;padding:10px 14px!important;}
+  .footer-main{padding:36px 0 28px!important;}
+  .footer-grid{gap:22px!important;}
+  .problem-grid,.suite-grid,.coming-grid{gap:12px!important;}
+  .suite-card{min-height:0!important;padding:18px!important;}
+  .suite-icon{margin-bottom:12px!important;}
+  .suite-card p{margin:0 0 10px!important;}
+  .future-card{min-height:0!important;padding:18px!important;}
+  .pillar-card{padding:22px!important;}
+  .pillar-icon{margin-bottom:12px!important;}
+  .pillar-card>p{margin:0 0 12px!important;}
+  .partner-features{margin-bottom:12px!important;}
+  /* Global app .wrap is locked to 1080px — free landing nav/sections. */
+  .asktill-v81-root .wrap{
+    max-width:1180px!important;
+    min-width:0!important;
+    width:100%!important;
+    box-sizing:border-box;
+  }
+  .asktill-v81-root nav.wrap{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:14px!important;
+    flex-wrap:nowrap!important;
+  }
+  .asktill-v81-root .nav-links{
+    gap:14px!important;
+    flex:1 1 auto;
+    justify-content:center;
+    flex-wrap:nowrap!important;
+    min-width:0;
+  }
+  .asktill-v81-root .nav-links a{white-space:nowrap;}
+  .asktill-v81-root .nav-right{
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    flex:0 0 auto!important;
+    white-space:nowrap;
+  }
+  /* Login matches Start Free (.btn) pill — keep visible vs HTML mobile hide */
+  .asktill-v81-root .nav-right .btn.nav-login,
+  .asktill-v81-root a.btn.nav-login{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    white-space:nowrap!important;
+    flex-shrink:0!important;
+    margin:0!important;
+  }
+  .asktill-v81-root .nav-right .btn{flex-shrink:0!important;white-space:nowrap!important;}
+  @media (max-width:860px){
+    .asktill-v81-root .nav-login{display:inline-flex!important;}
+  }
   @media (max-width:600px){
-    .hero-v8{padding:32px 0 28px!important;}
+    .hero-v8{padding:24px 0 20px!important;}
     .problem,.how,.at-letter,.founder,
     .qa-section,.suite,.commercial-pillars,.chargeback-model,
-    .pulse-section,.coming-soon,.pricing-v8{padding:44px 0!important;}
-    .cta-v8{padding:40px 0 36px!important;}
+    .pulse-section,.coming-soon,.pricing-v8{padding:32px 0!important;}
+    .cta-v8{padding:32px 0 28px!important;}
+  }
+`;
+
+/** Monarch-like motion layer: soft ambience, staggered entrances, polished hovers. */
+const MOTION_CSS = `
+  .asktill-v81-root{
+    --ease-out:cubic-bezier(.22,1,.36,1);
+    --ease-soft:cubic-bezier(.4,0,.2,1);
+  }
+  .asktill-landing-v81-active{scroll-behavior:smooth;}
+  .asktill-v81-root #site-header{
+    transition:background .35s var(--ease-soft),border-color .35s var(--ease-soft),box-shadow .35s var(--ease-soft)!important;
+  }
+  .asktill-v81-root #site-header.scrolled{
+    background:rgba(255,255,255,.86)!important;
+    backdrop-filter:saturate(160%) blur(14px);
+    -webkit-backdrop-filter:saturate(160%) blur(14px);
+    box-shadow:0 8px 28px rgba(16,35,29,.06);
+  }
+
+  /* Ambient floating gradients (Monarch-style soft orbs) */
+  .asktill-v81-root .hero-v8{position:relative;isolation:isolate;overflow:hidden;}
+  .asktill-v81-root .motion-orb{
+    position:absolute;border-radius:50%;pointer-events:none;z-index:0;filter:blur(2px);
+    opacity:.55;will-change:transform;
+    animation:asktill-orb-float 12s var(--ease-soft) infinite alternate;
+  }
+  .asktill-v81-root .motion-orb-a{
+    width:420px;height:420px;left:-120px;top:-80px;
+    background:radial-gradient(circle,rgba(47,111,237,.22),transparent 68%);
+  }
+  .asktill-v81-root .motion-orb-b{
+    width:360px;height:360px;right:-80px;top:10%;
+    background:radial-gradient(circle,rgba(27,138,90,.20),transparent 68%);
+    animation-delay:-4s;animation-duration:15s;
+  }
+  .asktill-v81-root .motion-orb-c{
+    width:280px;height:280px;left:38%;bottom:-90px;
+    background:radial-gradient(circle,rgba(124,77,255,.16),transparent 70%);
+    animation-delay:-7s;animation-duration:18s;
+  }
+  @keyframes asktill-orb-float{
+    from{transform:translate3d(0,0,0) scale(1);}
+    to{transform:translate3d(28px,-22px,0) scale(1.08);}
+  }
+
+  /* Hero entrance */
+  .asktill-v81-root .hero-v8-copy > *,
+  .asktill-v81-root .hero-brief-shell{
+    opacity:0;transform:translateY(28px);
+    animation:asktill-rise .95s var(--ease-out) forwards;
+  }
+  .asktill-v81-root .hero-v8-copy > *:nth-child(1){animation-delay:.05s;}
+  .asktill-v81-root .hero-v8-copy > *:nth-child(2){animation-delay:.14s;}
+  .asktill-v81-root .hero-v8-copy > *:nth-child(3){animation-delay:.24s;}
+  .asktill-v81-root .hero-v8-copy > *:nth-child(4){animation-delay:.34s;}
+  .asktill-v81-root .hero-v8-copy > *:nth-child(5){animation-delay:.44s;}
+  .asktill-v81-root .hero-v8-copy > *:nth-child(6){animation-delay:.54s;}
+  .asktill-v81-root .hero-brief-shell{animation-delay:.28s;}
+  @keyframes asktill-rise{
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  /* Soft float on product mock */
+  .asktill-v81-root .hero-brief-shell.is-ready{
+    animation:asktill-rise .95s var(--ease-out) .28s forwards;
+  }
+  .asktill-v81-root .hero-brief-shell.is-floating{
+    opacity:1;
+    animation:asktill-float 6.5s var(--ease-soft) infinite alternate;
+  }
+  @keyframes asktill-float{
+    from{transform:translateY(0);}
+    to{transform:translateY(-10px);}
+  }
+  .asktill-v81-root .hero-brief{
+    transition:transform .45s var(--ease-out),box-shadow .45s var(--ease-out);
+    transform-style:preserve-3d;
+  }
+
+  /* Richer scroll reveals + stagger */
+  .asktill-v81-root .reveal{
+    opacity:0!important;
+    transform:translateY(28px) scale(.985)!important;
+    filter:blur(4px);
+    transition:
+      opacity .85s var(--ease-out),
+      transform .85s var(--ease-out),
+      filter .85s var(--ease-out)!important;
+    transition-delay:var(--d,0ms)!important;
+  }
+  .asktill-v81-root .reveal.in{
+    opacity:1!important;
+    transform:none!important;
+    filter:blur(0)!important;
+  }
+
+  /* Cards / CTAs — Monarch-soft lift */
+  .asktill-v81-root .btn{
+    transition:transform .25s var(--ease-out),box-shadow .25s var(--ease-out),background .25s var(--ease-soft)!important;
+  }
+  .asktill-v81-root .btn:hover{
+    transform:translateY(-2px)!important;
+  }
+  .asktill-v81-root .btn-primary:hover{
+    box-shadow:0 14px 34px rgba(16,169,88,.32)!important;
+  }
+  .asktill-v81-root .problem-card,
+  .asktill-v81-root .suite-card,
+  .asktill-v81-root .future-card,
+  .asktill-v81-root .pillar-card,
+  .asktill-v81-root .price-v8,
+  .asktill-v81-root .letter-card,
+  .asktill-v81-root .cb-demo,
+  .asktill-v81-root .qa-row > *{
+    transition:transform .35s var(--ease-out),box-shadow .35s var(--ease-out),border-color .35s var(--ease-soft)!important;
+  }
+  .asktill-v81-root .problem-card:hover,
+  .asktill-v81-root .suite-card:hover,
+  .asktill-v81-root .future-card:hover,
+  .asktill-v81-root .pillar-card:hover,
+  .asktill-v81-root .price-v8:hover,
+  .asktill-v81-root .letter-card:hover,
+  .asktill-v81-root .cb-demo:hover{
+    transform:translateY(-8px)!important;
+    box-shadow:0 22px 50px rgba(22,63,46,.14)!important;
+  }
+  .asktill-v81-root .nav-links a{
+    position:relative;
+    transition:color .2s var(--ease-soft)!important;
+  }
+  .asktill-v81-root .nav-links a::after{
+    content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;border-radius:99px;
+    background:linear-gradient(90deg,#168755,#2F6FED);transform:scaleX(0);transform-origin:left;
+    transition:transform .28s var(--ease-out);
+  }
+  .asktill-v81-root .nav-links a:hover::after{transform:scaleX(1);}
+  .asktill-v81-root .int-badge{
+    transition:transform .3s var(--ease-out),box-shadow .3s var(--ease-out)!important;
+  }
+  .asktill-v81-root .int-badge:hover{
+    transform:translateY(-4px) scale(1.03)!important;
+    box-shadow:0 14px 28px rgba(16,35,29,.1)!important;
+  }
+  .asktill-v81-root .int-row{
+    animation:asktill-drift 18s linear infinite alternate;
+  }
+  @keyframes asktill-drift{
+    from{transform:translateX(-6px);}
+    to{transform:translateX(6px);}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .asktill-v81-root .motion-orb,
+    .asktill-v81-root .hero-v8-copy > *,
+    .asktill-v81-root .hero-brief-shell,
+    .asktill-v81-root .hero-brief-shell.is-ready,
+    .asktill-v81-root .int-row{animation:none!important;}
+    .asktill-v81-root .hero-v8-copy > *,
+    .asktill-v81-root .hero-brief-shell,
+    .asktill-v81-root .reveal{opacity:1!important;transform:none!important;filter:none!important;}
   }
 `;
 
@@ -158,6 +360,12 @@ export default function MarketingLanding() {
     document.head.appendChild(density);
     styleNodes.push(density);
 
+    const motion = document.createElement('style');
+    motion.id = 'asktill-v81-motion';
+    motion.textContent = MOTION_CSS;
+    document.head.appendChild(motion);
+    styleNodes.push(motion);
+
     // Body markup (header → footer)
     const root = document.createElement('div');
     root.className = 'asktill-v81-root';
@@ -165,6 +373,52 @@ export default function MarketingLanding() {
     // Remove inline <script> tags from HTML — we re-run them safely below
     root.querySelectorAll('script').forEach((s) => s.remove());
     host.replaceChildren(root);
+
+    // Monarch-like ambience + staggered reveals + subtle parallax
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hero = root.querySelector('.hero-v8');
+    if (hero && !reduceMotion) {
+      ['motion-orb-a', 'motion-orb-b', 'motion-orb-c'].forEach((cls) => {
+        const orb = document.createElement('div');
+        orb.className = `motion-orb ${cls}`;
+        orb.setAttribute('aria-hidden', 'true');
+        hero.prepend(orb);
+      });
+    }
+    const briefShell = root.querySelector('.hero-brief-shell');
+    if (briefShell && !reduceMotion) {
+      briefShell.classList.add('is-ready');
+      const onRiseEnd = () => {
+        briefShell.classList.add('is-floating');
+        briefShell.removeEventListener('animationend', onRiseEnd);
+      };
+      briefShell.addEventListener('animationend', onRiseEnd);
+    }
+    // Stagger cards within each section grid
+    root.querySelectorAll(
+      '.problem-grid, .suite-grid, .coming-grid, .price-grid, .pricing-v8-grid, .how-steps, .pillar-grid',
+    ).forEach((group) => {
+      group.querySelectorAll('.reveal').forEach((el, index) => {
+        (el as HTMLElement).style.setProperty('--d', `${Math.min(index, 6) * 70}ms`);
+      });
+    });
+
+    const brief = root.querySelector('.hero-brief') as HTMLElement | null;
+    const onPointerMove = (event: PointerEvent) => {
+      if (!brief || reduceMotion) return;
+      const rect = brief.getBoundingClientRect();
+      const px = (event.clientX - rect.left) / rect.width - 0.5;
+      const py = (event.clientY - rect.top) / rect.height - 0.5;
+      brief.style.transform = `rotateY(${px * 7}deg) rotateX(${-py * 5}deg) translateY(-2px)`;
+    };
+    const onPointerLeave = () => {
+      if (!brief) return;
+      brief.style.transform = '';
+    };
+    if (brief && !reduceMotion) {
+      brief.addEventListener('pointermove', onPointerMove);
+      brief.addEventListener('pointerleave', onPointerLeave);
+    }
 
     // Wire app routes without changing visual design
     const rewrite = (selector: string, path: string) => {
@@ -200,18 +454,19 @@ export default function MarketingLanding() {
     });
     rewrite('a.nav-login', '/login');
 
-    // Ensure a Login control exists in the nav actions cluster
+    // Ensure a Login control exists — same pill button style as Start Free
     const navRight = root.querySelector('.nav-right');
     if (navRight && !navRight.querySelector('a[href="/login"]')) {
       const login = document.createElement('a');
       login.href = '/login';
-      login.className = 'nav-login';
-      login.textContent = 'Log in';
+      login.className = 'btn btn-primary nav-login';
+      login.textContent = 'Login';
+      login.setAttribute('aria-label', 'Log in');
       login.addEventListener('click', (event) => {
         event.preventDefault();
         navigate('/login');
       });
-      const start = navRight.querySelector('a.btn-primary');
+      const start = navRight.querySelector('a.btn-primary:not(.nav-login)');
       if (start) navRight.insertBefore(login, start);
       else navRight.appendChild(login);
     }
@@ -254,6 +509,10 @@ export default function MarketingLanding() {
       document.documentElement.classList.remove('asktill-landing-v81-active');
       styleNodes.forEach((node) => node.remove());
       windowListeners.forEach(([type, listener]) => origRemove(type, listener));
+      if (brief) {
+        brief.removeEventListener('pointermove', onPointerMove);
+        brief.removeEventListener('pointerleave', onPointerLeave);
+      }
       host.replaceChildren();
     };
   }, [navigate]);
