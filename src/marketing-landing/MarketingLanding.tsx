@@ -156,11 +156,21 @@ const MOTION_CSS = `
     --ease-soft:cubic-bezier(.4,0,.2,1);
   }
   .asktill-landing-v81-active{scroll-behavior:smooth;}
+  /* Keep top nav locked — sticky breaks under app overflow-x on #root */
   .asktill-v81-root #site-header{
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    right:0!important;
+    width:100%!important;
+    z-index:200!important;
     transition:background .35s var(--ease-soft),border-color .35s var(--ease-soft),box-shadow .35s var(--ease-soft)!important;
   }
+  .asktill-v81-root main{
+    padding-top:var(--header-offset,74px);
+  }
   .asktill-v81-root #site-header.scrolled{
-    background:rgba(255,255,255,.86)!important;
+    background:rgba(255,255,255,.92)!important;
     backdrop-filter:saturate(160%) blur(14px);
     -webkit-backdrop-filter:saturate(160%) blur(14px);
     box-shadow:0 8px 28px rgba(16,35,29,.06);
@@ -382,6 +392,16 @@ export default function MarketingLanding() {
     root.querySelectorAll('script').forEach((s) => s.remove());
     host.replaceChildren(root);
 
+    // Pin nav height so content clears the fixed header
+    const headerEl = root.querySelector<HTMLElement>('#site-header');
+    const syncHeaderOffset = () => {
+      if (!headerEl) return;
+      const h = Math.round(headerEl.getBoundingClientRect().height) || 74;
+      root.style.setProperty('--header-offset', `${h}px`);
+    };
+    syncHeaderOffset();
+    window.addEventListener('resize', syncHeaderOffset);
+
     // Monarch-like ambience + staggered reveals + subtle parallax
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const hero = root.querySelector('.hero-v8');
@@ -517,6 +537,7 @@ export default function MarketingLanding() {
       document.documentElement.classList.remove('asktill-landing-v81-active');
       styleNodes.forEach((node) => node.remove());
       windowListeners.forEach(([type, listener]) => origRemove(type, listener));
+      window.removeEventListener('resize', syncHeaderOffset);
       if (brief) {
         brief.removeEventListener('pointermove', onPointerMove);
         brief.removeEventListener('pointerleave', onPointerLeave);
