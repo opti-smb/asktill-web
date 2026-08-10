@@ -47,7 +47,7 @@
 
 .pop {
   position: fixed;
-  z-index: 1200;
+  z-index: 10050;
   width: 228px;
   background: #fff;
   border: 1px solid #e2e8f0;

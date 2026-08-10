@@ -151,7 +151,7 @@ export default function AtRewardsPage() {
   return (
     <>
       <SectionHeader
-        periodMeta="AT REWARDS"
+        periodMeta="save money here"
         title={
           <>
             Your <em>wallet.</em>

@@ -104,16 +104,57 @@
 .colOpen {
   color: var(--ap-red);
   text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
 }
 
 .colClosed {
   color: var(--ap-green);
   text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
 }
 
 .colDone {
   color: #4b5568;
   text-align: center;
+}
+
+.eyeBtn {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  opacity: 0.85;
+}
+
+.eyeBtn:hover {
+  opacity: 1;
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.eyeBtn[aria-pressed='false'] {
+  opacity: 0.55;
+}
+
+.dateHidden {
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: #94a3b8;
+  user-select: none;
 }
 
 .list {
@@ -127,6 +168,17 @@
   grid-template-columns: 28px minmax(0, 1fr) 78px 78px 36px;
   align-items: center;
   gap: 8px;
+}
+
+.rowLocked .input {
+  background: #f8fafc;
+  color: #475569;
+  cursor: default;
+}
+
+.checkLocked {
+  cursor: not-allowed;
+  opacity: 0.92;
 }
 
 .slotLabel {
@@ -191,6 +243,47 @@
 .dateClosed {
   background: var(--ap-green-soft);
   color: var(--ap-green);
+}
+
+/* Suggested today — empty row, not activated yet */
+.datePreview {
+  background: #f8fafc;
+  color: #c4b5b5;
+  border: 1px dashed #e7d4d4;
+  font-weight: 600;
+}
+
+.datePreview.dateOpen {
+  color: #e0b4b4;
+  border-color: #f0d6d6;
+  background: #fcf6f6;
+}
+
+.datePreview.dateClosed {
+  color: #a8cbb8;
+  border-color: #cfe8da;
+  background: #f4faf7;
+}
+
+/* Typing / ticked — date will lock on Save */
+.dateActive {
+  font-weight: 800;
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.dateActive.dateOpen {
+  background: #fdeaea;
+  color: var(--ap-red);
+}
+
+.dateActive.dateClosed {
+  background: #e8f7ef;
+  color: var(--ap-green);
+}
+
+/* Already saved / fixed */
+.dateFixed {
+  font-weight: 800;
 }
 
 .dateEmpty {

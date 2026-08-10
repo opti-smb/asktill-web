@@ -20,7 +20,6 @@ export default function AtChargebacksPage() {
           <div className={styles.titleChrome}>
             <div className={headerStyles.headerRow}>
               <div>
-                <div className={styles.periodMeta}>AT CHARGEBACKS</div>
                 <h1 className={headerStyles.h1}>
                   <span className={styles.titleAccent}>Money reclaimed.</span>
                 </h1>

@@ -1,4 +1,4 @@
-import { FormEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
@@ -468,27 +468,6 @@ export default function CalculatorsPage() {
     // Intentionally omit `result` object identity — statement id is enough via rollingKey/cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- result used only as same-id shortcut
   }, [monthOnly, rollingKey, sortedReports]);
-
-  const onBoxTilt = (e: MouseEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    const r = el.getBoundingClientRect();
-    if (r.width < 1 || r.height < 1) return;
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    // Subtle tilt only — keep boxes from jumping forward
-    el.style.setProperty('--tilt-x', `${(-py * 3).toFixed(2)}deg`);
-    el.style.setProperty('--tilt-y', `${(px * 3.5).toFixed(2)}deg`);
-    el.style.setProperty('--tilt-glare-x', `${((px + 0.5) * 100).toFixed(1)}%`);
-    el.style.setProperty('--tilt-glare-y', `${((py + 0.5) * 100).toFixed(1)}%`);
-  };
-
-  const resetBoxTilt = (e: MouseEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    el.style.setProperty('--tilt-x', '0deg');
-    el.style.setProperty('--tilt-y', '0deg');
-    el.style.setProperty('--tilt-glare-x', '50%');
-    el.style.setProperty('--tilt-glare-y', '50%');
-  };
 
   const switchStatement = async (statementId: string) => {
     if (!statementId || statementId === result?.statement_id || hydrating) return;
@@ -2000,7 +1979,7 @@ export default function CalculatorsPage() {
         periodMeta={analysis.period_label ?? 'CALCULATORS'}
         title={
           <>
-            Calculator <em>health.</em>
+            Bussiness <em>health.</em>
           </>
         }
       />
@@ -2044,11 +2023,7 @@ export default function CalculatorsPage() {
               ) : (
                 <>
               {showGuidePanels ? (
-              <div
-                className={`${styles.directions} ${styles.animIn} ${styles.box3d}`}
-                onMouseMove={onBoxTilt}
-                onMouseLeave={resetBoxTilt}
-              >
+              <div className={`${styles.directions} ${styles.animIn}`}>
                 <div className={styles.directionsEyebrow}>How to read this</div>
                 <p className={styles.prose}>
                   Every calculator runs on this statement&apos;s numbers and is scored against
@@ -2073,11 +2048,7 @@ export default function CalculatorsPage() {
               {healthOverview ? (
                 <>
                   <div className={`${styles.scoreboard} ${styles.animIn} ${styles.animDelay1}`}>
-                    <div
-                      className={`${styles.overall} ${styles.box3d}`}
-                      onMouseMove={onBoxTilt}
-                      onMouseLeave={resetBoxTilt}
-                    >
+                    <div className={styles.overall}>
                       <button
                         type="button"
                         className={styles.guideToggle}
@@ -2147,7 +2118,7 @@ export default function CalculatorsPage() {
                         </div>
                       </div>
                       <div className={styles.ovRight}>
-                        <h2 className={styles.ovTitle}>Overall calculator health</h2>
+                        <h2 className={styles.ovTitle}>Bussiness health</h2>
                         <p className={styles.ovMeta}>
                           {healthOverview.periodLabel} · {healthOverview.scored} of{' '}
                           {healthOverview.total} scored
@@ -2156,11 +2127,7 @@ export default function CalculatorsPage() {
                     </div>
 
                     <div className={styles.counts}>
-                      <div
-                        className={`${styles.count} ${styles.countGreen} ${styles.box3d}`}
-                        onMouseMove={onBoxTilt}
-                        onMouseLeave={resetBoxTilt}
-                      >
+                      <div className={`${styles.count} ${styles.countGreen}`}>
                         <span className={`${styles.countIcon} ${styles.countIconGreen}`} aria-hidden>
                           <i className="ti ti-circle-check" />
                         </span>
@@ -2169,11 +2136,7 @@ export default function CalculatorsPage() {
                           <b>Healthy</b>
                         </div>
                       </div>
-                      <div
-                        className={`${styles.count} ${styles.countAmber} ${styles.box3d}`}
-                        onMouseMove={onBoxTilt}
-                        onMouseLeave={resetBoxTilt}
-                      >
+                      <div className={`${styles.count} ${styles.countAmber}`}>
                         <span className={`${styles.countIcon} ${styles.countIconAmber}`} aria-hidden>
                           <i className="ti ti-eye" />
                         </span>
@@ -2182,11 +2145,7 @@ export default function CalculatorsPage() {
                           <b>Watch</b>
                         </div>
                       </div>
-                      <div
-                        className={`${styles.count} ${styles.countRed} ${styles.box3d}`}
-                        onMouseMove={onBoxTilt}
-                        onMouseLeave={resetBoxTilt}
-                      >
+                      <div className={`${styles.count} ${styles.countRed}`}>
                         <span className={`${styles.countIcon} ${styles.countIconRed}`} aria-hidden>
                           <i className="ti ti-alert-triangle" />
                         </span>
@@ -2210,11 +2169,7 @@ export default function CalculatorsPage() {
                       red: group.rows.filter((r) => r.band === 'red').length,
                     };
                     return (
-                      <section
-                        key={group.id}
-                        className={`${styles.cat} ${styles.animIn}`}
-                        style={{ animationDelay: `${0.12 + gi * 0.06}s` }}
-                      >
+                      <section key={group.id} className={styles.cat}>
                         <div className={styles.catHd}>
                           <h3>
                             <span className={styles.sectionNum}>{gi + 1}</span>
@@ -2237,22 +2192,14 @@ export default function CalculatorsPage() {
                           </div>
                         </div>
                         <div className={styles.healthGrid}>
-                          {group.rows.map((row, ri) => (
+                          {group.rows.map((row) => (
                             <div
                               key={row.id}
                               role="button"
                               tabIndex={0}
-                              className={`${styles.calcRow} ${styles.box3d} ${styles[`band_${row.band}`]} ${
+                              className={`${styles.calcRow} ${styles[`band_${row.band}`]} ${
                                 active?.id === row.id ? styles.calcRowActive : ''
                               }`}
-                              style={{ animationDelay: `${0.16 + gi * 0.06 + ri * 0.04}s` }}
-                              onMouseMove={onBoxTilt}
-                              onMouseLeave={resetBoxTilt}
-                              onAnimationEnd={(e) => {
-                                if (e.currentTarget === e.target) {
-                                  e.currentTarget.classList.add(styles.tiltReady);
-                                }
-                              }}
                               onClick={() => openCalculator(row.id)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
@@ -2321,7 +2268,7 @@ export default function CalculatorsPage() {
                 </div>
 
                 {active ? (
-                  <section className={`${styles.panel} ${styles.panelIn} ${styles.box3d}`} aria-live="polite">
+                  <section className={styles.panel} aria-live="polite">
                     <div className={styles.panelTop}>
                       <div>
                         <h2 className={styles.panelTitle}>{active.name}</h2>
