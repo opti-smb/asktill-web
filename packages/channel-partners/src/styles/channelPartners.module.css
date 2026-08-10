@@ -195,9 +195,9 @@
 }
 
 .cardEyebrow {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  font-weight: 650;
   color: var(--cp-muted);
 }
 

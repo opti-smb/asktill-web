@@ -6,7 +6,7 @@ import styles from './AtLedgerSectionLayout.module.css';
 const HOVER_NAV_MS = 120;
 const LEDGER_HUB = '/dashboard/at-ledger';
 
-/** Thin UI chrome above ledger section pages — back to the AT Ledger hub. */
+/** Thin UI chrome above ledger section pages — back to the Financials hub. */
 export default function AtLedgerSectionLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -47,7 +47,7 @@ export default function AtLedgerSectionLayout() {
             onMouseEnter={goBackOnHover}
             onMouseLeave={clearHoverTimer}
           >
-            ← Back to AT Ledger
+            ← Back to Financials
           </Link>
         </div>
       </div>

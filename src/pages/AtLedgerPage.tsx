@@ -117,7 +117,6 @@ export default function AtLedgerPage() {
                 {LEDGER_BOXES.map((box) => (
                   <Link key={box.id} to={box.path} className={styles.cardBtn}>
                     <span className={styles.cardIcon}>{box.icon}</span>
-                    <span className={styles.cardEyebrow}>Ledger</span>
                     <span className={styles.cardTitle}>{box.title}</span>
                     <span className={styles.cardBlurb}>{box.blurb}</span>
                   </Link>
