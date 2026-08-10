@@ -98,7 +98,7 @@ export default function AtLedgerPage() {
   return (
     <>
       <SectionHeader
-        periodMeta="AT LEDGER"
+        periodMeta="Financials"
         title={
           <>
             Your books, <em>in one place.</em>
