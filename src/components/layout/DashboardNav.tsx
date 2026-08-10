@@ -38,6 +38,7 @@ export default function DashboardNav() {
           <div className={styles.navTabs}>
             <NavLink
               to={DEFAULT_DASHBOARD_PATH}
+              end
               className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
             >
               Business Brief

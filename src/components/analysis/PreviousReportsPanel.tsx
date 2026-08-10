@@ -110,8 +110,8 @@ export default function PreviousReportsPanel({
     try {
       const { data } = await fetchSavedReport(row.statement_id);
       onLoadReport?.(data as AnalyzeResult);
-      // Upload-page "previous reconciliation reports" should land on Reconciliation, not AT Letter.
-      navigate(variant === 'upload' ? '/dashboard/at-ledger/reconciliation' : DEFAULT_DASHBOARD_PATH);
+      // Always land on Business Brief (default dashboard tab).
+      navigate(DEFAULT_DASHBOARD_PATH);
     } catch (err) {
       setActionError(
         await getApiErrorAsync(
@@ -122,7 +122,7 @@ export default function PreviousReportsPanel({
     } finally {
       setBusyId(null);
     }
-  }, [busyId, navigate, onLoadReport, variant]);
+  }, [busyId, navigate, onLoadReport]);
 
   const downloadMonthlyReport = useCallback(async (row: SavedReportSummaryApi) => {
     if (!row.statement_id || busyId) return;
