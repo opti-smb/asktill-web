@@ -21,7 +21,7 @@ export default function AtChargebacksPage() {
             <div className={headerStyles.headerRow}>
               <div>
                 <h1 className={headerStyles.h1}>
-                  <span className={styles.titleAccent}>Money reclaimed.</span>
+                  <span className={styles.titleAccent}>Money Reclaimed.</span>
                 </h1>
               </div>
             </div>

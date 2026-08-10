@@ -65,7 +65,6 @@ export default function HomePage() {
               >
                 {visual?.icon}
               </span>
-              <span className={styles.cardEyebrow}>Category</span>
               <span className={styles.cardTitle}>{cat.title}</span>
               <span className={styles.cardBlurb}>{cat.blurb}</span>
             </Link>

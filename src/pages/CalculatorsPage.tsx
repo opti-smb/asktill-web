@@ -1886,7 +1886,7 @@ export default function CalculatorsPage() {
   const loadingPanel = (title: ReactNode, detail: string) => (
     <div className={styles.letterScope}>
       <div className={styles.main}>
-        <SectionHeader periodMeta="CALCULATORS" title={title} />
+        <SectionHeader periodMeta="Business Health" title={title} />
         <div className="wrap" style={{ padding: '12px 0 28px' }}>
           <div className={styles.loadStatus} role="status" aria-live="polite">
             <Spinner label={detail} size="sm" />
@@ -1928,7 +1928,7 @@ export default function CalculatorsPage() {
       <div className={styles.letterScope}>
         <div className={styles.main}>
           <SectionHeader
-            periodMeta="CALCULATORS"
+            periodMeta="Business Health"
             title={
               <>
                 Numbers from <em>your statements.</em>
@@ -1976,10 +1976,10 @@ export default function CalculatorsPage() {
   return (
     <div className={styles.letterScope}>
       <SectionHeader
-        periodMeta={analysis.period_label ?? 'CALCULATORS'}
+        periodMeta={analysis.period_label ? analysis.period_label.toUpperCase() : 'Business Health'}
         title={
           <>
-            Bussiness <em>health.</em>
+            Business <em>Health.</em>
           </>
         }
       />
@@ -2118,7 +2118,7 @@ export default function CalculatorsPage() {
                         </div>
                       </div>
                       <div className={styles.ovRight}>
-                        <h2 className={styles.ovTitle}>Bussiness health</h2>
+                          <h2 className={styles.ovTitle}>Business Health</h2>
                         <p className={styles.ovMeta}>
                           {healthOverview.periodLabel} · {healthOverview.scored} of{' '}
                           {healthOverview.total} scored

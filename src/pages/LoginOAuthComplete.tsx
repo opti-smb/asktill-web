@@ -24,7 +24,7 @@ import {
 } from '../lib/clerk';
 import styles from './LoginPage.module.css';
 
-import { getPostLoginRedirect } from '../lib/pendingPdfDownload';
+import { resolvePostLoginRedirect } from '../lib/pendingPdfDownload';
 const FLOW_TIMEOUT_MS = 45_000;
 const SESSION_WAIT_MS = 12_000;
 const SLOW_HINT_MS = 1_500;
@@ -118,7 +118,7 @@ export default function LoginOAuthComplete() {
         setPhase('done');
         clearGoogleSignInAttempt();
         if (!cancelled) {
-          navigate(getPostLoginRedirect(), { replace: true });
+          navigate(await resolvePostLoginRedirect(), { replace: true });
         }
         void clearClerkSession(clerk, { stayOnPage: true });
       } catch (err) {
