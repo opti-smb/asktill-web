@@ -12,6 +12,7 @@ import BriefPriorities, { type PriorityItem } from '../components/brief/BriefPri
 import BriefTrends from '../components/brief/BriefTrends';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useAnalysis } from '../context/AnalysisContext';
+import { useRiskThresholds } from '../context/RiskThresholdContext';
 import { useAtLetterTemplate } from '../hooks/useAtLetterTemplate';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
 import { ROLLING_VIEW, useRollingReports } from '../hooks/useRollingReports';
@@ -24,6 +25,7 @@ import {
   pctDelta,
   ptsDelta,
 } from '../lib/briefMetrics';
+import { buildCalculatorHealthOverview } from '../lib/calculatorHealthReadings';
 import { downloadMonthlyReportPdf } from '../lib/api';
 import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
 import styles from './AtLetterPage.module.css';
@@ -69,6 +71,7 @@ const briefWidthStyle = {
 
 export default function AtLetterPage() {
   const { result } = useAnalysis();
+  const { evaluate: evaluateRisk, prefs } = useRiskThresholds();
   const { historyReady, savedReports } = useReportSync();
   const { statementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
@@ -139,12 +142,14 @@ export default function AtLetterPage() {
   const marginDelta = ptsDelta(netMarginPct, prior?.netMarginPct ?? null);
   const runwayDelta = absDelta(runwayDays, prior?.runwayDays ?? null, ' days');
   const cashDelta = pctDelta(cashAvailable, prior?.cashAvailable ?? null);
-  const healthDeltaPts =
-    runwayDays != null && prior?.runwayDays != null
-      ? Math.round(runwayDays - prior.runwayDays)
-      : moneyIn != null && prior?.moneyIn != null && prior.moneyIn !== 0
-        ? Math.round(((moneyIn - prior.moneyIn) / Math.abs(prior.moneyIn)) * 100)
-        : null;
+
+  /** Same scoreboard as Business Health (calculators) — not runway/margin heuristic. */
+  const healthOverview = useMemo(
+    () => buildCalculatorHealthOverview(result, evaluateRisk),
+    [result, evaluateRisk, prefs],
+  );
+  const healthScore = healthOverview?.score ?? null;
+  const healthBandLabel = healthOverview?.bandLabel ?? null;
 
   const periodMeta =
     latest?.periodLabel || periodLabel?.trim() || analysis?.period_label?.trim() || 'This period';
@@ -210,18 +215,6 @@ export default function AtLetterPage() {
     }
     return out;
   }, [trendSeries]);
-
-  const healthScore = useMemo(() => {
-    if (runwayDays == null && netMarginPct == null) return null;
-    let score = 50;
-    if (runwayDays != null) {
-      score = Math.max(20, Math.min(98, Math.round(40 + runwayDays * 0.9)));
-    }
-    if (netMarginPct != null) {
-      score = Math.max(20, Math.min(99, score + Math.round((netMarginPct - 10) * 1.2)));
-    }
-    return score;
-  }, [runwayDays, netMarginPct]);
 
   const kpiItems = useMemo(() => {
     const channels = channelCount(posIn, ecomIn);
@@ -426,58 +419,23 @@ export default function AtLetterPage() {
   }, [analysis?.standard_insights]);
 
   const healthCards = useMemo(() => {
-    const cards: HealthCard[] = [];
-    if (runwayDays != null) {
-      const tone = runwayDays < 30 ? 'bad' : runwayDays < 45 ? 'watch' : 'good';
-      cards.push({
-        id: 'cash',
-        label: 'Cash Position',
-        status: tone === 'good' ? 'Good' : tone === 'watch' ? 'Watch' : 'At risk',
-        score: Math.max(20, Math.min(99, Math.round(runwayDays * 2))),
-        tone,
-      });
-    }
-    if (moneyInDelta) {
-      const down = moneyInDelta.startsWith('-');
-      cards.push({
-        id: 'rev',
-        label: 'Revenue Growth',
-        status: down ? 'Watch' : 'Good',
-        score: Math.max(20, Math.min(99, 70 + Math.round(Number(moneyInDelta.replace('%', '')) || 0))),
-        tone: down ? 'watch' : 'good',
-      });
-    }
-    if (payrollPct != null) {
-      cards.push({
-        id: 'payroll',
-        label: 'Payroll Ratio',
-        status: payrollPct > 28 ? 'Watch' : 'Good',
-        score: Math.max(20, Math.min(99, Math.round(100 - payrollPct * 1.5))),
-        tone: payrollPct > 28 ? 'watch' : 'good',
-      });
-    }
-    const recon = analysis?.reconciliation?.hero;
-    if (recon && recon.total > 0) {
-      const pct = Math.round((recon.matched / recon.total) * 100);
-      cards.push({
-        id: 'recon',
-        label: 'Reconciliation',
-        status: pct >= 90 ? 'Good' : pct >= 70 ? 'Watch' : 'At risk',
-        score: pct,
-        tone: pct >= 90 ? 'good' : pct >= 70 ? 'watch' : 'bad',
-      });
-    }
-    if (feesPct != null) {
-      cards.push({
-        id: 'fees',
-        label: 'Processing Fees',
-        status: feesPct > 3 ? 'Watch' : 'Good',
-        score: Math.max(20, Math.min(99, Math.round(100 - feesPct * 12))),
-        tone: feesPct > 3 ? 'watch' : 'good',
-      });
-    }
-    return cards;
-  }, [runwayDays, moneyInDelta, payrollPct, analysis?.reconciliation?.hero, feesPct]);
+    if (!healthOverview) return [] as HealthCard[];
+    const toneOf = (band: string): HealthCard['tone'] =>
+      band === 'green' ? 'good' : band === 'amber' ? 'watch' : 'bad';
+    const scoreOf = (band: string): number =>
+      band === 'green' ? 100 : band === 'amber' ? 60 : 25;
+    return healthOverview.groups
+      .flatMap((g) => g.rows)
+      .filter((r) => r.band !== 'na')
+      .slice(0, 5)
+      .map((r) => ({
+        id: r.id,
+        label: r.meta.name,
+        status: r.pillLabel,
+        score: scoreOf(r.band),
+        tone: toneOf(r.band),
+      }));
+  }, [healthOverview]);
 
   const onExport = useCallback(async () => {
     if (!letterStatementId) return;
@@ -509,12 +467,7 @@ export default function AtLetterPage() {
     );
   }
 
-  const spark =
-    series.length >= 2
-      ? series.map((m) => m.cashAvailable).filter((v): v is number => v != null)
-      : cashAvailable != null
-        ? [cashAvailable]
-        : [];
+  const spark = healthScore != null ? [healthScore] : [];
 
   return (
     <>
@@ -525,9 +478,10 @@ export default function AtLetterPage() {
               <BriefHeader
                 periodLabel={periodMeta}
                 healthScore={healthScore}
-                healthDelta={healthDeltaPts != null ? Math.abs(healthDeltaPts) : null}
-                healthDeltaDown={(healthDeltaPts ?? 0) < 0}
+                healthDelta={null}
+                healthDeltaDown={false}
                 healthPrevLabel={priorLabel}
+                healthCaption={healthBandLabel}
                 monthOnly={monthOnly}
                 monthFilterLabel={monthOnlyLabelFromPeriod(periodLabel)}
                 showViewFilters={showViewFilters}

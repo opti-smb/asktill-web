@@ -17,7 +17,7 @@ export default function ChannelPartnersPage() {
   return (
     <>
       <SectionHeader
-        periodMeta="CHANNEL PARTNERS"
+        periodMeta="Bussiness services"
         title={
           <>
             Grow with <em>Asktill.</em>

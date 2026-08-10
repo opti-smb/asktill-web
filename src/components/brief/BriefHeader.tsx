@@ -8,6 +8,8 @@ type Props = {
   healthDelta: number | null;
   healthDeltaDown?: boolean;
   healthPrevLabel: string | null;
+  /** Band label from calculator health (e.g. "Stable — watch items"). */
+  healthCaption?: string | null;
   monthOnly: boolean;
   monthFilterLabel: string;
   showViewFilters: boolean;
@@ -49,6 +51,7 @@ export default function BriefHeader({
   healthDelta,
   healthDeltaDown = false,
   healthPrevLabel,
+  healthCaption = null,
   monthOnly,
   monthFilterLabel,
   showViewFilters,
@@ -170,7 +173,9 @@ export default function BriefHeader({
                 {healthDelta} vs {healthPrevLabel}
               </div>
             ) : (
-              <div className={styles.healthDeltaMuted}>From your statements</div>
+              <div className={styles.healthDeltaMuted}>
+                {healthCaption?.trim() || 'From your statements'}
+              </div>
             )}
           </div>
           <svg className={styles.ring} viewBox="0 0 44 44" aria-hidden>

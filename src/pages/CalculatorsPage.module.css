@@ -598,10 +598,6 @@
 }
 
 .calcRow {
-  --tilt-x: 0deg;
-  --tilt-y: 0deg;
-  --tilt-glare-x: 50%;
-  --tilt-glare-y: 50%;
   background: var(--letter-surface);
   border: 1px solid var(--letter-border);
   border-left: 4px solid var(--letter-border);
@@ -616,59 +612,15 @@
   font-family: var(--font-sans);
   color: inherit;
   width: 100%;
-  opacity: 0;
+  opacity: 1;
   position: relative;
   overflow: hidden;
-  transform-style: preserve-3d;
-  will-change: transform;
-  animation: rowIn3d 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  transition: transform 0.16s ease-out, border-color 0.2s ease, background 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.calcRow::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    420px circle at var(--tilt-glare-x) var(--tilt-glare-y),
-    rgba(255, 255, 255, 0.18),
-    transparent 55%
-  );
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  mix-blend-mode: soft-light;
 }
 
 .calcRow:hover {
-  border-color: #b8d0f0;
-  background: #fff;
-}
-
-.calcRow.tiltReady {
-  animation: none;
-  opacity: 1;
-  transform: perspective(1400px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
-}
-
-.calcRow.tiltReady:hover {
-  transform: perspective(1400px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(-2px);
-  box-shadow: 0 6px 16px rgba(27, 42, 74, 0.08);
-}
-
-.calcRowActive {
-  border-color: var(--letter-accent);
-  background: var(--letter-accent-soft);
-}
-
-.calcRow.tiltReady.calcRowActive {
-  box-shadow: 0 0 0 1px #b8d0f0, 0 4px 12px rgba(46, 117, 182, 0.1);
-  transform: perspective(1400px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
-}
-
-.calcRow:hover::after {
-  opacity: 1;
+  border-color: #2e75b6;
+  background: #e8f3fc;
+  box-shadow: 0 0 0 2px rgba(46, 117, 182, 0.28);
 }
 
 .band_red {
@@ -689,6 +641,22 @@
 .band_na {
   border-left-color: var(--letter-hdr);
   background: linear-gradient(90deg, var(--letter-accent-soft) 0%, var(--letter-surface) 28%);
+}
+
+.calcRow.band_red:hover,
+.calcRow.band_amber:hover,
+.calcRow.band_green:hover,
+.calcRow.band_na:hover {
+  border-color: #2e75b6;
+  background: #e8f3fc;
+  box-shadow: 0 0 0 2px rgba(46, 117, 182, 0.28);
+}
+
+.calcRow.calcRowActive,
+.calcRow.calcRowActive:hover {
+  border-color: #2e75b6;
+  background: linear-gradient(90deg, #cfe8fb 0%, #eaf5fd 40%, #f4faff 100%);
+  box-shadow: 0 0 0 2px rgba(46, 117, 182, 0.45);
 }
 
 .calcInfo {
@@ -844,18 +812,12 @@
   padding: 5px 10px;
   border-radius: 999px;
   white-space: nowrap;
-  transition: transform 0.2s ease;
   border: 1px solid transparent;
-}
-
-.calcRow:hover .pill {
-  transform: none;
 }
 
 .pill_red {
   background: var(--letter-neg-soft);
   color: var(--letter-neg-text);
-  animation: softPulse 2.4s ease-in-out infinite;
 }
 
 .pill_amber {
@@ -893,10 +855,6 @@
   min-width: 0;
   box-shadow: 0 4px 14px rgba(27, 42, 74, 0.06);
   transform-style: preserve-3d;
-}
-
-.panelIn {
-  animation: panelIn3d 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .panelTop {
@@ -1261,8 +1219,7 @@
   }
 
   .calcRow:hover,
-  .calcRow.tiltReady,
-  .calcRow.tiltReady:hover,
+  .calcRowActive:hover,
   .count:hover,
   .directions.box3d:hover,
   .overall.box3d:hover,
