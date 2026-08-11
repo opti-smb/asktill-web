@@ -123,7 +123,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     const onUpdate = () => setTick((n) => n + 1);
     const onRefresh = () => setTick((n) => n + 1);
     const onLogout = () => {
-      setHistoryReady(true);
+      // Not ready — avoids post-login mistaking logged-out empty for "first-time user".
+      setHistoryReady(false);
       setSavedCount(0);
       setPrimaryReport(null);
       setSavedReports([]);
@@ -177,7 +178,8 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isAuth || !user?.userId) {
-      setHistoryReady(true);
+      // Keep not-ready while logged out so post-login never trusts a fake empty history.
+      setHistoryReady(false);
       setSavedCount(0);
       setPrimaryReport(null);
       setSavedReports([]);
