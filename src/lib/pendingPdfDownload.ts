@@ -1,4 +1,3 @@
-import { fetchReportHistory } from './api';
 import { resolveSafeAppPath } from './safeRedirect';
 
 /** Default dashboard tab after login, upload, or legacy /dashboard/overview links.
@@ -6,39 +5,43 @@ import { resolveSafeAppPath } from './safeRedirect';
  */
 export const DEFAULT_DASHBOARD_PATH = '/dashboard/at-letter';
 
-/**
- * Existing users (saved statements) → Business Brief with their latest data.
- * First-time users (no statements) → upload/onboarding.
- * Explicit return paths (e.g. after session expiry) still win.
- */
-export async function resolvePostLoginRedirect(
-  explicitFrom?: string | null,
-): Promise<string> {
-  const from = (explicitFrom || '').trim();
-  if (
-    from &&
-    from !== '/' &&
-    from !== '/login' &&
-    from !== '/register' &&
-    from !== '/onboarding' &&
-    from !== '/onboarding/'
-  ) {
-    return resolveSafeAppPath(from, DEFAULT_DASHBOARD_PATH);
-  }
+const POST_LOGIN_ROUTE_KEY = 'asktill:post-login-route';
 
+/** Mark that this navigation came from a fresh sign-in (for empty → upload redirect). */
+export function markPostLoginRouting(): void {
   try {
-    const { data } = await fetchReportHistory();
-    if ((data.reports?.length ?? 0) > 0) {
-      return DEFAULT_DASHBOARD_PATH;
-    }
+    sessionStorage.setItem(POST_LOGIN_ROUTE_KEY, '1');
   } catch {
-    /* history unavailable — send to upload */
+    /* ignore */
   }
-  return '/onboarding';
 }
 
-/** @deprecated Prefer resolvePostLoginRedirect — sync helper defaults to upload. */
-export function getPostLoginRedirect(explicitFrom?: string | null): string {
+/** Whether post-login empty/history routing is still pending (does not clear). */
+export function peekPostLoginRouting(): boolean {
+  try {
+    return sessionStorage.getItem(POST_LOGIN_ROUTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** True once if this session still needs post-login empty/history routing. */
+export function consumePostLoginRouting(): boolean {
+  try {
+    if (!sessionStorage.getItem(POST_LOGIN_ROUTE_KEY)) return false;
+    sessionStorage.removeItem(POST_LOGIN_ROUTE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Immediate post-login path — never blocks on cold Render / report history.
+ * Existing users land on Business Brief; first-time users are steered to upload
+ * by PostLoginDestination once history reports zero statements.
+ */
+export function resolvePostLoginRedirect(explicitFrom?: string | null): string {
   const from = (explicitFrom || '').trim();
   if (
     from &&
@@ -50,5 +53,10 @@ export function getPostLoginRedirect(explicitFrom?: string | null): string {
   ) {
     return resolveSafeAppPath(from, DEFAULT_DASHBOARD_PATH);
   }
-  return '/onboarding';
+  return DEFAULT_DASHBOARD_PATH;
+}
+
+/** @deprecated Use resolvePostLoginRedirect */
+export function getPostLoginRedirect(explicitFrom?: string | null): string {
+  return resolvePostLoginRedirect(explicitFrom);
 }
