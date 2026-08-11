@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import AppRouter from './routes/AppRouter';
 import ViewBeacon from './components/analytics/ViewBeacon';
+import PostLoginDestination from './components/auth/PostLoginDestination';
 import { AuthProvider } from './context/AuthContext';
 import { AnalysisProvider } from './context/AnalysisContext';
 import { ChatProvider } from './context/ChatContext';
@@ -19,6 +20,7 @@ export default function App() {
               <RiskThresholdProvider>
                 <ChatProvider>
                   <ViewBeacon />
+                  <PostLoginDestination />
                   <AppRouter />
                 </ChatProvider>
               </RiskThresholdProvider>
