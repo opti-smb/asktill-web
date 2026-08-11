@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
 import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
-import { resolvePostLoginRedirect } from '../lib/pendingPdfDownload';
+import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
 
@@ -81,15 +81,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!(ready && isAuth)) return;
-    let cancelled = false;
     const state = location.state as { from?: string } | null;
-    void (async () => {
-      const redirectTo = await resolvePostLoginRedirect(state?.from);
-      if (!cancelled) navigate(redirectTo, { replace: true });
-    })();
-    return () => {
-      cancelled = true;
-    };
+    markPostLoginRouting();
+    navigate(resolvePostLoginRedirect(state?.from), { replace: true });
   }, [ready, isAuth, navigate, location.state]);
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -184,11 +178,10 @@ export default function LoginPage() {
       await login(email, password);
       failedAttemptsRef.current = 0;
 
-      const redirectTo = await resolvePostLoginRedirect(
-        (location.state as { from?: string } | null)?.from,
+      markPostLoginRouting();
+      navigate(
+        resolvePostLoginRedirect((location.state as { from?: string } | null)?.from),
       );
-
-      navigate(redirectTo);
 
     } catch (err) {
       failedAttemptsRef.current += 1;
