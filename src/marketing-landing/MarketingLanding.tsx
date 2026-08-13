@@ -156,6 +156,11 @@ const MOTION_CSS = `
     --ease-soft:cubic-bezier(.4,0,.2,1);
   }
   .asktill-landing-v81-active{scroll-behavior:smooth;}
+  .asktill-v81-root section[id],
+  .asktill-v81-root article[id],
+  .asktill-v81-root .security-strip[id]{
+    scroll-margin-top:92px;
+  }
   /* Keep top nav locked — sticky breaks under app overflow-x on #root */
   .asktill-v81-root #site-header{
     position:fixed!important;
@@ -253,9 +258,23 @@ const MOTION_CSS = `
     filter:blur(0)!important;
   }
 
+  /* Hand cursor everywhere on the landing (all text/lines), except typing fields */
+  .asktill-v81-root,
+  .asktill-v81-root *{
+    cursor:pointer!important;
+  }
+  .asktill-v81-root input,
+  .asktill-v81-root textarea,
+  .asktill-v81-root select,
+  .asktill-v81-root input *,
+  .asktill-v81-root textarea *{
+    cursor:text!important;
+  }
+
   /* Cards / CTAs — Monarch-soft lift */
   .asktill-v81-root .btn{
     transition:transform .25s var(--ease-out),box-shadow .25s var(--ease-out),background .25s var(--ease-soft)!important;
+    cursor:pointer!important;
   }
   .asktill-v81-root .btn:hover{
     transform:translateY(-2px)!important;
@@ -270,8 +289,10 @@ const MOTION_CSS = `
   .asktill-v81-root .price-v8,
   .asktill-v81-root .letter-card,
   .asktill-v81-root .cb-demo,
+  .asktill-v81-root .coming-card,
   .asktill-v81-root .qa-row > *{
     transition:transform .35s var(--ease-out),box-shadow .35s var(--ease-out),border-color .35s var(--ease-soft)!important;
+    cursor:pointer!important;
   }
   .asktill-v81-root .problem-card:hover,
   .asktill-v81-root .suite-card:hover,
@@ -481,6 +502,41 @@ export default function MarketingLanding() {
       }
     });
     rewrite('a.nav-login', '/login');
+
+    // In-page section map: footer / nav hash links scroll to the matching section
+    const HEADER_OFFSET = 88;
+    const scrollToHash = (hash: string) => {
+      const id = hash.replace(/^#/, '');
+      if (!id) return false;
+      const target = root.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+      if (!target) return false;
+      const top = target.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      try {
+        history.replaceState(null, '', `#${id}`);
+      } catch {
+        /* ignore */
+      }
+      return true;
+    };
+
+    // Hash links: scroll only when the target exists. Missing targets and bare "#"
+    // stay put (never jump to top / mismap to another section).
+    root.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {
+      a.addEventListener('click', (event) => {
+        const href = a.getAttribute('href') || '';
+        event.preventDefault();
+        if (!href || href === '#') return;
+        scrollToHash(href);
+      });
+    });
+
+    // If landing opened with a hash (e.g. /#chargebacks), scroll after layout
+    if (window.location.hash) {
+      requestAnimationFrame(() => {
+        scrollToHash(window.location.hash);
+      });
+    }
 
     // Ensure a Login control exists — same pill button style as Start Free
     const navRight = root.querySelector('.nav-right');
