@@ -27,8 +27,10 @@ import {
   wasGoogleSignInAttempt,
 } from '../lib/clerk';
 import { normalizeEmail, validateRegisterEmail } from '../lib/emailValidation';
+import { isPublicBetaGateActive } from '../lib/publicBetaGate';
 import authFieldStyles from '../components/auth/EmailField.module.css';
 import styles from './RegisterPage.module.css';
+import BetaAccessPage from './BetaAccessPage';
 
 type RegisterStep = 0 | 1 | 2;
 type OtpFeedback = 'none' | 'pending' | 'success' | 'error';
@@ -871,6 +873,10 @@ function RegisterClerkFlow() {
 }
 
 export default function RegisterPage() {
+  if (isPublicBetaGateActive()) {
+    return <BetaAccessPage navActive="signup" />;
+  }
+
   if (!isClerkEnabled()) {
     return (
       <div className={styles.page}>

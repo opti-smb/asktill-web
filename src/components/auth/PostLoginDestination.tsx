@@ -5,18 +5,18 @@ import { useReportSync } from '../../hooks/useReportSync';
 import {
   consumePostLoginRouting,
   peekPostLoginRouting,
+  POST_LOGIN_HOLD_PATH,
 } from '../../lib/pendingPdfDownload';
 
 /**
- * After sign-in we navigate to Business Brief immediately (no history cold-start).
- * First-time users (zero statements) are steered to upload only after a fresh
- * history fetch — never from the stale logged-out ready+empty state.
+ * Safety net if a session still has the post-login flag on the dashboard
+ * (deep-link / legacy). Prefer /post-login so Business Brief never flashes
+ * for brand-new accounts.
  */
 export default function PostLoginDestination() {
   const { historyReady, savedCount } = useReportSync();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  /** Must see history loading after sign-in before trusting empty count. */
   const sawFreshFetchRef = useRef(false);
 
   useEffect(() => {
@@ -25,7 +25,16 @@ export default function PostLoginDestination() {
       return;
     }
 
-    // Stale "ready + 0" from before login must not send existing users to upload.
+    // Don't paint dashboard while we still need empty/history routing.
+    if (pathname.startsWith('/dashboard')) {
+      navigate(POST_LOGIN_HOLD_PATH, { replace: true });
+      return;
+    }
+
+    if (pathname.startsWith('/onboarding') || pathname.startsWith(POST_LOGIN_HOLD_PATH)) {
+      return;
+    }
+
     if (!historyReady) {
       sawFreshFetchRef.current = true;
       return;
@@ -34,7 +43,6 @@ export default function PostLoginDestination() {
     if (!sawFreshFetchRef.current) return;
     if (!consumePostLoginRouting()) return;
     if (savedCount > 0) return;
-    if (pathname.startsWith('/onboarding')) return;
     navigate('/onboarding', { replace: true });
   }, [historyReady, savedCount, navigate, pathname]);
 

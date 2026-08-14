@@ -24,7 +24,11 @@ import {
 } from '../lib/clerk';
 import styles from './LoginPage.module.css';
 
-import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
+import {
+  resolvePostLoginRedirect,
+  markPostLoginRouting,
+} from '../lib/pendingPdfDownload';
+
 const FLOW_TIMEOUT_MS = 45_000;
 const SESSION_WAIT_MS = 12_000;
 const SLOW_HINT_MS = 1_500;
@@ -171,7 +175,7 @@ export default function LoginOAuthComplete() {
       return 'Connecting to your AskTill account…';
     }
     if (phase === 'done') {
-      return 'Opening your dashboard…';
+      return oauthMode === 'signup' ? 'Taking you to upload…' : 'Opening your workspace…';
     }
     if (slowHint) {
       return 'Still finishing Google sign-in… this step talks to Google and can take a few seconds.';

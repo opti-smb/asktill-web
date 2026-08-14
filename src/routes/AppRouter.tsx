@@ -8,6 +8,7 @@ import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import LoginOAuthCallback from '../pages/LoginOAuthCallback';
 import LoginOAuthComplete from '../pages/LoginOAuthComplete';
+import PostLoginHoldPage from '../pages/PostLoginHoldPage';
 import UploadPage from '../pages/UploadPage';
 import AtLedgerPage from '../pages/AtLedgerPage';
 import AtLedgerSectionLayout from '../pages/AtLedgerSectionLayout';
@@ -59,6 +60,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/sso-callback" element={<LoginOAuthCallback />} />
         <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />
+        <Route path="/post-login" element={<PostLoginHoldPage />} />
         <Route
           path="/pricing/checkout"
           element={

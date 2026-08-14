@@ -38,7 +38,7 @@
   --radius-sm: 8px;
 }
 
-/* Keep desktop layout on phones: same canvas width, scroll sideways if needed. */
+/* Desktop canvas width. On phones, go fluid so public pages align correctly. */
 html,
 body,
 #root {
@@ -53,4 +53,21 @@ body,
   width: var(--max);
   margin: 0 auto;
   padding: 0 36px;
+}
+
+@media (max-width: 900px) {
+  html,
+  body,
+  #root {
+    min-width: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .wrap {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px;
+  }
 }

@@ -18,6 +18,8 @@ import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCr
 import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
+import { isPublicBetaGateActive } from '../lib/publicBetaGate';
+import BetaAccessPage from './BetaAccessPage';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
 
@@ -36,6 +38,13 @@ interface LoginFormData {
 
 
 export default function LoginPage() {
+  if (isPublicBetaGateActive()) {
+    return <BetaAccessPage navActive="signin" />;
+  }
+  return <LoginPageInner />;
+}
+
+function LoginPageInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuth, ready } = useAuth();
