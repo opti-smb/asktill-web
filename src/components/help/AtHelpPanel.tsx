@@ -13,6 +13,28 @@ function agentsBaseUrl(): string {
   );
 }
 
+/** Trust localhost, same-origin EC2 proxy (/svc/agents), and configured Agents origin. */
+function isTrustedHelpOrigin(origin: string): boolean {
+  try {
+    const incoming = new URL(origin);
+    if (incoming.hostname === 'localhost' || incoming.hostname === '127.0.0.1') {
+      return true;
+    }
+    if (typeof window !== 'undefined' && incoming.origin === window.location.origin) {
+      return true;
+    }
+    const agentsOrigin = new URL(agentsBaseUrl()).origin;
+    if (incoming.origin === agentsOrigin) {
+      return true;
+    }
+    // Legacy Render default baked into PROD_URLS (Vercel stack).
+    const prodAgentsOrigin = new URL(PROD_URLS.agents).origin;
+    return incoming.origin === prodAgentsOrigin;
+  } catch {
+    return false;
+  }
+}
+
 interface Props {
   onClose?: () => void;
 }
@@ -29,6 +51,8 @@ export default function AtHelpPanel({ onClose }: Props) {
     const email = user?.email?.trim();
     if (business) url.searchParams.set('business', business);
     if (email) url.searchParams.set('email', email);
+    // Bust cached iframe HTML after EC2 /svc/agents path fixes.
+    url.searchParams.set('v', '3');
     return url.toString();
   }, [user?.businessName, user?.name, user?.email]);
 
@@ -45,13 +69,8 @@ export default function AtHelpPanel({ onClose }: Props) {
       const data = event.data;
       if (!data || typeof data !== 'object') return;
       if ((data as { type?: string }).type !== READY_MSG) return;
-      try {
-        const host = new URL(event.origin).hostname;
-        if (host === 'localhost' || host === '127.0.0.1' || event.origin === PROD_URLS.agents) {
-          setFrameState('ready');
-        }
-      } catch {
-        /* ignore */
+      if (isTrustedHelpOrigin(event.origin)) {
+        setFrameState('ready');
       }
     }
     window.addEventListener('message', onMessage);

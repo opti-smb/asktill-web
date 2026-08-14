@@ -5,6 +5,9 @@ import { resolveSafeAppPath } from './safeRedirect';
  */
 export const DEFAULT_DASHBOARD_PATH = '/dashboard/at-letter';
 
+/** Neutral hold while we learn whether this account has statements (upload vs dashboard). */
+export const POST_LOGIN_HOLD_PATH = '/post-login';
+
 const POST_LOGIN_ROUTE_KEY = 'asktill:post-login-route';
 
 /** Mark that this navigation came from a fresh sign-in (for empty → upload redirect). */
@@ -37,9 +40,11 @@ export function consumePostLoginRouting(): boolean {
 }
 
 /**
- * Immediate post-login path — never blocks on cold Render / report history.
- * Existing users land on Business Brief; first-time users are steered to upload
- * by PostLoginDestination once history reports zero statements.
+ * Immediate post-login path.
+ * Hold on /post-login until report history loads, then:
+ * - 0 statements → upload (no dashboard flash for new users)
+ * - has statements → dashboard (no upload flash for existing users)
+ * Explicit deep-links (e.g. /pricing) still win.
  */
 export function resolvePostLoginRedirect(explicitFrom?: string | null): string {
   const from = (explicitFrom || '').trim();
@@ -49,11 +54,12 @@ export function resolvePostLoginRedirect(explicitFrom?: string | null): string {
     from !== '/login' &&
     from !== '/register' &&
     from !== '/onboarding' &&
-    from !== '/onboarding/'
+    from !== '/onboarding/' &&
+    from !== POST_LOGIN_HOLD_PATH
   ) {
     return resolveSafeAppPath(from, DEFAULT_DASHBOARD_PATH);
   }
-  return DEFAULT_DASHBOARD_PATH;
+  return POST_LOGIN_HOLD_PATH;
 }
 
 /** @deprecated Use resolvePostLoginRedirect */

@@ -1,5 +1,5 @@
 .nav {
-  padding: 16px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--rule);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: saturate(180%) blur(10px);
@@ -7,13 +7,15 @@
   top: 0;
   z-index: 100;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  width: 100%;
 }
 
 .navInner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
+  min-width: 0;
 }
 
 .logoLink {
@@ -71,7 +73,11 @@
   box-shadow: 0 0 0 2px var(--brand-tint);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .nav {
+    padding: 10px 0;
+  }
+
   .navLink {
     padding: 8px 12px;
   }

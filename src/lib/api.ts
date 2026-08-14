@@ -298,10 +298,15 @@ function formatApiError(
     const isAuthLogin =
       url.includes('/api/auth/login')
       || url.includes('/api/auth/clerk-login');
+    const isChangePassword = url.includes('/api/auth/change-password');
     const detail = d?.detail ?? d?.message ?? d?.error;
     if (typeof detail === 'string' && detail.trim()) {
-      // Login / credential failures — show server message, not "session expired".
-      if (isAuthLogin || /invalid email or password/i.test(detail)) {
+      // Login / password-update failures — show server message, not "session expired".
+      if (
+        isAuthLogin
+        || isChangePassword
+        || /invalid email or password|current password|incorrect/i.test(detail)
+      ) {
         return detail.trim();
       }
     }
@@ -317,6 +322,9 @@ function formatApiError(
     }
     if (isAuthLogin) {
       return 'Sign in failed. Check your email and password, then try again.';
+    }
+    if (isChangePassword) {
+      return 'Could not update password. Check your current password and try again.';
     }
     return 'Your session expired or could not be verified. Please sign in again.';
   }
