@@ -11,11 +11,9 @@ export function isPublicBetaGateActive(): boolean {
 }
 
 export type BetaAccessPayload = {
-  name: string;
   email: string;
   location: string;
   segment: string;
-  annual_turnover: string;
 };
 
 function agentsBaseUrl(): string {

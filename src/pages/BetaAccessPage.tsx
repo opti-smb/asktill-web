@@ -17,11 +17,9 @@ type Props = {
 type FormState = BetaAccessPayload;
 
 const EMPTY: FormState = {
-  name: '',
   email: '',
   location: '',
   segment: '',
-  annual_turnover: '',
 };
 
 /**
@@ -44,14 +42,12 @@ export default function BetaAccessPage({ navActive = 'signin' }: Props) {
     if (submitting || doneMessage) return;
 
     const payload: BetaAccessPayload = {
-      name: form.name.trim(),
       email: form.email.trim(),
       location: form.location.trim(),
       segment: form.segment.trim(),
-      annual_turnover: form.annual_turnover.trim(),
     };
 
-    if (!payload.name || !payload.email || !payload.location || !payload.segment || !payload.annual_turnover) {
+    if (!payload.email || !payload.location || !payload.segment) {
       setError('Please fill in all fields.');
       return;
     }
@@ -103,19 +99,6 @@ export default function BetaAccessPage({ navActive = 'signin' }: Props) {
           ) : (
             <form className={styles.form} onSubmit={onSubmit} noValidate>
               <label className={styles.field}>
-                <span>Name</span>
-                <input
-                  name="name"
-                  autoComplete="name"
-                  value={form.name}
-                  onChange={(e) => update('name', e.target.value)}
-                  placeholder="Your full name"
-                  required
-                  disabled={submitting}
-                />
-              </label>
-
-              <label className={styles.field}>
                 <span>Email</span>
                 <input
                   name="email"
@@ -130,13 +113,13 @@ export default function BetaAccessPage({ navActive = 'signin' }: Props) {
               </label>
 
               <label className={styles.field}>
-                <span>Location</span>
+                <span>Location (US only)</span>
                 <input
                   name="location"
                   autoComplete="address-level2"
                   value={form.location}
                   onChange={(e) => update('location', e.target.value)}
-                  placeholder="City / Country"
+                  placeholder="City, State (US only)"
                   required
                   disabled={submitting}
                 />
@@ -149,18 +132,6 @@ export default function BetaAccessPage({ navActive = 'signin' }: Props) {
                   value={form.segment}
                   onChange={(e) => update('segment', e.target.value)}
                   placeholder="e.g. Restaurant, Retail, Ecommerce"
-                  required
-                  disabled={submitting}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Annual turnover</span>
-                <input
-                  name="annual_turnover"
-                  value={form.annual_turnover}
-                  onChange={(e) => update('annual_turnover', e.target.value)}
-                  placeholder="e.g. $500k – $1M"
                   required
                   disabled={submitting}
                 />
