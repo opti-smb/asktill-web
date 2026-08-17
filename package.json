@@ -6,6 +6,7 @@
     "dev": "node ./scripts/run-vite.mjs",
     "dev:system": "node --no-maglev ./node_modules/vite/bin/vite.js",
     "build": "tsc && vite build && node ./scripts/guard-prod-urls.mjs",
+    "build:ec2": "tsc && vite build --mode ec2 && node ./scripts/guard-prod-urls.mjs",
     "preview": "vite preview",
     "lint": "eslint src",
     "test": "npx tsx packages/calculators/scripts/test-calculators.ts && npx tsx src/lib/uploadFileValidation.test.ts",
