@@ -113,13 +113,13 @@ export default function BetaAccessPage({ navActive = 'signin' }: Props) {
               </label>
 
               <label className={styles.field}>
-                <span>Location (US only)</span>
+                <span>Location (applicable to USA only)</span>
                 <input
                   name="location"
                   autoComplete="address-level2"
                   value={form.location}
                   onChange={(e) => update('location', e.target.value)}
-                  placeholder="City, State (US only)"
+                  placeholder="City, State"
                   required
                   disabled={submitting}
                 />
