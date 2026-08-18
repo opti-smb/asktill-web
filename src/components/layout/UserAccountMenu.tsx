@@ -130,7 +130,7 @@ function UserAccountMenuInner({
       setConfirmSignOut(false);
       setMenuOpen(false);
       if (returnToAsktill) {
-        window.location.assign('https://asktill.com/login');
+        window.location.assign('https://asktill.com/login?signedOut=1');
         return;
       }
       navigate('/login', { replace: true });
