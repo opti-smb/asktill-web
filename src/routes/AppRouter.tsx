@@ -71,8 +71,14 @@ function AppRoutes() {
           path="/forgot-password"
           element={import.meta.env.DEV ? <ForgotPasswordPage /> : <AuthOnAsktill path="/login" />}
         />
-        <Route path="/sso-callback" element={<LoginOAuthCallback />} />
-        <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />
+        <Route
+          path="/sso-callback"
+          element={import.meta.env.DEV ? <LoginOAuthCallback /> : <AuthOnAsktill path="/login" />}
+        />
+        <Route
+          path="/login/oauth-complete"
+          element={import.meta.env.DEV ? <LoginOAuthComplete /> : <AuthOnAsktill path="/login" />}
+        />
         <Route
           path="/pricing/checkout"
           element={

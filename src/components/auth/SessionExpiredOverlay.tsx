@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+import { sendToAsktillAuth } from '../../lib/asktillAuthSite';
 import styles from './SessionExpiredOverlay.module.css';
 
 interface SessionExpiredOverlayProps {
@@ -28,7 +29,13 @@ export default function SessionExpiredOverlay({ returnTo }: SessionExpiredOverla
           type="button"
           className={styles.primaryBtn}
           autoFocus
-          onClick={() => navigate('/login', { state: { from: returnTo } })}
+          onClick={() => {
+            if (import.meta.env.DEV) {
+              navigate('/login', { state: { from: returnTo } });
+              return;
+            }
+            sendToAsktillAuth('/login');
+          }}
         >
           Sign in again
         </button>
