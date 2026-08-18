@@ -18,6 +18,16 @@ import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from './atLetterStatement';
 import { resolvePublicUrl } from './publicUrls';
+import {
+  clearEc2BackendSession,
+  EC2_PUBLIC_URLS,
+  handoffWantsPostLoginRouting,
+  isEc2BackendSession,
+  pinEc2BackendFromHandoff,
+} from './ec2BackendSession';
+import { markPostLoginRouting } from './pendingPdfDownload';
+
+pinEc2BackendFromHandoff();
 export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
 export type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
 export { normalizeTier, tierDisplayLabel } from './subscription';
@@ -139,6 +149,7 @@ export function resetUserScopedState() {
 /** Remove JWT, chat, and notify contexts to reset in-memory state. */
 export function clearAppSession() {
   clearToken();
+  clearEc2BackendSession();
   resetUserScopedState();
   invalidateReportHistoryCache();
   window.dispatchEvent(new CustomEvent(USER_LOGOUT_EVENT));
@@ -177,6 +188,7 @@ const devBase = () => (import.meta.env.DEV ? '' : undefined);
  */
 function authApiBase(): string {
   if (import.meta.env.DEV) return '';
+  if (isEc2BackendSession()) return EC2_PUBLIC_URLS.auth;
   return '/auth-api';
 }
 
@@ -956,6 +968,7 @@ function serviceOrigin(
     | 'VITE_SUBSCRIPTION_API_URL',
 ): string {
   if (envKey === 'VITE_AUTH_API_URL' && !import.meta.env.DEV) {
+    if (isEc2BackendSession()) return EC2_PUBLIC_URLS.auth;
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/auth-api`;
     }
@@ -1699,6 +1712,11 @@ export async function openAdminDashboard(): Promise<void> {
 /** Read + clear one-time handoff token from Admin Console (hash #access_token=…). */
 export function consumeHandoffTokenFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
+
+  pinEc2BackendFromHandoff();
+  if (handoffWantsPostLoginRouting()) {
+    markPostLoginRouting();
+  }
 
   const hash = window.location.hash.replace(/^#/, '');
   const hashMatch = hash.match(/(?:^|&)access_token=([^&]+)/);
