@@ -121,6 +121,7 @@ function UserAccountMenuInner({
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
+    const returnToAsktill = isEc2BackendSession() || !import.meta.env.DEV;
     try {
       await logout();
       if (isClerkEnabled() && clerk) {
@@ -128,7 +129,7 @@ function UserAccountMenuInner({
       }
       setConfirmSignOut(false);
       setMenuOpen(false);
-      if (isEc2BackendSession()) {
+      if (returnToAsktill) {
         window.location.assign('https://asktill.com/login');
         return;
       }
