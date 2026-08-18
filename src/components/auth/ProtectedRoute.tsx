@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 
 import PageLoader from '../common/PageLoader';
 import { useAuth } from '../../context/AuthContext';
+import { isEc2BackendSession } from '../../lib/ec2BackendSession';
 import { isSessionExpiredPersisted } from '../../lib/session';
 
 import SessionExpiredOverlay from './SessionExpiredOverlay';
@@ -21,6 +22,9 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!isAuth) {
+    if (isEc2BackendSession()) {
+      return <Navigate to="/workspace" replace />;
+    }
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 

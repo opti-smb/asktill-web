@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { Controller, useForm } from 'react-hook-form';
 
@@ -18,6 +18,7 @@ import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCr
 import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
+import { isEc2BackendSession } from '../lib/ec2BackendSession';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
 
@@ -36,6 +37,14 @@ interface LoginFormData {
 
 
 export default function LoginPage() {
+  if (isEc2BackendSession()) {
+    return <Navigate to="/workspace" replace />;
+  }
+
+  return <LoginPageInner />;
+}
+
+function LoginPageInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuth, ready } = useAuth();
