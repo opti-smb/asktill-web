@@ -8,8 +8,8 @@ export const EC2_PUBLIC_URLS = {
   register: 'https://asktill.com/svc/register',
   subscription: 'https://asktill.com/svc/subscription',
   agents: 'https://asktill.com/svc/agents',
-  admin: 'https://asktill-admin-dashboard.vercel.app',
-  app: 'https://asktill-web-three.vercel.app',
+  admin: 'https://asktill.com/admin',
+  app: 'https://asktill-web.vercel.app',
 } as const;
 
 function handoffParams(): URLSearchParams {
