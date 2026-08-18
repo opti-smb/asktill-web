@@ -6,6 +6,7 @@ import LandingPage from '../pages/LandingPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import RedirectToAsktillAuth from '../pages/RedirectToAsktillAuth';
 import WorkspaceEntryPage from '../pages/WorkspaceEntryPage';
 import LoginOAuthCallback from '../pages/LoginOAuthCallback';
 import LoginOAuthComplete from '../pages/LoginOAuthComplete';
@@ -44,6 +45,13 @@ function UploadPageRoute() {
   return <UploadPage key={user?.userId ?? 'anon'} />;
 }
 
+function AuthOnAsktill({ path }: { path: '/login' | '/register' }) {
+  if (import.meta.env.DEV) {
+    return path === '/register' ? <RegisterPage /> : <LoginPage />;
+  }
+  return <RedirectToAsktillAuth path={path} />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -54,12 +62,15 @@ function AppRoutes() {
           path="/calculators/:slug"
           element={<Navigate to="/dashboard/calculators" replace />}
         />
-        <Route path="/signup" element={<Navigate to="/register" replace />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<AuthOnAsktill path="/register" />} />
+        <Route path="/register" element={<AuthOnAsktill path="/register" />} />
+        <Route path="/login" element={<AuthOnAsktill path="/login" />} />
         <Route path="/workspace" element={<WorkspaceEntryPage />} />
         <Route path="/post-login" element={<WorkspaceEntryPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route
+          path="/forgot-password"
+          element={import.meta.env.DEV ? <ForgotPasswordPage /> : <AuthOnAsktill path="/login" />}
+        />
         <Route path="/sso-callback" element={<LoginOAuthCallback />} />
         <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />
         <Route
