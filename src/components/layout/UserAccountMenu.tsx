@@ -7,6 +7,7 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { useDismissOnEscape } from '../../hooks/useDismissOnEscape';
 import { getApiError, prefetchAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
 import { clearClerkSession, isClerkEnabled } from '../../lib/clerk';
+import { isEc2BackendSession } from '../../lib/ec2BackendSession';
 import { isPaidTier, tierDisplayLabel } from '../../lib/subscription';
 import styles from './UserAccountMenu.module.css';
 
@@ -30,15 +31,21 @@ function initialsFromName(name: string): string {
   return (compact.charAt(0) || '?').toUpperCase();
 }
 
-export default function UserAccountMenu({
+type ClerkLike = {
+  session?: { id?: string } | null;
+  signOut?: (opts?: { redirectUrl?: string }) => Promise<void>;
+  setActive?: (args: { session: null; navigate: () => void }) => Promise<void>;
+};
+
+function UserAccountMenuInner({
   showName = false,
   showProfile = true,
   menuPlacement = 'below',
   variant = 'default',
-}: Props) {
+  clerk,
+}: Props & { clerk: ClerkLike | null }) {
   const { user, logout, refreshUser, isAdmin } = useAuth();
   const { isPaid } = useSubscription();
-  const clerk = useClerk();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -116,11 +123,15 @@ export default function UserAccountMenu({
     setSigningOut(true);
     try {
       await logout();
-      if (isClerkEnabled()) {
+      if (isClerkEnabled() && clerk) {
         await clearClerkSession(clerk);
       }
       setConfirmSignOut(false);
       setMenuOpen(false);
+      if (isEc2BackendSession()) {
+        window.location.assign('https://asktill.com/login');
+        return;
+      }
       navigate('/login', { replace: true });
     } finally {
       setSigningOut(false);
@@ -378,4 +389,16 @@ export default function UserAccountMenu({
       />
     </>
   );
+}
+
+function UserAccountMenuClerk(props: Props) {
+  const clerk = useClerk();
+  return <UserAccountMenuInner {...props} clerk={clerk} />;
+}
+
+export default function UserAccountMenu(props: Props) {
+  if (!isClerkEnabled()) {
+    return <UserAccountMenuInner {...props} clerk={null} />;
+  }
+  return <UserAccountMenuClerk {...props} />;
 }
