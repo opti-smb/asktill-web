@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
+import { EC2_PUBLIC_URLS, isEc2BackendSession } from '../../lib/ec2BackendSession';
 
 const AUTH_BASE = import.meta.env.DEV
   ? ((import.meta.env.VITE_AUTH_API_URL as string | undefined)?.replace(/\/$/, '') || '')
-  : '/auth-api';
+  : isEc2BackendSession()
+    ? EC2_PUBLIC_URLS.auth
+    : '/auth-api';
 
 /** Fire-and-forget page view beacon to Auth (synced into Admin insights). */
 export function trackAppView(path: string): void {
