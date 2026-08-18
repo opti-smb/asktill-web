@@ -21,11 +21,18 @@ export default function WorkspaceEntryPage() {
   const navigate = useNavigate();
   const sentRef = useRef(false);
   const [waited, setWaited] = useState(false);
+  const [giveUp, setGiveUp] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setWaited(true), HISTORY_WAIT_MS);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!ready || isAuth) return;
+    const timer = window.setTimeout(() => setGiveUp(true), 4_000);
+    return () => window.clearTimeout(timer);
+  }, [ready, isAuth]);
 
   useEffect(() => {
     if (!ready || !isAuth || sentRef.current) return;
@@ -35,7 +42,7 @@ export default function WorkspaceEntryPage() {
     navigate(savedCount > 0 ? DEFAULT_DASHBOARD_PATH : '/onboarding', { replace: true });
   }, [ready, isAuth, historyReady, waited, savedCount, navigate]);
 
-  if (ready && !isAuth) {
+  if (ready && !isAuth && giveUp) {
     return (
       <div
         style={{

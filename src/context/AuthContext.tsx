@@ -159,7 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      if (captureSignedOutIntent()) {
+      // Fresh asktill.com login handoff always wins over a leftover sign-out flag.
+      const handoff = consumeHandoffTokenFromUrl();
+      if (handoff) {
+        clearSignedOutIntent();
+        setToken(handoff);
+      } else if (captureSignedOutIntent()) {
         clearToken();
         await logoutApi();
         if (!cancelled) {
@@ -171,14 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setReady(true);
         }
         return;
-      }
-
-      // Admin Console → AskTill handoff (#access_token=…).
-      const handoff = consumeHandoffTokenFromUrl();
-      if (handoff) {
-        setToken(handoff);
       } else if (!getToken() || isTokenExpired(getToken()!)) {
-        // Stripe Checkout full-page leave wipes memory JWT — restore bridge once.
         consumeCheckoutAccessBridge();
       }
 
