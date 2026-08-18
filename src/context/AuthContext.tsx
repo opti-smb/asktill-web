@@ -34,6 +34,11 @@ import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import { consumeCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS, clearSessionExpiredPersisted, markSessionExpiredPersisted, isSessionExpiredPersisted } from '../lib/session';
+import {
+  captureSignedOutIntent,
+  clearSignedOutIntent,
+  markSignedOutIntent,
+} from '../lib/explicitLogout';
 
 interface AuthContextValue {
   token: string | null;
@@ -119,7 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(
     async (options?: { expired?: boolean }) => {
       const stored = getToken();
-      const hadToken = Boolean(stored);
       const logoutUserId = user?.userId || (stored ? getTokenSubject(stored) : null);
       if (logoutUserId) {
         clearUserAtLetterOnLogout(logoutUserId);
@@ -132,13 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         markSessionExpiredPersisted();
         setSessionExpired(true);
       } else {
+        markSignedOutIntent();
         clearSessionExpiredPersisted();
         setSessionExpired(false);
       }
       window.dispatchEvent(new CustomEvent(REPORT_HISTORY_REFRESH_EVENT));
-      if (hadToken) {
-        await logoutApi();
-      }
+      await logoutApi();
     },
     [user?.userId],
   );
@@ -156,6 +159,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
+      if (captureSignedOutIntent()) {
+        clearToken();
+        await logoutApi();
+        if (!cancelled) {
+          setTok(null);
+          setUser(null);
+          setIsAdmin(false);
+          clearSessionExpiredPersisted();
+          setSessionExpired(false);
+          setReady(true);
+        }
+        return;
+      }
+
       // Admin Console → AskTill handoff (#access_token=…).
       const handoff = consumeHandoffTokenFromUrl();
       if (handoff) {
@@ -289,6 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     expiringRef.current = false;
     resetSessionExpiryDispatchGuard();
     clearSessionExpiredPersisted();
+    clearSignedOutIntent();
     setSessionExpired(false);
     setToken(accessToken);
     setTok(accessToken);
