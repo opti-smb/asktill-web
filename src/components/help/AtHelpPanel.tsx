@@ -46,8 +46,18 @@ export default function AtHelpPanel({ onClose }: Props) {
       if (!data || typeof data !== 'object') return;
       if ((data as { type?: string }).type !== READY_MSG) return;
       try {
-        const host = new URL(event.origin).hostname;
-        if (host === 'localhost' || host === '127.0.0.1' || event.origin === PROD_URLS.agents) {
+        const incoming = new URL(event.origin);
+        if (incoming.hostname === 'localhost' || incoming.hostname === '127.0.0.1') {
+          setFrameState('ready');
+          return;
+        }
+        const agentsOrigin = new URL(agentsBaseUrl()).origin;
+        const renderAgentsOrigin = new URL(PROD_URLS.agents).origin;
+        if (
+          event.origin === agentsOrigin ||
+          event.origin === renderAgentsOrigin ||
+          event.origin === 'https://asktill.com'
+        ) {
           setFrameState('ready');
         }
       } catch {
