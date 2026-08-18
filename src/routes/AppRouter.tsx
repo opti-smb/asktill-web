@@ -6,6 +6,7 @@ import LandingPage from '../pages/LandingPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import WorkspaceEntryPage from '../pages/WorkspaceEntryPage';
 import LoginOAuthCallback from '../pages/LoginOAuthCallback';
 import LoginOAuthComplete from '../pages/LoginOAuthComplete';
 import UploadPage from '../pages/UploadPage';
@@ -56,6 +57,8 @@ function AppRoutes() {
         <Route path="/signup" element={<Navigate to="/register" replace />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/workspace" element={<WorkspaceEntryPage />} />
+        <Route path="/post-login" element={<WorkspaceEntryPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/sso-callback" element={<LoginOAuthCallback />} />
         <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />

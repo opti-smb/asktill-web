@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'asktill:use-ec2-backend';
+const TOKEN_KEY = 'asktill:ec2-access-token';
 
 /** Same-origin EC2 APIs — used only after asktill.com login handoff (`ec2=1`). */
 export const EC2_PUBLIC_URLS = {
@@ -43,9 +44,26 @@ export function isEc2BackendSession(): boolean {
   }
 }
 
+export function persistEc2AccessToken(token: string): void {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readEc2AccessToken(): string | null {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function clearEc2BackendSession(): void {
   try {
     sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
   } catch {
     /* ignore */
   }

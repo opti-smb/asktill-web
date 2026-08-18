@@ -23,7 +23,9 @@ import {
   EC2_PUBLIC_URLS,
   handoffWantsPostLoginRouting,
   isEc2BackendSession,
+  persistEc2AccessToken,
   pinEc2BackendFromHandoff,
+  readEc2AccessToken,
 } from './ec2BackendSession';
 import { markPostLoginRouting } from './pendingPdfDownload';
 
@@ -51,6 +53,11 @@ export const extractAccessToken = (data: unknown): string | null => {
 
 export const getToken = (): string | null => {
   if (memoryAccessToken) return memoryAccessToken;
+  const ec2Token = readEc2AccessToken();
+  if (ec2Token?.trim()) {
+    memoryAccessToken = ec2Token.trim();
+    return memoryAccessToken;
+  }
   // One-time bridge: migrate legacy localStorage JWTs out of XSS-readable storage.
   try {
     const legacy = localStorage.getItem(TOKEN_KEY);
@@ -67,6 +74,9 @@ export const getToken = (): string | null => {
 
 export const setToken = (token: string) => {
   memoryAccessToken = token;
+  if (isEc2BackendSession()) {
+    persistEc2AccessToken(token);
+  }
   try {
     localStorage.removeItem(TOKEN_KEY);
   } catch {
@@ -76,6 +86,11 @@ export const setToken = (token: string) => {
 
 export const clearToken = () => {
   memoryAccessToken = null;
+  try {
+    sessionStorage.removeItem('asktill:ec2-access-token');
+  } catch {
+    /* ignore */
+  }
   try {
     localStorage.removeItem(TOKEN_KEY);
   } catch {
