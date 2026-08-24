@@ -18,7 +18,18 @@ import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from './atLetterStatement';
 import { resolvePublicUrl } from './publicUrls';
-import { clearEc2BackendSession } from './ec2BackendSession';
+import {
+  clearEc2BackendSession,
+  EC2_PUBLIC_URLS,
+  handoffWantsPostLoginRouting,
+  isEc2BackendSession,
+  persistEc2AccessToken,
+  pinEc2BackendFromHandoff,
+  readEc2AccessToken,
+} from './ec2BackendSession';
+import { markPostLoginRouting } from './pendingPdfDownload';
+
+pinEc2BackendFromHandoff();
 export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
 export type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
 export { normalizeTier, tierDisplayLabel } from './subscription';
@@ -42,6 +53,11 @@ export const extractAccessToken = (data: unknown): string | null => {
 
 export const getToken = (): string | null => {
   if (memoryAccessToken) return memoryAccessToken;
+  const ec2Token = readEc2AccessToken();
+  if (ec2Token?.trim()) {
+    memoryAccessToken = ec2Token.trim();
+    return memoryAccessToken;
+  }
   // One-time bridge: migrate legacy localStorage JWTs out of XSS-readable storage.
   try {
     const legacy = localStorage.getItem(TOKEN_KEY);
@@ -58,6 +74,9 @@ export const getToken = (): string | null => {
 
 export const setToken = (token: string) => {
   memoryAccessToken = token;
+  if (isEc2BackendSession()) {
+    persistEc2AccessToken(token);
+  }
   try {
     localStorage.removeItem(TOKEN_KEY);
   } catch {
@@ -67,6 +86,11 @@ export const setToken = (token: string) => {
 
 export const clearToken = () => {
   memoryAccessToken = null;
+  try {
+    sessionStorage.removeItem('asktill:ec2-access-token');
+  } catch {
+    /* ignore */
+  }
   try {
     localStorage.removeItem(TOKEN_KEY);
   } catch {
@@ -140,6 +164,7 @@ export function resetUserScopedState() {
 /** Remove JWT, chat, and notify contexts to reset in-memory state. */
 export function clearAppSession() {
   clearToken();
+  clearEc2BackendSession();
   resetUserScopedState();
   invalidateReportHistoryCache();
   window.dispatchEvent(new CustomEvent(USER_LOGOUT_EVENT));
@@ -178,6 +203,7 @@ const devBase = () => (import.meta.env.DEV ? '' : undefined);
  */
 function authApiBase(): string {
   if (import.meta.env.DEV) return '';
+  if (isEc2BackendSession()) return EC2_PUBLIC_URLS.auth;
   return '/auth-api';
 }
 
@@ -957,6 +983,7 @@ function serviceOrigin(
     | 'VITE_SUBSCRIPTION_API_URL',
 ): string {
   if (envKey === 'VITE_AUTH_API_URL' && !import.meta.env.DEV) {
+    if (isEc2BackendSession()) return EC2_PUBLIC_URLS.auth;
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/auth-api`;
     }
@@ -1701,33 +1728,26 @@ export async function openAdminDashboard(): Promise<void> {
 export function consumeHandoffTokenFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
-  const hash = window.location.hash.replace(/^#/, '');
-  const query = new URLSearchParams(window.location.search);
-  const fromHash = new URLSearchParams(hash);
-  const ec2Handoff = fromHash.get('ec2') === '1' || query.get('ec2') === '1';
+  pinEc2BackendFromHandoff();
+  if (handoffWantsPostLoginRouting()) {
+    markPostLoginRouting();
+  }
 
+  const hash = window.location.hash.replace(/^#/, '');
   const hashMatch = hash.match(/(?:^|&)access_token=([^&]+)/);
   let token = hashMatch ? decodeURIComponent(hashMatch[1]) : null;
 
   if (!token) {
-    token = query.get('access_token');
+    const q = new URLSearchParams(window.location.search);
+    token = q.get('access_token');
   }
-
-  if (token?.trim() || ec2Handoff) {
-    window.history.replaceState(
-      null,
-      '',
-      `${window.location.pathname}${window.location.search}`,
-    );
-  }
-
-  // asktill.com JWT is not a Render session — never use it on Vercel.
-  if (ec2Handoff) {
-    clearEc2BackendSession();
-    return null;
-  }
-
   if (!token?.trim()) return null;
+
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${window.location.search}`,
+  );
   return token.trim();
 }
 
@@ -2705,35 +2725,6 @@ export async function saveActionPlans(
     '/api/action-plans',
     { plans },
     { timeout: 30_000 },
-  );
-  return res.data;
-}
-
-export type PlaidIngestApiResponse = {
-  ingested: Array<{
-    ok: boolean;
-    statement_id?: string;
-    period_key?: string;
-    period_label?: string;
-    saved_statement_id?: string;
-    row_count?: number;
-    error?: string;
-  }>;
-  success_count: number;
-  failure_count: number;
-};
-
-export async function ingestPlaidParsedStatements(
-  statements: unknown[],
-  force = false,
-): Promise<PlaidIngestApiResponse> {
-  const res = await mainApi.post<PlaidIngestApiResponse>(
-    '/api/plaid-statements/ingest',
-    { statements },
-    {
-      timeout: ANALYZE_TIMEOUT_MS,
-      params: force ? { force: true } : undefined,
-    },
   );
   return res.data;
 }

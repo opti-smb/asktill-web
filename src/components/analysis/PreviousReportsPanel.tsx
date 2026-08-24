@@ -32,7 +32,7 @@ function fmtDate(iso: string): string {
 
 interface Props {
   excludePeriodKey?: string | null;
-  onLoadReport?: (result: AnalyzeResult, options?: { historical?: boolean }) => void;
+  onLoadReport?: (result: AnalyzeResult) => void;
   active?: boolean;
   onReportsLoaded?: (count: number) => void;
   variant?: 'default' | 'upload';
@@ -109,7 +109,7 @@ export default function PreviousReportsPanel({
     setActionError(null);
     try {
       const { data } = await fetchSavedReport(row.statement_id);
-      onLoadReport?.(data as AnalyzeResult, { historical: true });
+      onLoadReport?.(data as AnalyzeResult);
       // Always land on Business Brief (default dashboard tab).
       navigate(DEFAULT_DASHBOARD_PATH);
     } catch (err) {

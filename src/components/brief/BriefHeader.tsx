@@ -23,6 +23,7 @@ type Props = {
   onHoverRolling?: () => void;
   onHoverMonth?: () => void;
   onFilterMouseLeave?: () => void;
+  onExport?: () => void;
 };
 
 function greetingForNow(): string {
@@ -64,6 +65,7 @@ export default function BriefHeader({
   onHoverRolling,
   onHoverMonth,
   onFilterMouseLeave,
+  onExport,
 }: Props) {
   const { user } = useAuth();
   const name = greetingName(user?.name, user?.email);
@@ -131,6 +133,15 @@ export default function BriefHeader({
           <button type="button" className={styles.shareBtn} disabled title="Coming soon">
             <i className="ti ti-share" aria-hidden />
             Share
+          </button>
+          <button
+            type="button"
+            className={styles.exportBtn}
+            onClick={onExport}
+            disabled={!onExport}
+          >
+            <i className="ti ti-download" aria-hidden />
+            Export PDF
           </button>
           <Link to="/onboarding" className={styles.uploadLink}>
             <i className="ti ti-upload" aria-hidden />

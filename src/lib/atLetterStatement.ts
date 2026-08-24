@@ -55,20 +55,6 @@ export function pickPrimarySavedReport(
   })[0];
 }
 
-/** Saved upload months (manual POS/bank/ecom) — not ephemeral Plaid-only rows. */
-export function pickUploadBaselineReport(
-  reports: SavedReportSummaryApi[],
-): SavedReportSummaryApi | null {
-  if (!reports.length) return null;
-  const complete = reports.filter((r) => r.completeness === 'complete');
-  if (complete.length) return pickPrimarySavedReport(complete);
-  const withGross = reports.filter((r) => r.total_gross != null && r.total_gross > 0);
-  if (withGross.length) {
-    return [...withGross].sort((a, b) => (b.total_gross ?? 0) - (a.total_gross ?? 0))[0] ?? null;
-  }
-  return pickMostRecentlyUploadedReport(reports);
-}
-
 /** Most recently uploaded report (by uploaded_at) — use after analyze/backfill recovery. */
 export function pickMostRecentlyUploadedReport(
   reports: SavedReportSummaryApi[],
@@ -94,9 +80,6 @@ export function resolveAtLetterStatementId(options: {
   preferSession?: boolean;
   /** User explicitly opened this statement (duplicate banner, previous reports, etc.). */
   activeViewId?: string | null;
-  activeViewPeriodKey?: string | null;
-  /** When false, a chronologically newer primary month overrides a stale default pin. */
-  historicalView?: boolean;
 }): string | undefined {
   const sessionId = options.sessionStatementId?.trim();
   const sessionKey = options.sessionPeriodKey?.trim() || null;
@@ -106,6 +89,7 @@ export function resolveAtLetterStatementId(options: {
   const historyReady = options.historyReady !== false;
   const activeViewId = options.activeViewId?.trim();
 
+  // Pin always wins — set on analyze finish / open saved report; cleared on logout.
   if (activeViewId) {
     return activeViewId;
   }

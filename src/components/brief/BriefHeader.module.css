@@ -157,7 +157,7 @@
 }
 
 .shareBtn,
-.linkBankBtn,
+.exportBtn,
 .uploadLink {
   display: inline-flex;
   align-items: center;
@@ -180,36 +180,15 @@
   opacity: 0.7;
 }
 
-.linkBankBtn {
+.exportBtn {
   background: #0f5c42;
   border: 1px solid #0f5c42;
   color: #fff;
   cursor: pointer;
 }
 
-.linkBankBtn:hover:not(:disabled) {
+.exportBtn:hover {
   background: #0c4a35;
-}
-
-.linkBankBtn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.bankStatus {
-  margin: 6px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f8a57;
-  text-align: right;
-}
-
-.bankStatusError {
-  margin: 6px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #b91c1c;
-  text-align: right;
 }
 
 .uploadLink {
