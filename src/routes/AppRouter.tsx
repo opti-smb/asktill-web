@@ -1,7 +1,10 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
-import { isClerkEnabled } from '../lib/clerk';
+import {
+  getClerkPublishableKey,
+  setRuntimeClerkPublishableKey,
+} from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
@@ -147,8 +150,40 @@ function AppRoutes() {
 }
 
 export default function AppRouter() {
-  return isClerkEnabled() ? (
-    <ClerkAuthProvider>
+  const [clerkKey, setClerkKey] = useState(getClerkPublishableKey);
+  const [clerkChecked, setClerkChecked] = useState(() => Boolean(getClerkPublishableKey()));
+
+  useEffect(() => {
+    if (getClerkPublishableKey()) {
+      setClerkChecked(true);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/clerk-publishable')
+      .then((res) => (res.ok ? res.json() : { publishableKey: '' }))
+      .then((data: { publishableKey?: string }) => {
+        if (cancelled) return;
+        const key = typeof data?.publishableKey === 'string' ? data.publishableKey.trim() : '';
+        if (key) {
+          setRuntimeClerkPublishableKey(key);
+          setClerkKey(key);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setClerkChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!clerkChecked) {
+    return <PageLoader title="Loading" detail="Starting AskTill…" />;
+  }
+
+  return clerkKey ? (
+    <ClerkAuthProvider publishableKey={clerkKey}>
       <AppRoutes />
     </ClerkAuthProvider>
   ) : (
