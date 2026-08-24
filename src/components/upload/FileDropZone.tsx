@@ -12,12 +12,6 @@ interface FileDropZoneProps {
   register: UseFormRegister<Record<string, FileList>>;
   /** Called when the user picks a file that fails client-side size/type checks. */
   onReject?: (message: string) => void;
-  /** Compact card for single-viewport upload layouts. */
-  dense?: boolean;
-  /** Tighter dense card for dashboard embedded layout. */
-  compact?: boolean;
-  /** Icon well color to match mockup (bank blue / POS purple / ecommerce green). */
-  iconTone?: 'bank' | 'pos' | 'ecommerce';
 }
 
 function cardClassForState(uploadState: FileUploadState): string {
@@ -66,9 +60,6 @@ export default function FileDropZone({
   icon,
   register,
   onReject,
-  dense = false,
-  compact = false,
-  iconTone,
 }: FileDropZoneProps) {
   const status = uploadState.status
     ?? (uploadState.warning
@@ -81,137 +72,76 @@ export default function FileDropZone({
   const cardClass = cardClassForState(uploadState);
   const isChecking = status === 'checking';
   const field = register(name as keyof Record<string, FileList>);
-  const toneClass =
-    iconTone === 'bank'
-      ? styles.toneBank
-      : iconTone === 'pos'
-        ? styles.tonePos
-        : iconTone === 'ecommerce'
-          ? styles.toneEcommerce
-          : '';
 
   return (
-    <div className={`${styles.uploadCard} ${dense ? styles.dense : ''} ${compact ? styles.compactDense : ''} ${toneClass} ${cardClass}`}>
-      {dense ? (
-        <label className={styles.denseHit}>
-          <input
-            type="file"
-            accept=".pdf,.csv,.xlsx,.xls,.tsv,application/pdf,text/csv,text/tab-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            style={{ display: 'none' }}
-            name={field.name}
-            ref={field.ref}
-            onBlur={field.onBlur}
-            onChange={async (event) => {
-              const input = event.currentTarget;
-              const file = input.files?.[0];
-              if (file) {
-                const error = await validateUploadFile(file);
-                if (error) {
-                  input.value = '';
-                  onReject?.(error);
-                  return;
-                }
+    <div className={`${styles.uploadCard} ${cardClass}`}>
+      <div className={styles.uploadIcon}>{icon}</div>
+      <h3>{label}</h3>
+      {subLabel ? <p className={styles.sub}>{subLabel}</p> : null}
+      <label className={styles.dropZone}>
+        <input
+          type="file"
+          accept=".pdf,.csv,.xlsx,.xls,.tsv,application/pdf,text/csv,text/tab-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          style={{ display: 'none' }}
+          name={field.name}
+          ref={field.ref}
+          onBlur={field.onBlur}
+          onChange={async (event) => {
+            const input = event.currentTarget;
+            const file = input.files?.[0];
+            if (file) {
+              const error = await validateUploadFile(file);
+              if (error) {
+                input.value = '';
+                onReject?.(error);
+                return;
               }
-              await field.onChange(event);
-            }}
-          />
-          <div className={styles.denseRow}>
-            <div className={styles.uploadIcon}>{icon}</div>
-            <div className={styles.denseCopy}>
-              <h3>{label}</h3>
-              {subLabel ? <p className={styles.sub}>{subLabel}</p> : null}
-              {uploadState.uploaded ? (
-                <div className={styles.denseStatus}>
-                  {uploadState.statusLine ? (
-                    <span className={`${styles.statusBadge} ${badgeClassForState(uploadState)}`}>
-                      {isChecking ? <span className={styles.badgeSpinner} aria-hidden /> : null}
-                      {uploadState.statusLine}
-                    </span>
-                  ) : null}
-                  {uploadState.fileName ? (
-                    <span className={styles.fileName}>{uploadState.fileName}</span>
-                  ) : null}
-                  {uploadState.warning ? (
-                    <span className={styles.warning}>{uploadState.warning}</span>
-                  ) : null}
-                </div>
-              ) : (
-                <span className={styles.denseHint}>Drop file or browse · PDF, CSV, XLSX</span>
-              )}
-            </div>
-          </div>
-        </label>
-      ) : (
-        <>
-          <div className={styles.uploadIcon}>{icon}</div>
-          <h3>{label}</h3>
-          {subLabel ? <p className={styles.sub}>{subLabel}</p> : null}
-          <label className={styles.dropZone}>
-            <input
-              type="file"
-              accept=".pdf,.csv,.xlsx,.xls,.tsv,application/pdf,text/csv,text/tab-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              style={{ display: 'none' }}
-              name={field.name}
-              ref={field.ref}
-              onBlur={field.onBlur}
-              onChange={async (event) => {
-                const input = event.currentTarget;
-                const file = input.files?.[0];
-                if (file) {
-                  const error = await validateUploadFile(file);
-                  if (error) {
-                    input.value = '';
-                    onReject?.(error);
-                    return;
-                  }
-                }
-                await field.onChange(event);
-              }}
-            />
-            {uploadState.uploaded ? (
-              <div className={styles.uploadBody}>
-                {uploadState.statusLine ? (
-                  <span className={`${styles.statusBadge} ${badgeClassForState(uploadState)}`}>
-                    {isChecking ? (
-                      <span className={styles.badgeSpinner} aria-hidden />
-                    ) : null}
-                    {uploadState.statusLine}
-                  </span>
-                ) : null}
-                {uploadState.fileName ? (
-                  <div className={styles.fileName}>{uploadState.fileName}</div>
-                ) : null}
-                <div className={styles.metaRow}>
-                  {uploadState.sizeLabel ? (
-                    <span className={styles.metaChip}>{uploadState.sizeLabel}</span>
-                  ) : null}
-                  {uploadState.periodLabel && status !== 'checking' ? (
-                    <span className={styles.metaChipPeriod}>{uploadState.periodLabel}</span>
-                  ) : null}
-                  {uploadState.periodLabel && isChecking ? (
-                    <span className={styles.metaChipPending}>{uploadState.periodLabel}?</span>
-                  ) : null}
-                </div>
+            }
+            await field.onChange(event);
+          }}
+        />
+        {uploadState.uploaded ? (
+          <div className={styles.uploadBody}>
+            {uploadState.statusLine ? (
+              <span className={`${styles.statusBadge} ${badgeClassForState(uploadState)}`}>
                 {isChecking ? (
-                  <p className={styles.checkingHint}>
-                    {uploadState.statusLine?.includes('waiting') || uploadState.statusLine?.includes('Queued')
-                      ? 'Queued — checking file type and statement month next…'
-                      : 'Verifying file type and statement month on the server…'}
-                  </p>
+                  <span className={styles.badgeSpinner} aria-hidden />
                 ) : null}
-                {uploadState.warning ? (
-                  <div className={styles.warning}>{uploadState.warning}</div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <div className={styles.dropText}>Drop file here, or click to browse</div>
-                <div className={styles.dropMeta}>PDF, CSV, or XLSX · 10 MB max</div>
-              </>
-            )}
-          </label>
-        </>
-      )}
+                {uploadState.statusLine}
+              </span>
+            ) : null}
+            {uploadState.fileName ? (
+              <div className={styles.fileName}>{uploadState.fileName}</div>
+            ) : null}
+            <div className={styles.metaRow}>
+              {uploadState.sizeLabel ? (
+                <span className={styles.metaChip}>{uploadState.sizeLabel}</span>
+              ) : null}
+              {uploadState.periodLabel && status !== 'checking' ? (
+                <span className={styles.metaChipPeriod}>{uploadState.periodLabel}</span>
+              ) : null}
+              {uploadState.periodLabel && isChecking ? (
+                <span className={styles.metaChipPending}>{uploadState.periodLabel}?</span>
+              ) : null}
+            </div>
+            {isChecking ? (
+              <p className={styles.checkingHint}>
+                {uploadState.statusLine?.includes('waiting') || uploadState.statusLine?.includes('Queued')
+                  ? 'Queued — checking file type and statement month next…'
+                  : 'Verifying file type and statement month on the server…'}
+              </p>
+            ) : null}
+            {uploadState.warning ? (
+              <div className={styles.warning}>{uploadState.warning}</div>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className={styles.dropText}>Drop file here, or click to browse</div>
+            <div className={styles.dropMeta}>PDF, CSV, or XLSX · 10 MB max</div>
+          </>
+        )}
+      </label>
     </div>
   );
 }

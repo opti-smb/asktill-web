@@ -5,10 +5,6 @@
       "destination": "https://authentication-service-s3tl.onrender.com/:path*"
     },
     {
-      "source": "/api/plaid/:path*",
-      "destination": "https://asktill-plaid.onrender.com/api/plaid/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

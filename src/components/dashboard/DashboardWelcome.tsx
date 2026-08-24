@@ -31,17 +31,12 @@ export default function DashboardWelcome() {
         dashboard.
       </p>
       <p className={styles.detail}>
-        Link a bank and we pull statements and transactions in the background — your dashboard
-        fills automatically. Or upload bank + POS/ecommerce PDFs for one month and run analyze.
+        Add your bank statement plus POS or ecommerce reports for one month, run analyze, and we&apos;ll
+        fill in overview, cash flow, and reconciliation with your real numbers.
       </p>
-      <div className={styles.ctaRow}>
-        <Link to="/dashboard/linked-accounts" className={styles.ctaSecondary}>
-          Link bank
-        </Link>
-        <Link to="/onboarding" className={styles.cta}>
-          Upload statements →
-        </Link>
-      </div>
+      <Link to="/onboarding" className={styles.cta}>
+        Upload statements →
+      </Link>
     </section>
   );
 }

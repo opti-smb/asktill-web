@@ -23,14 +23,25 @@ function handoffParams(): URLSearchParams {
   return fromHash;
 }
 
-/** Vercel talks to Render only — never pin asktill.com APIs from a handoff hash. */
+/** Persist EC2 API pin from the one-time handoff hash before it is stripped. */
 export function pinEc2BackendFromHandoff(): void {
-  clearEc2BackendSession();
+  if (typeof window === 'undefined') return;
+  try {
+    if (handoffParams().get('ec2') === '1') {
+      sessionStorage.setItem(STORAGE_KEY, '1');
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function isEc2BackendSession(): boolean {
-  clearEc2BackendSession();
-  return false;
+  pinEc2BackendFromHandoff();
+  try {
+    return sessionStorage.getItem(STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 export function persistEc2AccessToken(token: string): void {

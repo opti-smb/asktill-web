@@ -38,8 +38,6 @@ import {
 } from '../lib/activeStatementView';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
-import { PLAID_DASHBOARD_LOAD_EVENT } from '../lib/plaidIngest';
-import { UPLOAD_BASELINE_RESTORE_EVENT } from '../lib/plaidBankMetrics';
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
@@ -79,7 +77,7 @@ interface AnalysisContextValue {
   clearUploadMismatch: () => void;
   clearStatementDuplicate: () => void;
   mergeWeekReports: (weekReports: WeekReportsViewApi) => void;
-  loadSavedReport: (saved: AnalyzeResult, options?: { historical?: boolean }) => void;
+  loadSavedReport: (saved: AnalyzeResult) => void;
   clearResult: () => void;
   lastStreamStatementId: string | null;
   getLastStreamStatementId: () => string | null;
@@ -400,9 +398,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const loadSavedReport = useCallback((saved: AnalyzeResult, options?: { historical?: boolean }) => {
+  const loadSavedReport = useCallback((saved: AnalyzeResult) => {
     setResult(saved);
-    pinActiveStatementView(saved.statement_id, { historical: options?.historical });
+    pinActiveStatementView(saved.statement_id);
     markJustAnalyzed();
     setError(null);
     setStatementDuplicate(null);
@@ -428,23 +426,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       void prefetchAtLetterHtml(saved.statement_id, { monthOnly: false });
     }
   }, [isAuth, user]);
-
-  useEffect(() => {
-    const onPlaidDashboardLoad = (event: Event) => {
-      const saved = (event as CustomEvent<AnalyzeResult>).detail;
-      if (saved?.statement_id) loadSavedReport(saved);
-    };
-    const onUploadBaselineRestore = (event: Event) => {
-      const saved = (event as CustomEvent<AnalyzeResult>).detail;
-      if (saved?.statement_id) loadSavedReport(saved);
-    };
-    window.addEventListener(PLAID_DASHBOARD_LOAD_EVENT, onPlaidDashboardLoad);
-    window.addEventListener(UPLOAD_BASELINE_RESTORE_EVENT, onUploadBaselineRestore);
-    return () => {
-      window.removeEventListener(PLAID_DASHBOARD_LOAD_EVENT, onPlaidDashboardLoad);
-      window.removeEventListener(UPLOAD_BASELINE_RESTORE_EVENT, onUploadBaselineRestore);
-    };
-  }, [loadSavedReport]);
 
   const clearResult = useCallback(() => {
     setResult(null);

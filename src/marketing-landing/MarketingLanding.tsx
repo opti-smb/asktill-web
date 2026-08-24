@@ -483,10 +483,6 @@ export default function MarketingLanding() {
     // Primary CTAs → register / pricing; add Login if present
     root.querySelectorAll<HTMLAnchorElement>('a.btn-primary, a.btn-ghost').forEach((a) => {
       const label = (a.textContent || '').trim().toLowerCase();
-      if (a.getAttribute('aria-disabled') === 'true' || a.classList.contains('is-soon')) {
-        a.addEventListener('click', (event) => event.preventDefault());
-        return;
-      }
       if (
         label.includes('start free')
         || label.includes('create my free business brief')

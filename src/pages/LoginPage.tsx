@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { Controller, useForm } from 'react-hook-form';
 
@@ -17,7 +17,8 @@ import { useAuth } from '../context/AuthContext';
 import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
 import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
-import { markPostLoginRouting } from '../lib/pendingPdfDownload';
+import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
+import { isEc2BackendSession } from '../lib/ec2BackendSession';
 import { hasSignedOutIntent } from '../lib/explicitLogout';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
@@ -37,6 +38,10 @@ interface LoginFormData {
 
 
 export default function LoginPage() {
+  if (isEc2BackendSession()) {
+    return <Navigate to="/workspace" replace />;
+  }
+
   return <LoginPageInner />;
 }
 
@@ -87,9 +92,10 @@ function LoginPageInner() {
   useEffect(() => {
     if (!(ready && isAuth)) return;
     if (hasSignedOutIntent()) return;
+    const state = location.state as { from?: string } | null;
     markPostLoginRouting();
-    navigate('/post-login', { replace: true });
-  }, [ready, isAuth, navigate]);
+    navigate(resolvePostLoginRedirect(state?.from), { replace: true });
+  }, [ready, isAuth, navigate, location.state]);
 
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -184,7 +190,9 @@ function LoginPageInner() {
       failedAttemptsRef.current = 0;
 
       markPostLoginRouting();
-      navigate('/post-login', { replace: true });
+      navigate(
+        resolvePostLoginRedirect((location.state as { from?: string } | null)?.from),
+      );
 
     } catch (err) {
       failedAttemptsRef.current += 1;

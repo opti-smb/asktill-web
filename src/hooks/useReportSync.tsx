@@ -18,15 +18,11 @@ import {
   loadAtLetterCache,
 } from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
-import {
-  getActiveStatementViewId,
-  isHistoricalStatementView,
-} from '../lib/activeStatementView';
+import { getActiveStatementViewId } from '../lib/activeStatementView';
 import {
   comparePeriodKeys,
   periodKeyFromLabel,
   pickPrimarySavedReport,
-  pickUploadBaselineReport,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
@@ -158,26 +154,19 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready || !isAuth) return;
     const sessionAnalysis = getAnalyzeAnalysis(result);
-    const activeViewId = getActiveStatementViewId();
-    const pinnedReport = activeViewId
-      ? savedReports.find((row) => row.statement_id === activeViewId)
-      : undefined;
     const statementId = resolveAtLetterStatementId({
       sessionStatementId: result?.statement_id,
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
       primaryReport,
       historyReady,
       preferSession: hasRecentAnalyzeSession(),
-      activeViewId,
-      activeViewPeriodKey:
-        pinnedReport?.period_key || periodKeyFromLabel(pinnedReport?.period_label) || null,
-      historicalView: isHistoricalStatementView(),
+      activeViewId: getActiveStatementViewId(),
     });
     if (statementId) {
       void prefetchAtLetterHtml(statementId, { monthOnly: true });
       void prefetchAtLetterHtml(statementId, { monthOnly: false });
     }
-  }, [ready, isAuth, result?.statement_id, result?.analysis, primaryReport, historyReady, savedReports]);
+  }, [ready, isAuth, result?.statement_id, result?.analysis, primaryReport, historyReady]);
 
   useEffect(() => {
     if (!ready) {
@@ -209,7 +198,7 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       .then(async ({ data }) => {
         if (cancelled) return;
         const reports = data.reports ?? [];
-        const primary = pickUploadBaselineReport(reports) ?? pickPrimarySavedReport(reports);
+        const primary = pickPrimarySavedReport(reports);
         const sorted = [...reports].sort((a, b) => {
           const byPeriod = comparePeriodKeys(a.period_key, b.period_key);
           if (byPeriod !== 0) return byPeriod;
@@ -223,38 +212,42 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           const sessionResult = resultRef.current;
           const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
           const sessionStatementId = sessionResult?.statement_id?.trim();
-          const historicalView = isHistoricalStatementView();
           const activeViewId = getActiveStatementViewId()?.trim() || null;
-          const pinnedReport = activeViewId
-            ? reports.find((row) => row.statement_id === activeViewId)
+          const effectiveSessionId = activeViewId || sessionStatementId || null;
+          const sessionReport = effectiveSessionId
+            ? reports.find((row) => row.statement_id === effectiveSessionId)
             : undefined;
-          const activeViewPeriodKey =
-            pinnedReport?.period_key || periodKeyFromLabel(pinnedReport?.period_label) || null;
           const sessionKey =
             periodKeyFromLabel(sessionAnalysis?.period_label)
-            ?? (sessionStatementId
-              ? reports.find((row) => row.statement_id === sessionStatementId)?.period_key
-              : null)
+            ?? sessionReport?.period_key
             ?? null;
           const inAnalyzeGrace = hasRecentAnalyzeSession();
+          const pinnedId = activeViewId || (inAnalyzeGrace ? sessionStatementId : null);
+          const keepPinnedView = Boolean(
+            pinnedId
+            && primary?.statement_id
+            && pinnedId !== primary.statement_id,
+          );
+          const keepCurrentSessionView = Boolean(
+            sessionAnalysis
+            && sessionStatementId
+            && (keepPinnedView || inAnalyzeGrace || pinnedId === sessionStatementId),
+          );
 
-          const resolvedId = resolveAtLetterStatementId({
-            sessionStatementId,
+          const statementId = resolveAtLetterStatementId({
+            sessionStatementId: effectiveSessionId,
             sessionPeriodKey: sessionKey,
             primaryReport: primary,
             historyReady: true,
-            preferSession: inAnalyzeGrace,
-            activeViewId,
-            activeViewPeriodKey,
-            historicalView,
+            preferSession: inAnalyzeGrace || keepPinnedView || keepCurrentSessionView,
+            activeViewId: pinnedId,
           });
-
-          if (resolvedId) {
-            void prefetchAtLetterHtml(resolvedId, { monthOnly: true });
-            void prefetchAtLetterHtml(resolvedId, { monthOnly: false });
+          if (statementId) {
+            void prefetchAtLetterHtml(statementId, { monthOnly: true });
+            void prefetchAtLetterHtml(statementId, { monthOnly: false });
           }
 
-          const pinnedId = activeViewId || (inAnalyzeGrace ? sessionStatementId : null);
+          // Pinned / just-uploaded month must never be replaced by chronologically newest.
           if (pinnedId) {
             const needsHydrate =
               !sessionAnalysis
@@ -269,18 +262,24 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
                 /* keep partial session payload */
               }
             }
-          } else if (
-            !sessionAnalysis
-            && primary
-            && !analyzeLoadingRef.current
-            && hydratedStatementIdRef.current !== primary.statement_id
-          ) {
-            hydratedStatementIdRef.current = primary.statement_id;
-            try {
-              const { data: saved } = await fetchSavedReport(primary.statement_id);
-              if (!cancelled) loadSavedReport(saved);
-            } catch {
-              /* overview can still open saved report manually */
+          } else if (!keepCurrentSessionView) {
+            // Fresh login / no pin: chronologically latest month.
+            const shouldHydrateFromServer =
+              primary
+              && !analyzeLoadingRef.current
+              && !sessionResult?.analysis;
+
+            if (
+              shouldHydrateFromServer
+              && hydratedStatementIdRef.current !== primary.statement_id
+            ) {
+              hydratedStatementIdRef.current = primary.statement_id;
+              try {
+                const { data: saved } = await fetchSavedReport(primary.statement_id);
+                if (!cancelled) loadSavedReport(saved);
+              } catch {
+                /* overview can still open saved report manually */
+              }
             }
           }
         }

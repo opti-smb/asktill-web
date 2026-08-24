@@ -1,14 +1,12 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ClerkAuthProvider from '../components/auth/ClerkAuthProvider';
-import {
-  getClerkPublishableKey,
-  setRuntimeClerkPublishableKey,
-} from '../lib/clerk';
+import { isClerkEnabled } from '../lib/clerk';
 import LandingPage from '../pages/LandingPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import RedirectToAsktillAuth from '../pages/RedirectToAsktillAuth';
 import WorkspaceEntryPage from '../pages/WorkspaceEntryPage';
 import LoginOAuthCallback from '../pages/LoginOAuthCallback';
 import LoginOAuthComplete from '../pages/LoginOAuthComplete';
@@ -21,7 +19,6 @@ import ReconPage from '../pages/ReconPage';
 import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
-import LinkedAccountsPage from '../pages/LinkedAccountsPage';
 import AtRewardsPage from '../pages/AtRewardsPage';
 import AtChargebacksPage from '../pages/AtChargebacksPage';
 import ProfilePage from '../pages/ProfilePage';
@@ -49,7 +46,10 @@ function UploadPageRoute() {
 }
 
 function AuthOnAsktill({ path }: { path: '/login' | '/register' }) {
-  return path === '/register' ? <RegisterPage /> : <LoginPage />;
+  if (import.meta.env.DEV) {
+    return path === '/register' ? <RegisterPage /> : <LoginPage />;
+  }
+  return <RedirectToAsktillAuth path={path} />;
 }
 
 function AppRoutes() {
@@ -67,9 +67,18 @@ function AppRoutes() {
         <Route path="/login" element={<AuthOnAsktill path="/login" />} />
         <Route path="/workspace" element={<WorkspaceEntryPage />} />
         <Route path="/post-login" element={<WorkspaceEntryPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/sso-callback" element={<LoginOAuthCallback />} />
-        <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />
+        <Route
+          path="/forgot-password"
+          element={import.meta.env.DEV ? <ForgotPasswordPage /> : <AuthOnAsktill path="/login" />}
+        />
+        <Route
+          path="/sso-callback"
+          element={import.meta.env.DEV ? <LoginOAuthCallback /> : <AuthOnAsktill path="/login" />}
+        />
+        <Route
+          path="/login/oauth-complete"
+          element={import.meta.env.DEV ? <LoginOAuthComplete /> : <AuthOnAsktill path="/login" />}
+        />
         <Route
           path="/pricing/checkout"
           element={
@@ -141,7 +150,6 @@ function AppRoutes() {
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
           <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />
-          <Route path="linked-accounts" element={<LinkedAccountsPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Routes>
@@ -150,40 +158,8 @@ function AppRoutes() {
 }
 
 export default function AppRouter() {
-  const [clerkKey, setClerkKey] = useState(getClerkPublishableKey);
-  const [clerkChecked, setClerkChecked] = useState(() => Boolean(getClerkPublishableKey()));
-
-  useEffect(() => {
-    if (getClerkPublishableKey()) {
-      setClerkChecked(true);
-      return;
-    }
-    let cancelled = false;
-    fetch('/api/clerk-publishable')
-      .then((res) => (res.ok ? res.json() : { publishableKey: '' }))
-      .then((data: { publishableKey?: string }) => {
-        if (cancelled) return;
-        const key = typeof data?.publishableKey === 'string' ? data.publishableKey.trim() : '';
-        if (key) {
-          setRuntimeClerkPublishableKey(key);
-          setClerkKey(key);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setClerkChecked(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!clerkChecked) {
-    return <PageLoader title="Loading" detail="Starting AskTill…" />;
-  }
-
-  return clerkKey ? (
-    <ClerkAuthProvider publishableKey={clerkKey}>
+  return isClerkEnabled() ? (
+    <ClerkAuthProvider>
       <AppRoutes />
     </ClerkAuthProvider>
   ) : (

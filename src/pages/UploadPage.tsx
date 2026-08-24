@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
 import UploadContinuityNudge from '../components/upload/UploadContinuityNudge';
-import UploadMethodChooser, { type UploadMethod } from '../components/upload/UploadMethodChooser';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
-import { usePlaidLinkBank } from '../hooks/usePlaidLinkBank';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
@@ -48,7 +46,6 @@ import {
   shouldShowContinuityNudge,
   type UploadContinuityView,
 } from '../lib/uploadContinuity';
-import { businessIdFromUser, fetchLinkedBankAccounts } from '../lib/plaidClient';
 import styles from './UploadPage.module.css';
 
 type FormData = Record<string, FileList>;
@@ -261,39 +258,10 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     uploadValidatedKeys: draftValidatedKeys,
     setUploadValidationDraft,
   } = useAnalysis();
-  const { isAuth, ready: authReady, user } = useAuth();
+  const { isAuth, ready: authReady } = useAuth();
   const { isPaid } = useSubscription();
   const draftHydratedRef = useRef(false);
   const skipEmptyFileSyncRef = useRef(false);
-  const manualUploadRef = useRef<HTMLDivElement | null>(null);
-  const [, setDataMethod] = useState<UploadMethod | null>(null);
-  const [bankLinked, setBankLinked] = useState(false);
-
-  const { linkBank, busy: linkingBank, linkingMode, status: bankLinkStatus, ready: canLinkBank } =
-    usePlaidLinkBank(user?.userId, {
-      onLinked: () => {
-        setBankLinked(true);
-      },
-    });
-
-  useEffect(() => {
-    if (!user?.userId?.trim()) {
-      setBankLinked(false);
-      return;
-    }
-    const businessId = businessIdFromUser(user.userId);
-    let cancelled = false;
-    void fetchLinkedBankAccounts(businessId)
-      .then((accounts) => {
-        if (!cancelled && accounts.length > 0) setBankLinked(true);
-      })
-      .catch(() => {
-        if (!cancelled) setBankLinked(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.userId]);
 
   useEffect(() => {
     // Clear leftover flag from older deploys that gated upload behind a sign-in modal.
@@ -1046,9 +1014,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             <span className={styles.pageEyebrow}>Step 2 of 4</span>
             <h1>All your statements in <em>1 page</em></h1>
             <p className={styles.pageSub}>
-              {embedded
-                ? 'Link your bank for automatic sync (month to date), or upload Bank, POS, and Ecom files below.'
-                : 'Link your bank via Plaid, or upload your Bank, POS, and Ecom statements. Same period gives best results.'}
+              Upload your Bank, Pos, and Ecom statements. Same period will give best results
             </p>
             {showValidationContinuityNudge && validationContinuity ? (
               <UploadContinuityNudge
@@ -1122,48 +1088,6 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             ) : null}
           </div>
 
-          <div className={styles.plaidPullSection}>
-            <UploadMethodChooser
-              variant={embedded ? 'tiles' : 'bar'}
-              compact={embedded}
-              linking={linkingBank}
-              linkingMode={linkingMode}
-              linkStatus={bankLinkStatus}
-              canLink={canLinkBank}
-              bankLinked={bankLinked}
-              onConnectRealtime={() => {
-                setDataMethod('realtime');
-                void linkBank('realtime');
-              }}
-              onConnectMonthly={() => {
-                setDataMethod('monthly');
-                void linkBank('monthly');
-              }}
-              onChooseManual={() => {
-                setDataMethod('manual');
-                manualUploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            />
-            {bankLinked ? (
-              <p className={styles.plaidLinkedHint}>
-                Bank connected — live transactions sync from the 1st through today. Use{' '}
-                <strong>Pull monthly statements</strong> to fetch PDF statements too. Results appear on your{' '}
-                <button
-                  type="button"
-                  className={styles.plaidLinkedLink}
-                  onClick={() => navigate(DEFAULT_DASHBOARD_PATH)}
-                >
-                  dashboard
-                </button>
-                .{' '}
-                <Link to="/dashboard/linked-accounts" className={styles.plaidLinkedLink}>
-                  Manage linked banks
-                </Link>
-              </p>
-            ) : null}
-          </div>
-
-          <div ref={manualUploadRef} className={styles.manualUploadSection}>
           <div className={styles.uploadGrid}>
             <FileDropZone
               key={`bank-${uploadFormKey}`}
@@ -1224,7 +1148,6 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 setUploadPrompt(message);
               }}
             />
-          </div>
           </div>
 
           <div className={styles.privacy}>

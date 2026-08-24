@@ -26,13 +26,6 @@
   font-weight: 400;
 }
 
-.subtitle {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-}
-
 .body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
@@ -148,14 +141,6 @@
   font-weight: 750;
   color: #0f5c42;
   letter-spacing: -0.02em;
-}
-
-.note {
-  margin: 8px 0 0;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: #64748b;
 }
 
 .empty {
