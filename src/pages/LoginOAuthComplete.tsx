@@ -23,11 +23,11 @@ import {
   wasGoogleSignInAttempt,
 } from '../lib/clerk';
 import styles from './LoginPage.module.css';
-
 import {
   resolvePostLoginRedirect,
   markPostLoginRouting,
 } from '../lib/pendingPdfDownload';
+import { continueOnVercelApp } from '../lib/vercelAppHandoff';
 
 const FLOW_TIMEOUT_MS = 45_000;
 const SESSION_WAIT_MS = 12_000;
@@ -122,6 +122,7 @@ export default function LoginOAuthComplete() {
         setPhase('done');
         clearGoogleSignInAttempt();
         if (!cancelled) {
+          if (continueOnVercelApp('/post-login', getToken())) return;
           markPostLoginRouting();
           navigate(resolvePostLoginRedirect(), { replace: true });
         }

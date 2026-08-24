@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_ENTITLEMENTS_API_URL?: string;
   readonly VITE_CLERK_PUBLISHABLE_KEY?: string;
   readonly VITE_APP_ORIGIN?: string;
+  readonly VITE_VERCEL_APP_URL?: string;
   readonly TOKEN_STORAGE_KEY: string;
 }
 

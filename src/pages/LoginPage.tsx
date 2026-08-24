@@ -15,11 +15,11 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 
 import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
-import { extractNotRegistered, warmupServices } from '../lib/api';
+import { extractNotRegistered, getToken, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
-import { isPublicBetaGateActive } from '../lib/publicBetaGate';
-import BetaAccessPage from './BetaAccessPage';
+import { continueOnVercelApp } from '../lib/vercelAppHandoff';
+import { hasSignedOutIntent } from '../lib/explicitLogout';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
 
@@ -38,9 +38,6 @@ interface LoginFormData {
 
 
 export default function LoginPage() {
-  if (isPublicBetaGateActive()) {
-    return <BetaAccessPage navActive="signin" />;
-  }
   return <LoginPageInner />;
 }
 
@@ -90,6 +87,8 @@ function LoginPageInner() {
 
   useEffect(() => {
     if (!(ready && isAuth)) return;
+    if (hasSignedOutIntent()) return;
+    if (continueOnVercelApp('/post-login', getToken())) return;
     const state = location.state as { from?: string } | null;
     markPostLoginRouting();
     navigate(resolvePostLoginRedirect(state?.from), { replace: true });
@@ -105,7 +104,8 @@ function LoginPageInner() {
       success?: string;
     } | null;
 
-    const prefilledEmail = state?.email?.trim().toLowerCase() ?? '';
+    const queryEmail = new URLSearchParams(location.search).get('email')?.trim().toLowerCase() ?? '';
+    const prefilledEmail = state?.email?.trim().toLowerCase() || queryEmail;
     // Reset before revealing the real password field. Do NOT clear again after
     // reveal — that races browser/password-manager autofill and can submit "".
     reset({ email: prefilledEmail, password: '' });
@@ -187,6 +187,7 @@ function LoginPageInner() {
       await login(email, password);
       failedAttemptsRef.current = 0;
 
+      if (continueOnVercelApp('/post-login', getToken())) return;
       markPostLoginRouting();
       navigate(
         resolvePostLoginRedirect((location.state as { from?: string } | null)?.from),

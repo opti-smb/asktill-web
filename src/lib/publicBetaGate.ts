@@ -12,6 +12,7 @@ export function isPublicBetaGateActive(): boolean {
 
 export type BetaAccessPayload = {
   email: string;
+  fullName: string;
   location: string;
   segment: string;
 };
@@ -23,7 +24,7 @@ function agentsBaseUrl(): string {
   );
 }
 
-/** Submit beta interest form → Agents emails the configured staff inbox. */
+/** Staff notify only — does not create accounts. Accounts go to EC2 register/auth. */
 export async function submitBetaAccessRequest(
   payload: BetaAccessPayload,
 ): Promise<{ ok: true; message: string }> {

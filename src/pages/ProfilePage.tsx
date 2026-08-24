@@ -259,8 +259,6 @@ export default function ProfilePage() {
     }
   };
 
-  const displayName = user?.businessName || user?.name || user?.email || 'Your account';
-
   return (
     <>
       <SectionHeader periodMeta="Account" title="Profile" />
@@ -274,7 +272,7 @@ export default function ProfilePage() {
           <dl className={styles.fieldList}>
             <div className={styles.fieldRow}>
               <dt>Name</dt>
-              <dd>{displayName}</dd>
+              <dd>{user?.name?.trim() || '—'}</dd>
             </div>
             <div className={styles.fieldRow}>
               <dt>Email</dt>
