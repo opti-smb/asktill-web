@@ -11,7 +11,7 @@ export const PROD_URLS = {
   subscription: 'https://asktill-subscription.onrender.com',
   agents: 'https://asktill-agents.onrender.com',
   admin: 'https://asktill-admin-dashboard.vercel.app',
-  app: 'https://asktill-web.vercel.app',
+  app: 'https://asktill-web-three.vercel.app',
 } as const;
 
 export type PublicUrlKey = keyof typeof PROD_URLS;
