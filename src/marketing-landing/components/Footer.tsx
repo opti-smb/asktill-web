@@ -25,11 +25,12 @@ export default function Footer() {
             <a href={`/login`}>Get started</a>
             <a href="#trust">Security</a>
           </div>
-          <div>
-            <h4>Company</h4>
-            <a href="#top">About</a>
-            <a href="#cta">Contact</a>
-            <a href="#cta">Support</a>
+          <div id="policies">
+            <h4>Policies</h4>
+            <a href="/policies/terms">Terms of Service</a>
+            <a href="/policies/privacy">Privacy Policy</a>
+            <a href="/policies/security">Security &amp; Trust</a>
+            <a href="/policies/vulnerability-disclosure">Vulnerability Disclosure</a>
           </div>
         </div>
       </div>

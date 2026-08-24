@@ -1,0 +1,307 @@
+ASKTILL TERMS OF SERVICE
+Last Updated: August 23, 2026
+These Terms of Service ("Terms") govern your access to and use of the AskTill website, applications, dashboards, reports, alerts, artificial intelligence features, data connections and other products and services provided by AskTill Inc. ("AskTill," "we," "us," or "our").
+By creating an account, clicking to accept these Terms, connecting a financial or business account, or otherwise accessing or using AskTill, you agree to these Terms.
+If you do not agree to these Terms, you must not use the Service.
+AskTill Inc.
+Email: support@asktill.com
+1. AskTill Is a Business Service
+AskTill is designed for businesses, business owners, officers, employees, accountants, advisers and other persons acting on behalf of a business.
+The Service is not intended primarily for personal, family or household use.
+By using AskTill, you represent that:
+you are at least 18 years old;
+you have authority to enter into these Terms;
+if you are using AskTill for a company or other organization, you have authority to bind that organization; and
+you have the necessary authority and permissions to connect or provide any bank, payment processor, POS, accounting, e-commerce or other business account or information used with AskTill.
+The entity or business on whose behalf you use AskTill is referred to as the "Customer."
+2. What AskTill Does
+AskTill is a financial visibility and business intelligence platform designed to help small and medium-sized businesses better understand and manage their finances.
+Depending on the features available to you, AskTill may help Customers:
+consolidate information from bank accounts, payment processors, POS systems, e-commerce platforms and other business sources;
+review cash position and cash-flow trends;
+compare transactions between different systems;
+identify potential missing, delayed, duplicate or unmatched transactions;
+identify potential fees, disputes, chargebacks or other areas where money may have been lost;
+monitor business performance;
+generate financial summaries, reports, alerts and business-health indicators;
+identify questions that a business owner may wish to investigate;
+identify possible actions or areas requiring attention;
+analyze historical business information;
+assist with reconciliation;
+evaluate potential savings or business opportunities; and
+provide AI-assisted insights and recommendations.
+Features may change as AskTill develops.
+AskTill does not guarantee that every transaction, problem, discrepancy, chargeback, opportunity or financial issue will be identified.
+3. Connected Accounts and Third-Party Data
+AskTill may allow you to connect accounts maintained with third parties, including banks, financial institutions, payment processors, POS providers, accounting systems, e-commerce platforms and financial-data providers.
+These are referred to as "Connected Accounts."
+You authorize AskTill and its applicable service providers to access, retrieve, receive, use and process information from Connected Accounts for the purpose of providing the Service.
+You represent that you have the legal right and authority to provide this authorization.
+AskTill may use third-party financial-data connectivity providers such as Plaid or other providers.
+Those providers may have their own terms, privacy policies and consent processes. Your use of their services may therefore also be governed by their applicable terms.
+AskTill is not responsible for the availability, accuracy, completeness or operation of any third-party service or Connected Account.
+Financial institutions and other providers may delay, modify, restrict or discontinue access to information at any time.
+As a result, information displayed by AskTill may occasionally be delayed, incomplete, duplicated, incorrectly categorized or inconsistent with the underlying source.
+The Customer should verify material information against its source records before taking significant financial action.
+4. Customer Data
+"Customer Data" means information, files, statements, transaction data and other material supplied by or on behalf of a Customer or obtained from Connected Accounts at the Customer's direction.
+As between AskTill and the Customer, the Customer retains its rights in Customer Data.
+The Customer grants AskTill a limited right to access, use, process, transmit and otherwise handle Customer Data as reasonably necessary to:
+provide and improve the Service;
+generate reports, analysis, alerts and recommendations requested by the Customer;
+maintain security and prevent fraud or misuse;
+provide customer support; and
+comply with applicable law.
+AskTill's collection, use, retention, and deletion of personal information are further described in the AskTill Privacy Policy and, where applicable, any data processing agreement or service-specific data terms.
+Customers should not provide information to AskTill that they do not have authority to provide.
+4A. Data Processing Role and End-Customer Information
+Customer Data may include personal information about Customer's own customers, including cardholders, for example in connection with a dispute or chargeback.
+With respect to personal information about Customer's own customers contained in Customer Data, and to the extent applicable data protection law treats Customer as a business or controller and AskTill as a service provider or processor, Customer acts as the business or controller and AskTill processes that information on Customer's documented instructions, subject to these Terms, the Privacy Policy, and any applicable data processing agreement.
+AskTill maintains a list of the sub-processors it uses to provide the Service and will make that list available to Customer on request. Where required by applicable law, AskTill will enter into a data processing agreement with Customer covering this processing.
+5. AI and Automated Analysis
+Certain AskTill features may use artificial intelligence, machine learning, rules-based systems or other automated technologies.
+These systems may analyze Customer Data and generate summaries, classifications, forecasts, alerts, recommendations, comparisons or suggested actions ("Automated Outputs").
+Automated Outputs may be inaccurate, incomplete or inappropriate for a particular business.
+Artificial intelligence can make mistakes.
+Accordingly, Automated Outputs should be treated as decision-support information rather than decisions made on behalf of the Customer.
+The Customer remains responsible for reviewing material information and deciding whether and how to act.
+AskTill does not represent that an Automated Output has been reviewed by an accountant, financial adviser, lawyer, tax professional or other professional.
+6. No Accounting, Tax, Legal, Investment or Other Professional Advice
+AskTill provides technology, financial visibility and decision-support tools.
+Unless separately agreed in writing, AskTill is not acting as your:
+accountant;
+auditor;
+bookkeeper;
+tax adviser;
+investment adviser;
+financial planner;
+attorney;
+fiduciary;
+lender;
+insurance adviser; or
+other licensed professional.
+Information or recommendations generated through AskTill do not constitute accounting, auditing, tax, legal, investment or other regulated professional advice.
+Customers remain responsible for their business and financial decisions.
+Where appropriate, Customers should consult their own professional advisers before making material decisions.
+7. Financial Information and Forecasts
+Financial information displayed by AskTill may depend on information received from third parties or provided by the Customer.
+AskTill does not independently audit or verify all such information.
+Budgets, forecasts, cash-flow projections, business-health indicators, trends, benchmarks and similar outputs are estimates based on available data and assumptions.
+Actual results may differ materially.
+Past performance does not guarantee future performance.
+AskTill does not guarantee that use of the Service will increase revenue, improve profitability, prevent losses, improve cash flow or produce any particular business outcome.
+8. Reconciliation and Missing Transactions
+AskTill may compare information across Connected Accounts to identify possible:
+missing payments;
+unmatched transactions;
+settlement differences;
+duplicate transactions;
+unexplained fees;
+delayed settlements;
+reconciliation differences; or
+other financial discrepancies.
+These features are intended to help Customers investigate potential issues.
+They do not constitute an audit and are not guaranteed to identify every discrepancy.
+A transaction identified as potentially missing may subsequently be found to be valid, delayed, categorized differently or otherwise explained.
+Similarly, AskTill may fail to identify a transaction that is actually missing.
+The Customer remains responsible for verifying results against its bank, processor, accounting and other source records.
+9. Chargebacks, Disputes and Potential Recoveries
+AskTill may provide features that identify, analyze, prioritize or help Customers respond to chargebacks, payment disputes or other potential recoveries.
+Identification of a possible recoverable amount does not mean that the amount will actually be recovered.
+Whether a chargeback or dispute can successfully be challenged depends on numerous factors outside AskTill's control, including:
+applicable card-network or processor rules;
+evidence available to the merchant;
+reason codes;
+deadlines;
+issuing-bank decisions;
+acquiring-bank decisions;
+payment-processor procedures; and
+customer circumstances.
+AskTill does not guarantee the acceptance of a dispute response or recovery of any funds.
+If AskTill offers automated dispute submission or recovery services, additional terms, authorizations, pricing or service-specific conditions may apply.
+Unless expressly enabled and authorized by Customer through the applicable feature, AskTill will not intentionally submit a dispute response or representation on Customer's behalf. AskTill may submit eligible dispute responses only through the Automated Dispute Submission feature described in Section 9A and in accordance with Customer's selected settings.
+The Customer remains responsible for the accuracy and completeness of information submitted in connection with any dispute.
+9A. Automated Dispute Submission
+AskTill may offer a feature that allows AskTill to prepare and submit eligible dispute responses on Customer's behalf using automated or AI-assisted processes ("Automated Dispute Submission"). Availability may be limited based on processor, network, contractual, registration, compliance, or technical requirements.
+Automated Dispute Submission is disabled unless expressly enabled by Customer. By enabling the feature, Customer authorizes AskTill to prepare and submit eligible dispute responses through supported payment processors in accordance with Customer's selected settings. Customer may disable the feature at any time, subject to submissions already transmitted.
+Regardless of whether this feature is enabled, AskTill will generally route lower-confidence or incomplete disputes to Customer for review rather than submitting them automatically.
+Customer can view what was submitted on its behalf.
+AskTill will use commercially reasonable efforts to prepare automated submissions based on Customer Data and other information available to AskTill. AskTill does not independently verify the accuracy or completeness of Customer Data and does not guarantee that a submission will be complete, accurate, accepted, or successful. Customer remains responsible for the accuracy, completeness, and lawfulness of underlying Customer Data and for establishing and maintaining the automation settings under which AskTill is authorized to act.
+This feature does not change AskTill's disclaimers under Section 21 or the limitations in Section 22. AskTill does not guarantee that an automated submission will be accepted or result in recovery.
+10. Third-Party Products, Loans, Insurance and Other Offers
+AskTill may display, introduce, advertise, refer or provide access to products and services offered by third parties.
+These may include financial products, lending, insurance, accounting, legal, payment, technology or other business services.
+Unless AskTill expressly states otherwise in writing, AskTill is not the provider of those third-party products or services.
+Displaying or referring a product does not constitute an endorsement, guarantee or representation that the product is appropriate for a particular Customer.
+Eligibility, approval, pricing and contractual terms are determined by the applicable third-party provider.
+AskTill does not guarantee that a Customer will qualify for financing, insurance or any other third-party service.
+AskTill may receive compensation from certain partners for introductions, referrals or other commercial arrangements. Where required by law, applicable disclosures will be provided.
+11. Account Security
+Customers are responsible for maintaining the confidentiality of their AskTill login credentials and restricting access to their accounts.
+You must notify AskTill promptly if you suspect unauthorized use of your account.
+You must not share access credentials except with persons authorized to use the Customer's account.
+You are responsible for activities performed through your account by persons you authorize.
+AskTill may require additional authentication or security measures.
+12. Fees, Plans and Subscriptions
+AskTill may offer free and paid plans.
+Current features, fees and billing terms will be displayed when a Customer subscribes or in an applicable order form.
+Unless otherwise stated, paid subscriptions are billed in advance.
+Where a subscription automatically renews, it will renew for successive subscription periods unless canceled before the next billing date.
+Customers may cancel through the methods made available by AskTill.
+Cancellation ordinarily takes effect at the end of the then-current paid subscription period.
+Except where required by law or expressly stated otherwise, fees already paid are non-refundable.
+AskTill may change its pricing or plans prospectively. Where required, AskTill will provide notice before new pricing applies to an existing paid subscription.
+12A. Recovered Funds and Success Fees
+Where a Service involves recovering a chargeback or dispute, AskTill does not receive or hold the recovered funds. Recovered amounts are returned directly to Customer by the applicable card network, issuer, acquirer, or processor through Customer's own settlement arrangement.
+Where a success fee applies, it is calculated as a percentage of the recovered amount and billed to Customer separately - AskTill does not deduct its fee from funds passing through AskTill, because AskTill does not hold those funds.
+Except as otherwise stated in an order form, AskTill does not charge a success fee unless a dispute is ultimately recovered. For purposes of success-fee billing, an amount is "recovered" when it is finally credited or otherwise made available to Customer through the applicable processor or settlement arrangement and has not been reversed within the applicable dispute process, subject to any more specific definition in an order form.
+13. Beta and Experimental Features
+AskTill may provide beta, pilot, preview, early-access or experimental features.
+Such features are still being developed and may:
+contain errors;
+produce incorrect results;
+operate intermittently;
+change substantially;
+have limited functionality; or
+be discontinued.
+Beta and experimental features are provided without any service-level commitment unless AskTill expressly agrees otherwise in writing.
+AskTill may limit the number of customers participating in a beta or may remove access at any time.
+Customers should independently verify material results produced by beta or experimental features.
+14. Acceptable Use
+Customers may use AskTill only for lawful business purposes.
+You must not:
+access financial or business information without authorization;
+use AskTill to commit or facilitate fraud or other unlawful activity;
+upload malware or harmful code;
+attempt to bypass authentication or security protections;
+interfere with or disrupt AskTill's systems;
+probe, scan, or test vulnerabilities except as expressly permitted under AskTill's Vulnerability Disclosure Policy or otherwise authorized in writing by AskTill;
+reverse engineer, decompile or attempt to derive AskTill source code except where applicable law expressly permits it;
+scrape or systematically extract information from AskTill except through authorized interfaces;
+resell or provide the Service to third parties without AskTill's written consent;
+infringe intellectual-property or privacy rights;
+impersonate another person or organization; or
+use AskTill in violation of applicable law or third-party terms.
+AskTill may suspend or terminate access where it reasonably believes these requirements have been violated.
+15. AskTill Intellectual Property
+AskTill and its licensors own all rights, title and interest in and to the Service, including its software, designs, interfaces, models, reports, methodologies, trademarks, logos and related intellectual property, excluding Customer Data.
+These Terms grant the Customer a limited, non-exclusive, non-transferable and revocable right to use the Service for its internal business purposes during the applicable subscription or access period.
+No other rights are granted.
+Customers may download or use reports generated for their business in the ordinary course of business.
+Customers may not commercially reproduce, sublicense, resell or create a competing service using AskTill's proprietary technology or content without AskTill's written permission.
+16. Feedback
+Customers may provide comments, ideas, suggestions or feedback regarding AskTill.
+AskTill may use such feedback without restriction or compensation, provided that doing so does not grant AskTill ownership of Customer Data or the Customer's confidential business information.
+17. Privacy and Security
+AskTill's handling of personal information is described in its Privacy Policy.
+AskTill may use third-party technology and infrastructure providers to provide the Service.
+AskTill will maintain reasonable administrative, technical and organizational safeguards appropriate to the nature of the information it processes.
+However, no online service or method of electronic transmission can be guaranteed to be completely secure.
+Customers are responsible for maintaining appropriate security for their own systems, devices and credentials.
+18. Third-Party Services
+AskTill may depend on third-party infrastructure, APIs, financial-data providers, payment processors, banks, cloud-service providers or other services.
+AskTill does not control those third parties and cannot guarantee their continued availability or performance.
+AskTill will not be responsible for failures, delays, interruptions, inaccuracies or changes caused by third-party services to the extent permitted by applicable law.
+Links to third-party websites are provided for convenience and do not make AskTill responsible for those websites.
+19. Service Changes and Availability
+AskTill may modify, improve, add or remove features from the Service.
+AskTill may temporarily suspend access for maintenance, upgrades, security incidents or other operational reasons.
+AskTill does not guarantee uninterrupted availability.
+AskTill may discontinue all or part of the Service. Where commercially reasonable, AskTill will provide advance notice of material discontinuation affecting paid Customers.
+20. Suspension and Termination
+A Customer may stop using AskTill at any time.
+AskTill may suspend or terminate access if:
+the Customer materially breaches these Terms;
+fees remain unpaid;
+continued use creates a security or legal risk;
+AskTill reasonably suspects fraud or unauthorized access;
+a third-party provider requires suspension; or
+AskTill discontinues the applicable Service.
+Provisions that by their nature should survive termination-including intellectual property, disclaimers, indemnification, limitations of liability and dispute provisions-will survive.
+Treatment of Customer Data following termination will be governed by the AskTill Privacy Policy, any applicable data processing agreement or service-specific data terms, and applicable law.
+21. Disclaimer of Warranties
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, ASKTILL AND THE SERVICE ARE PROVIDED "AS IS" AND "AS AVAILABLE."
+ASKTILL DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
+ASKTILL DOES NOT WARRANT THAT:
+THE SERVICE WILL BE UNINTERRUPTED OR ERROR-FREE;
+ALL DATA WILL BE ACCURATE OR COMPLETE;
+ALL FINANCIAL DISCREPANCIES WILL BE IDENTIFIED;
+ALL CHARGEBACKS OR RECOVERABLE AMOUNTS WILL BE IDENTIFIED OR RECOVERED;
+AUTOMATED OR AI-GENERATED OUTPUTS WILL BE ACCURATE;
+FORECASTS WILL OCCUR AS PROJECTED;
+THIRD-PARTY CONNECTIONS WILL REMAIN AVAILABLE; OR
+USE OF THE SERVICE WILL PRODUCE A PARTICULAR FINANCIAL OR BUSINESS RESULT.
+Nothing in these Terms excludes any warranty that cannot lawfully be excluded.
+22. Limitation of Liability
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, ASKTILL AND ITS AFFILIATES, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, AGENTS AND SERVICE PROVIDERS WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE OR CONSEQUENTIAL DAMAGES, OR FOR LOSS OF PROFITS, REVENUE, GOODWILL, BUSINESS OPPORTUNITIES, DATA OR ANTICIPATED SAVINGS, ARISING FROM OR RELATING TO THE SERVICE. THIS LIMITATION OF CATEGORIES OF DAMAGES DOES NOT APPLY TO THE EXTENT SUCH DAMAGES ARISE FROM ASKTILL'S GROSS NEGLIGENCE, WILLFUL MISCONDUCT, OR FRAUD. FOR CLARITY, THE AGGREGATE LIABILITY CAP STATED BELOW APPLIES SEPARATELY TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW. NOTHING IN THESE TERMS LIMITS LIABILITY THAT CANNOT LAWFULLY BE LIMITED.
+This includes losses arising from:
+inaccurate or incomplete financial information;
+delayed information;
+a missed or incorrectly identified transaction;
+reconciliation differences;
+forecasts or recommendations;
+chargebacks or disputes;
+inability to recover funds;
+actions taken in reliance on AskTill outputs;
+third-party services or Connected Accounts;
+service interruption;
+unauthorized access outside AskTill's reasonable control; or
+loss or corruption of data.
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, ASKTILL'S TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THE SERVICE OR THESE TERMS WILL NOT EXCEED THE TOTAL FEES ACTUALLY PAID BY THE CUSTOMER TO ASKTILL DURING THE TWELVE MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM. 
+IF THE CUSTOMER HAS PAID NO FEES TO ASKTILL DURING THAT PERIOD, ASKTILL'S TOTAL AGGREGATE LIABILITY WILL NOT EXCEED US$100.
+These limitations apply regardless of whether liability arises in contract, tort, negligence, strict liability or another legal theory and even if AskTill was advised that damages were possible.
+Nothing in these Terms limits liability to the extent such liability cannot lawfully be limited, including where applicable law prohibits limitation for fraud, willful misconduct, or another category of liability.
+23. Indemnification
+To the maximum extent permitted by law, the Customer will defend, indemnify and hold harmless AskTill and its affiliates, directors, officers, employees and agents from third-party claims, damages, liabilities and reasonable costs arising from:
+the Customer's unlawful use of the Service;
+Customer Data that the Customer did not have authority to provide;
+the Customer's violation of third-party rights;
+fraudulent or unauthorized activity by the Customer;
+the Customer's material violation of these Terms; or
+information or instructions provided by the Customer in connection with a chargeback, dispute or other transaction.
+AskTill will provide reasonable notice of any indemnified claim and reasonable cooperation in its defense. Customer may participate in the defense of an indemnified claim with counsel of its choice at its own expense. AskTill will not settle a claim in a manner that admits fault by, or imposes non-monetary obligations on, Customer without Customer's consent.
+23A. Limited IP Indemnification by AskTill
+Subject to the limitations in this Section 23A, AskTill will defend Customer against a third-party claim alleging that the Service, as provided by AskTill and used in accordance with these Terms, infringes a third party's valid U.S. patent, copyright, trademark, or trade secret, and will indemnify Customer for damages finally awarded by a court or amounts payable under a settlement approved in writing by AskTill.
+AskTill's obligations under this Section 23A apply only to the intellectual-property claim described above.
+This Section 23A does not create an indemnity for security incidents, privacy claims, data-protection matters, business losses, chargeback outcomes, or Customer Data; those matters are governed by the other applicable provisions of these Terms and applicable law.
+Any broader indemnity or security-specific commitment must be expressly agreed in a separate written agreement signed by AskTill.
+AskTill has no obligation under this Section 23A to the extent a claim arises from modification of the Service by anyone other than AskTill, combination of the Service with products or data not provided by AskTill, Customer's continued use of a version of the Service after AskTill made available a non-infringing replacement, or Customer Data or Customer's own instructions.
+If the Service becomes, or AskTill reasonably believes it may become, the subject of an infringement claim, AskTill may at its option procure the right for Customer to continue using the Service, modify the Service to be non-infringing without material loss of functionality, or terminate the affected Service and refund any prepaid, unused fees.
+AskTill's total aggregate liability under this Section 23A, including defense costs, attorneys' fees, settlements, judgments, and indemnification payments, will not exceed the lesser of (a) two times the fees paid by Customer in the twelve months preceding the claim, or (b) US$1,000, to the fullest extent permitted by applicable law.
+Customer will provide AskTill with reasonable notice of any indemnified claim and reasonable cooperation, and will not settle any such claim without AskTill's prior written consent.
+24. No Agency, Partnership or Fiduciary Relationship
+Nothing in these Terms creates a partnership, joint venture, employment, franchise, fiduciary or agency relationship between AskTill and the Customer.
+Unless separately agreed in writing, AskTill does not have authority to enter into agreements on behalf of the Customer.
+25. Compliance With Law
+Customers are responsible for complying with laws applicable to their business and their use of AskTill.
+The Service may not be used by persons or organizations prohibited from receiving services under applicable U.S. sanctions or export-control laws.
+26. Changes to These Terms
+AskTill may update these Terms from time to time.
+The revised Terms will identify the date of the latest update.
+If a change materially affects existing Customers, AskTill may provide reasonable notice through the Service, email or another appropriate method.
+Continued use of the Service after revised Terms become effective constitutes acceptance of the revised Terms to the extent permitted by applicable law.
+If you do not agree with revised Terms, you must stop using the Service.
+27. Electronic Communications
+By creating an AskTill account or using the Service, you agree that agreements, notices, disclosures and other communications may be provided electronically.
+Operational and legally required communications may be sent to the email address associated with your account or provided through the Service.
+Marketing communications will be handled according to applicable law and your communication preferences.
+28. Assignment
+Customers may not assign these Terms without AskTill's prior written consent.
+AskTill may assign these Terms in connection with a merger, acquisition, corporate reorganization, sale of assets, financing or transfer of the business or relevant Service.
+29. Force Majeure
+AskTill will not be responsible for delay or failure resulting from circumstances beyond its reasonable control, including natural disasters, power or telecommunications failures, cyberattacks, governmental actions, labor disputes, financial-institution outages or failures of third-party infrastructure.
+30. Governing Law and Venue
+These Terms and any dispute arising from them will be governed by the laws of the State of Delaware, without regard to conflict-of-laws principles.
+Subject to any applicable law that requires otherwise, the state and federal courts located in Delaware will have exclusive jurisdiction over disputes arising from or relating to these Terms or the Service.
+Each party consents to jurisdiction and venue in those courts.
+31. Severability
+If any provision of these Terms is found unenforceable, that provision will be enforced to the maximum extent permitted by law and the remaining provisions will remain in effect.
+32. No Waiver
+AskTill's failure to enforce any provision of these Terms is not a waiver of its right to enforce that or any other provision later.
+33. Entire Agreement
+These Terms, together with the Privacy Policy, applicable order forms, service-specific terms and any other documents expressly incorporated by reference, constitute the agreement between AskTill and the Customer regarding use of the Service.
+If an order form or separately executed written agreement expressly conflicts with these Terms, the separately executed agreement will control with respect to that conflict.
+34. Contact Us
+Questions regarding these Terms may be sent to:
+AskTill Inc.
+Email: support@asktill.com

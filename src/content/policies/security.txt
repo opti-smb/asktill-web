@@ -1,0 +1,152 @@
+ASKTILL SECURITY & TRUST
+Last Updated: August 23, 2026
+Your business financial information deserves strong protection.
+AskTill is being built with security and privacy as core product requirements.
+Because AskTill is an early-stage platform, our security program will continue to mature as the product, integrations and customer base grow.
+This page explains our current security principles and the controls AskTill is building around them.
+Protecting Business Financial Information
+AskTill may process sensitive business information from banks, payment processors, POS systems, e-commerce platforms and other sources.
+Our security approach is based on four principles:
+Minimize access. Protect what we process. Monitor our systems. Respond quickly when something goes wrong.
+1. Secure Financial Connections
+Where AskTill connects with financial institutions through providers such as Plaid or other authorized connectivity providers, AskTill uses the provider's supported connection process.
+AskTill is designed so that bank-login credentials entered within a third-party provider's connection interface are handled by that provider rather than used by AskTill to independently log into your financial institution.
+AskTill receives only the information authorized for the applicable connection and AskTill service.
+Users can disconnect supported financial connections when they no longer want AskTill to retrieve information from them.
+2. Encryption
+AskTill uses industry-standard encryption designed to protect sensitive information in transit and at rest, where applicable. Specific technical controls may vary by system, data type, infrastructure provider, and security requirements.
+Sensitive information stored by AskTill should also be protected using encryption appropriate to the data and infrastructure involved.
+Encryption keys and application secrets should be appropriately protected and access restricted.
+3. Access Controls
+Access to sensitive production information is intended to be restricted to authorized personnel who require access for a legitimate business or technical purpose.
+AskTill's access-control approach includes:
+least-privilege access;
+role-based permissions where appropriate;
+restricted production access;
+controlled administrative privileges;
+secure credential management; and
+removal of access when it is no longer required.
+Access to particularly sensitive systems should use strong authentication controls.
+4. Infrastructure Security
+AskTill uses established cloud and technology providers to operate its Service.
+Our infrastructure security approach is designed around:
+secure configuration;
+environment separation;
+network protections;
+restricted administrative access;
+secrets management;
+security logging;
+backups where appropriate; and
+monitoring of important production systems.
+Using a major cloud provider does not by itself make an application secure. AskTill remains responsible for securely configuring and operating its own systems.
+5. Data Minimization
+A central AskTill security principle is:
+Don't keep information simply because we can.
+AskTill aims to retrieve and retain only information reasonably required to deliver the selected services.
+Where possible, AskTill seeks to limit:
+unnecessary collection;
+unnecessary duplication;
+unnecessary employee access;
+unnecessary retention; and
+unnecessary transfer of Customer information.
+6. Secure Development
+AskTill's software-development practices are intended to incorporate security throughout the development lifecycle.
+This includes practices such as:
+reviewing significant code changes;
+managing software dependencies;
+protecting secrets and API credentials;
+separating development and production environments;
+testing important functionality;
+applying security patches;
+monitoring known vulnerabilities; and
+addressing security issues based on risk.
+7. Vulnerability Management
+AskTill seeks to identify and remediate vulnerabilities based on their severity and potential impact.
+This includes vulnerabilities identified through:
+internal testing;
+dependency and infrastructure monitoring;
+service providers;
+security tools; and
+responsible disclosures from security researchers.
+AskTill maintains a separate Vulnerability Disclosure Policy describing how security issues may be reported.
+Security vulnerabilities can be reported to:
+support@asktill.com
+8. Logging and Monitoring
+AskTill's systems may maintain security and operational logs to help:
+detect unauthorized access;
+investigate unusual activity;
+troubleshoot problems;
+identify attempted misuse;
+investigate security incidents; and
+maintain system reliability.
+Access to security logs should be appropriately controlled.
+AskTill does not intentionally use security logging as a means to collect unnecessary Customer financial information.
+9. Incident Response
+AskTill maintains or is developing procedures for identifying, investigating, containing and responding to security incidents.
+Depending on the circumstances, incident response may include:
+detection and assessment;
+containment;
+investigation;
+remediation;
+credential or key rotation;
+restoration;
+monitoring;
+notification where legally or contractually required; and
+review of lessons learned.
+If AskTill determines that applicable law requires notification of Customers or authorities, AskTill will provide such notification as required.
+10. Third-Party Providers
+AskTill relies on third-party technology providers to deliver certain functions.
+These may include providers for:
+cloud infrastructure;
+financial connectivity;
+authentication;
+payments;
+communications;
+analytics;
+support services; and
+artificial intelligence.
+AskTill seeks to select reputable providers and limit their access to information to what is reasonably required for their services.
+Third-party providers are responsible for the security of their own systems, while AskTill remains responsible for how those providers are incorporated into AskTill's service.
+11. Employee and Contractor Access
+People are part of security.
+AskTill seeks to limit access to sensitive Customer information to personnel who have a legitimate need for it.
+Personnel with access to sensitive systems or information are expected to:
+maintain confidentiality;
+use secure authentication;
+protect credentials;
+follow AskTill security requirements; and
+report suspected incidents.
+12. Business Continuity and Backups
+AskTill's infrastructure strategy is designed to reduce the risk that a single technical failure causes unnecessary data loss or prolonged service interruption.
+Depending on the relevant system, safeguards may include backups, redundancy and recovery procedures.
+AskTill does not guarantee uninterrupted availability of the Service.
+13. Customer Responsibilities
+Security is shared.
+Customers should:
+use strong and unique passwords;
+protect account credentials;
+restrict AskTill access to authorized team members;
+maintain security on their own computers and devices;
+remove access when employees or advisers leave;
+monitor Connected Accounts;
+promptly report suspicious activity; and
+avoid sending sensitive credentials through email or support channels.
+14. Privacy
+Our security practices work alongside our privacy practices.
+For information about the types of information AskTill processes and how it is used, please review the AskTill Privacy Policy.
+15. Compliance and Security Certifications
+AskTill is an early-stage technology company.
+AskTill does not claim a security certification, regulatory approval or independent assurance report unless that certification or report has actually been obtained and is expressly identified by AskTill.
+In particular, references to industry security standards or practices should not be interpreted as a representation that AskTill is certified under:
+SOC 2;
+ISO 27001;
+PCI DSS;
+GLBA;
+or any other regulatory or certification framework,
+unless AskTill expressly states otherwise.
+As AskTill's platform and customer requirements grow, we expect our security and assurance program to evolve accordingly.
+AskTill may update this page if and when a certification, independent assurance report, or other formal security attestation is actually obtained.
+16. Security Questions
+For privacy and security questions:
+support@asktill.com
+For suspected vulnerabilities, please follow the AskTill Vulnerability Disclosure Policy.

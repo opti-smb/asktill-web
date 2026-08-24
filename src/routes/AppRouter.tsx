@@ -22,6 +22,7 @@ import AtRewardsPage from '../pages/AtRewardsPage';
 import AtChargebacksPage from '../pages/AtChargebacksPage';
 import ProfilePage from '../pages/ProfilePage';
 import AdminHandoffPage from '../pages/AdminHandoffPage';
+import PolicyPage from '../pages/PolicyPage';
 import PricingPage from '../pages/PricingPage';
 import CheckoutPage from '../pages/CheckoutPage';
 import SubscriptionActivatingPage from '../pages/SubscriptionActivatingPage';
@@ -49,6 +50,7 @@ function AppRoutes() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/policies/:slug" element={<PolicyPage />} />
         <Route path="/calculators" element={<Navigate to="/dashboard/calculators" replace />} />
         <Route
           path="/calculators/:slug"
