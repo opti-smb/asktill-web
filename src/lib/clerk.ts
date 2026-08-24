@@ -1,13 +1,34 @@
-const clerkFromEnv = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim();
-/** Vercel Clerk from env only. Refuse asktill.com `pk_live_` so EC2 keys never run here. */
-export const CLERK_PUBLISHABLE_KEY = clerkFromEnv.startsWith('pk_live_')
-  ? ''
-  : clerkFromEnv;
+/** Vercel Development Clerk only. Refuse asktill.com `pk_live_` so EC2 keys never run here. */
+function sanitizeVercelClerkKey(raw: string): string {
+  const key = raw.trim();
+  if (!key || key.startsWith('pk_live_')) return '';
+  return key;
+}
+
+const bakedClerkPublishableKey = sanitizeVercelClerkKey(
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
+    import.meta.env.CLERK_PUBLISHABLE_KEY ||
+    import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+    '',
+);
+
+let runtimeClerkPublishableKey = bakedClerkPublishableKey;
+
+export function getClerkPublishableKey(): string {
+  return runtimeClerkPublishableKey;
+}
+
+export function setRuntimeClerkPublishableKey(key: string): void {
+  runtimeClerkPublishableKey = sanitizeVercelClerkKey(key);
+}
+
+/** @deprecated Prefer getClerkPublishableKey() so the Vercel runtime key is included. */
+export const CLERK_PUBLISHABLE_KEY = bakedClerkPublishableKey;
 
 const CLERK_OAUTH_REDIRECT_PATH = '/sso-callback';
 export const CLERK_OAUTH_COMPLETE_PATH = '/login/oauth-complete';
 
-export const isClerkEnabled = () => Boolean(CLERK_PUBLISHABLE_KEY);
+export const isClerkEnabled = () => Boolean(getClerkPublishableKey());
 
 /** Absolute OAuth URLs — must match Clerk Dashboard → Paths / Redirect URLs. */
 export function clerkOAuthUrls() {

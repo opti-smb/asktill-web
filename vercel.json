@@ -5,7 +5,7 @@
       "destination": "https://authentication-service-s3tl.onrender.com/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
