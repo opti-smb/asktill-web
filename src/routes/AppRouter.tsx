@@ -17,6 +17,7 @@ import ReconPage from '../pages/ReconPage';
 import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
+import LinkedAccountsPage from '../pages/LinkedAccountsPage';
 import AtRewardsPage from '../pages/AtRewardsPage';
 import AtChargebacksPage from '../pages/AtChargebacksPage';
 import ProfilePage from '../pages/ProfilePage';
@@ -130,6 +131,7 @@ function AppRoutes() {
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
           <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />
+          <Route path="linked-accounts" element={<LinkedAccountsPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Routes>

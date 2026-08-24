@@ -6,10 +6,17 @@ import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
 import UploadContinuityNudge from '../components/upload/UploadContinuityNudge';
+import UploadMethodChooser, {
+  type UploadMethod,
+} from '../components/upload/UploadMethodChooser';
+import BankStatementsPanel from '../components/sources/BankStatementsPanel';
+import BankTransactionsPanel from '../components/sources/BankTransactionsPanel';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
 import { useAnalysis } from '../context/AnalysisContext';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
+import { usePlaidLinkBank } from '../hooks/usePlaidLinkBank';
+import { businessIdFromUser, fetchLinkedBankAccounts } from '../lib/plaidClient';
 import {
   duplicateInfoFromValidation,
   downloadMonthlyReportPdf,
@@ -258,10 +265,41 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     uploadValidatedKeys: draftValidatedKeys,
     setUploadValidationDraft,
   } = useAnalysis();
-  const { isAuth, ready: authReady } = useAuth();
+  const { isAuth, ready: authReady, user } = useAuth();
   const { isPaid } = useSubscription();
   const draftHydratedRef = useRef(false);
   const skipEmptyFileSyncRef = useRef(false);
+  const [, setDataMethod] = useState<UploadMethod | null>(null);
+  const [plaidRefreshKey, setPlaidRefreshKey] = useState(0);
+  const [bankLinked, setBankLinked] = useState(false);
+
+  const { linkBank, busy: linkingBank, status: bankLinkStatus, ready: canLinkBank } =
+    usePlaidLinkBank(user?.userId, {
+      onLinked: (mode) => {
+        setDataMethod(mode);
+        setBankLinked(true);
+        setPlaidRefreshKey((n) => n + 1);
+      },
+    });
+
+  useEffect(() => {
+    if (!user?.userId?.trim()) {
+      setBankLinked(false);
+      return;
+    }
+    const businessId = businessIdFromUser(user.userId);
+    let cancelled = false;
+    void fetchLinkedBankAccounts(businessId)
+      .then((accounts) => {
+        if (!cancelled && accounts.length > 0) setBankLinked(true);
+      })
+      .catch(() => {
+        /* Plaid service may be offline during local dev */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.userId]);
 
   useEffect(() => {
     // Clear leftover flag from older deploys that gated upload behind a sign-in modal.
@@ -942,8 +980,399 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     }
   };
 
+  const scrollToManualUpload = () => {
+    document.getElementById('manual-upload-boxes')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
+
+  const alertBanners = (
+    <>
+      {showValidationContinuityNudge && validationContinuity ? (
+        <UploadContinuityNudge
+          continuity={validationContinuity}
+          onDismiss={dismissContinuityNudge}
+          blocking={false}
+        />
+      ) : null}
+      {freeTierNotice ? (
+        <div className={styles.freeTierBanner} role="alert" aria-labelledby="free-tier-title">
+          <div className={styles.freeTierHeader}>
+            <h2 id="free-tier-title" className={styles.freeTierTitle}>
+              Come back next month
+            </h2>
+          </div>
+          <p className={styles.freeTierMessage}>
+            {freeTierNotice.storedLabel
+              ? `You've used your free upload for ${freeTierNotice.storedLabel}. Upgrade anytime for unlimited uploads.`
+              : "You've used this month's free upload. Upgrade anytime for unlimited uploads."}
+          </p>
+          <div className={styles.freeTierActions}>
+            <button type="button" className={styles.freeTierUpgradeBtn} onClick={goToPricing}>
+              Upgrade to Paid
+            </button>
+          </div>
+        </div>
+      ) : headerNotice ? (
+        <div className={styles.duplicateBanner} role="alert">
+          <p className={styles.duplicateMessage}>{headerNotice}</p>
+          {savedStatementId ? (
+            <div className={styles.duplicateActions}>
+              <button
+                type="button"
+                className={styles.btnDuplicateAction}
+                disabled={duplicateBusy}
+                onClick={() => void openSavedReport(savedStatementId)}
+              >
+                Open saved dashboard
+              </button>
+              <button
+                type="button"
+                className={styles.btnDuplicateAction}
+                disabled={duplicateBusy}
+                onClick={() => void downloadSavedPdf(savedStatementId, savedPeriodLabel)}
+              >
+                Download PDF
+              </button>
+              <button
+                type="button"
+                className={styles.btnDuplicateAction}
+                disabled={duplicateBusy || loading}
+                onClick={() => void onContinue(true)}
+              >
+                Replace and re-analyze
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.btnDuplicateLink}
+              onClick={() => setShowPreviousReports(true)}
+            >
+              View previous reports
+            </button>
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+
+  const uploadDropZones = (
+    <div className={styles.uploadGrid}>
+      <FileDropZone
+        key={`bank-${uploadFormKey}`}
+        name="bank"
+        label="Bank statement"
+        subLabel="From your business bank accounts."
+        uploadState={bankState}
+        dense
+        compact={embedded}
+        iconTone="bank"
+        icon={
+          <i className="ti ti-building-bank" aria-hidden />
+        }
+        register={register}
+        onReject={(message) => {
+          setValidationError(message);
+          setUploadPrompt(message);
+        }}
+      />
+      <FileDropZone
+        key={`pos-${uploadFormKey}`}
+        name="pos"
+        label="POS statement"
+        subLabel="From your point of sale systems."
+        uploadState={posState}
+        dense
+        compact={embedded}
+        iconTone="pos"
+        icon={
+          <i className="ti ti-device-mobile" aria-hidden />
+        }
+        register={register}
+        onReject={(message) => {
+          setValidationError(message);
+          setUploadPrompt(message);
+        }}
+      />
+      <FileDropZone
+        key={`ecommerce-${uploadFormKey}`}
+        name="ecommerce"
+        label="Ecommerce statement"
+        subLabel="From your online stores."
+        uploadState={ecommerceState}
+        dense
+        compact={embedded}
+        iconTone="ecommerce"
+        icon={
+          <i className="ti ti-shopping-cart" aria-hidden />
+        }
+        register={register}
+        onReject={(message) => {
+          setValidationError(message);
+          setUploadPrompt(message);
+        }}
+      />
+    </div>
+  );
+
+  const uploadFooter = (
+    <>
+      {validationError ? (
+        <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 12 }}>
+          <div>{validationError}</div>
+          <button
+            type="button"
+            className={styles.retryBtn}
+            disabled={anySlotChecking}
+            onClick={() => {
+              setValidationError(null);
+              setValidationRetryKey((n) => n + 1);
+            }}
+            style={{ marginTop: 8 }}
+          >
+            {anySlotChecking ? 'Retrying…' : 'Retry verification'}
+          </button>
+        </div>
+      ) : null}
+
+      {uploadPrompt ? (
+        <div className={styles.uploadPrompt} role="alert">
+          <strong>Upload required</strong>
+          {uploadPrompt}
+        </div>
+      ) : null}
+
+      {error && !headerNotice && !freeTierNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) ? (
+        <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 16 }}>
+          {error}
+        </div>
+      ) : null}
+
+      <div className={styles.ctaWrap}>
+        {canOpenSavedReport ? (
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            disabled={duplicateBusy || loading}
+            onClick={() => void openSavedReport(savedStatementId!)}
+          >
+            Open saved dashboard
+            <span>→</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            disabled={!canSubmitAnalyze}
+            onClick={() => void onContinue()}
+          >
+            {loading ? 'Analyzing…' : 'Continue to dashboard'}
+            <span>→</span>
+          </button>
+        )}
+        <div className={styles.micro}>
+          {uploadedCount} of 3 sources uploaded
+          {loading
+            ? ' · analyzing your statements'
+            : uploadedCount < 1
+              ? ' · add at least one file to continue'
+              : anySlotChecking
+                ? ' · checking uploads'
+                : canOpenSavedReport
+                  ? ' · this month is already on file — open your saved dashboard'
+                  : uploadedCount < 3
+                    ? ' · add all 3 sources for full reconciliation'
+                    : hasStoredConflict && hasBoxWarnings
+                      ? ' · fix highlighted boxes — this month is already on file'
+                      : hasBoxWarnings
+                        ? ' · fix the highlighted upload boxes'
+                        : validationReady
+                          ? ' · ready to analyze'
+                          : ' · waiting for upload checks'}
+        </div>
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className={styles.dashboardPage}>
+        {analyzeProgress ? <AnalyzeProgressOverlay progress={analyzeProgress} /> : null}
+        {postAnalyzeContinuity ? (
+          <UploadContinuityNudge
+            continuity={postAnalyzeContinuity}
+            onDismiss={dismissContinuityNudge}
+            onContinue={goToDashboard}
+          />
+        ) : null}
+
+        <div className={styles.dashboardScroll}>
+          <header className={styles.dashboardHead}>
+            <div className={styles.dashboardIntro}>
+              <h1 className={styles.dashboardTitle}>
+                <i className="ti ti-plug-connected" aria-hidden />
+                Connect Accounts
+              </h1>
+              <p className={styles.dashboardSub}>
+                Link a bank for automatic sync, pull data for a period, or upload statement PDFs.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={styles.dashboardReportsBtn}
+              onClick={() => setShowPreviousReports((open) => !open)}
+              aria-expanded={showPreviousReports}
+            >
+              <i className="ti ti-history" aria-hidden />
+              {showPreviousReports ? 'Hide' : 'Reports'}
+              {savedReportCount != null && savedReportCount > 0 ? ` (${savedReportCount})` : ''}
+            </button>
+          </header>
+
+          {showPreviousReports ? (
+            <div className={styles.previousReportsDrawer}>
+              <PreviousReportsPanel
+                active
+                variant="upload"
+                onLoadReport={loadSavedReport}
+                onReportsLoaded={setSavedReportCount}
+              />
+            </div>
+          ) : null}
+
+          {alertBanners}
+
+          <div className={styles.dashboardCard}>
+            <UploadMethodChooser
+              variant="tiles"
+              linking={linkingBank}
+              linkStatus={bankLinkStatus}
+              canLink={canLinkBank}
+              onConnectRealtime={() => {
+                setDataMethod('realtime');
+                void linkBank('realtime');
+              }}
+              onConnectMonthly={() => {
+                setDataMethod('monthly');
+                void linkBank('monthly');
+              }}
+              onChooseManual={scrollToManualUpload}
+            />
+
+            {bankLinked ? (
+              <div className={styles.linkedRow}>
+                <span className={styles.linkedRowMain}>
+                  <i className="ti ti-circle-check" aria-hidden />
+                  Bank linked — pull data below or upload PDFs.
+                </span>
+                <button
+                  type="button"
+                  className={styles.linkedManageBtn}
+                  onClick={() => navigate('/dashboard/linked-accounts')}
+                >
+                  Manage linked banks
+                  <i className="ti ti-chevron-right" aria-hidden />
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          {bankLinked ? (
+            <div className={styles.plaidPanels}>
+              <p className={styles.plaidPanelsLabel}>From your linked bank</p>
+              <BankStatementsPanel compact refreshKey={plaidRefreshKey} />
+              <BankTransactionsPanel compact refreshKey={plaidRefreshKey} />
+            </div>
+          ) : null}
+
+          <section id="manual-upload-boxes" className={styles.uploadCard}>
+            <h2 className={styles.uploadCardTitle}>
+              <i className="ti ti-cloud-upload" aria-hidden />
+              Upload statements
+            </h2>
+            <p className={styles.uploadCardSub}>
+              Drop bank, POS, and ecommerce PDFs — at least one file to continue.
+            </p>
+            {uploadDropZones}
+            <div className={styles.dashboardBottom}>
+              <p className={styles.privacyInline}>
+                <i className="ti ti-shield-lock" aria-hidden />
+                Encrypted at rest and in transit.
+              </p>
+              {validationError ? (
+                <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 8 }}>
+                  <div>{validationError}</div>
+                  <button
+                    type="button"
+                    className={styles.retryBtn}
+                    disabled={anySlotChecking}
+                    onClick={() => {
+                      setValidationError(null);
+                      setValidationRetryKey((n) => n + 1);
+                    }}
+                    style={{ marginTop: 6 }}
+                  >
+                    {anySlotChecking ? 'Retrying…' : 'Retry verification'}
+                  </button>
+                </div>
+              ) : null}
+              {uploadPrompt ? (
+                <div className={styles.uploadPrompt} role="alert">
+                  <strong>Upload required</strong>
+                  {uploadPrompt}
+                </div>
+              ) : null}
+              {error && !headerNotice && !freeTierNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) ? (
+                <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 8 }}>
+                  {error}
+                </div>
+              ) : null}
+              <div className={styles.dashboardCtaRow}>
+                {canOpenSavedReport ? (
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={duplicateBusy || loading}
+                    onClick={() => void openSavedReport(savedStatementId!)}
+                  >
+                    <i className="ti ti-layout-dashboard" aria-hidden />
+                    Open dashboard
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={!canSubmitAnalyze}
+                    onClick={() => void onContinue()}
+                  >
+                    <i className={`ti ${loading ? 'ti-loader-2' : 'ti-arrow-right'}`} aria-hidden />
+                    {loading ? 'Analyzing…' : 'Continue to dashboard'}
+                  </button>
+                )}
+                <p className={styles.dashboardStatus}>
+                  {uploadedCount} of 3 sources uploaded
+                  {loading
+                    ? ' · analyzing your statements'
+                    : uploadedCount < 1
+                      ? ' · add at least one file to continue'
+                      : anySlotChecking
+                        ? ' · checking uploads'
+                        : validationReady
+                          ? ' · ready to analyze'
+                          : ' · waiting for upload checks'}
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`${styles.pageBg} ${embedded ? styles.pageBgEmbedded : ''}`}>
+    <div className={`${styles.pageBg} ${styles.pageBgOnboarding}`}>
       {analyzeProgress && <AnalyzeProgressOverlay progress={analyzeProgress} />}
       {postAnalyzeContinuity ? (
         <UploadContinuityNudge
@@ -952,16 +1381,14 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
           onContinue={goToDashboard}
         />
       ) : null}
-      {!embedded ? (
       <nav className={styles.nav}>
         <div className="wrap">
           <div className={styles.navInner}>
-            <Logo to={DEFAULT_DASHBOARD_PATH} />
+            <Logo to={DEFAULT_DASHBOARD_PATH} size={28} />
             <UserAccountMenu showName />
           </div>
         </div>
       </nav>
-      ) : null}
 
       <div className={styles.stepper}>
         <div className="wrap">
@@ -983,7 +1410,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
 
       <div className={styles.page}>
         <div
-          className={`wrap ${styles.pageInner} ${embedded ? styles.pageInnerEmbedded : ''} ${
+          className={`wrap ${styles.pageInner} ${styles.pageInnerOnboarding} ${
             showPreviousReports ? styles.pageInnerScroll : ''
           }`}
         >
@@ -999,7 +1426,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             </button>
           </div>
 
-          {showPreviousReports && (
+          {showPreviousReports ? (
             <div className={styles.previousReportsDrawer}>
               <PreviousReportsPanel
                 active
@@ -1008,234 +1435,55 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 onReportsLoaded={setSavedReportCount}
               />
             </div>
-          )}
+          ) : null}
 
           <div className={styles.pageHeader}>
-            <span className={styles.pageEyebrow}>Step 2 of 4</span>
-            <h1>All your statements in <em>1 page</em></h1>
-            <p className={styles.pageSub}>
-              Upload your Bank, Pos, and Ecom statements. Same period will give best results
-            </p>
-            {showValidationContinuityNudge && validationContinuity ? (
-              <UploadContinuityNudge
-                continuity={validationContinuity}
-                onDismiss={dismissContinuityNudge}
-                blocking={false}
-              />
-            ) : null}
-            {freeTierNotice ? (
-              <div className={styles.freeTierBanner} role="alert" aria-labelledby="free-tier-title">
-                <div className={styles.freeTierHeader}>
-                  <h2 id="free-tier-title" className={styles.freeTierTitle}>
-                    Come back next month
-                  </h2>
-                </div>
-                <p className={styles.freeTierMessage}>
-                  {freeTierNotice.storedLabel
-                    ? `You've used your free upload for ${freeTierNotice.storedLabel}. Upgrade anytime for unlimited uploads.`
-                    : "You've used this month's free upload. Upgrade anytime for unlimited uploads."}
-                </p>
-                <div className={styles.freeTierActions}>
-                  <button
-                    type="button"
-                    className={styles.freeTierUpgradeBtn}
-                    onClick={goToPricing}
-                  >
-                    Upgrade to Paid
-                  </button>
-                </div>
+            <h1 className={styles.pageTitle}>
+              Choose how you want to bring in <em>your data</em>
+            </h1>
+            {alertBanners}
+          </div>
+
+          <UploadMethodChooser
+            linking={linkingBank}
+            linkStatus={bankLinkStatus}
+            canLink={canLinkBank}
+            onConnectRealtime={() => {
+              setDataMethod('realtime');
+              void linkBank('realtime');
+            }}
+            onConnectMonthly={() => {
+              setDataMethod('monthly');
+              void linkBank('monthly');
+            }}
+            onChooseManual={() => {
+              setDataMethod('manual');
+              scrollToManualUpload();
+            }}
+          />
+
+          {bankLinked ? (
+            <div className={styles.plaidPullSection}>
+              <BankStatementsPanel refreshKey={plaidRefreshKey} />
+              <BankTransactionsPanel refreshKey={plaidRefreshKey} />
+            </div>
+          ) : null}
+
+          <div id="manual-upload-boxes" className={styles.manualUploadSection}>
+            <h2 className={styles.manualUploadTitle}>What you can upload</h2>
+            {uploadDropZones}
+            <div className={styles.privacy}>
+              <div className={styles.privacyIcon}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
               </div>
-            ) : headerNotice ? (
-              <div className={styles.duplicateBanner} role="alert">
-                <p className={styles.duplicateMessage}>{headerNotice}</p>
-                {savedStatementId ? (
-                  <div className={styles.duplicateActions}>
-                    <button
-                      type="button"
-                      className={styles.btnDuplicateAction}
-                      disabled={duplicateBusy}
-                      onClick={() => void openSavedReport(savedStatementId)}
-                    >
-                      Open saved dashboard
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.btnDuplicateAction}
-                      disabled={duplicateBusy}
-                      onClick={() => void downloadSavedPdf(savedStatementId, savedPeriodLabel)}
-                    >
-                      Download PDF
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.btnDuplicateAction}
-                      disabled={duplicateBusy || loading}
-                      onClick={() => void onContinue(true)}
-                    >
-                      Replace and re-analyze
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.btnDuplicateLink}
-                    onClick={() => setShowPreviousReports(true)}
-                  >
-                    View previous reports
-                  </button>
-                )}
+              <div className={styles.privacyText}>
+                <strong>Your data stays encrypted.</strong> Encrypted at rest and in transit. Personal details (account numbers, customer names) are tokenized before analysis — our team never sees them in the clear.
               </div>
-            ) : null}
+            </div>
+            {uploadFooter}
           </div>
-
-          <div className={styles.uploadGrid}>
-            <FileDropZone
-              key={`bank-${uploadFormKey}`}
-              name="bank"
-              label="Bank statement"
-              uploadState={bankState}
-              icon={
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="22" x2="21" y2="22" />
-                  <line x1="6" y1="18" x2="6" y2="11" />
-                  <line x1="10" y1="18" x2="10" y2="11" />
-                  <line x1="14" y1="18" x2="14" y2="11" />
-                  <line x1="18" y1="18" x2="18" y2="11" />
-                  <polygon points="12 2 22 7 2 7" />
-                </svg>
-              }
-              register={register}
-              onReject={(message) => {
-                setValidationError(message);
-                setUploadPrompt(message);
-              }}
-            />
-            <FileDropZone
-              key={`pos-${uploadFormKey}`}
-              name="pos"
-              label="POS export"
-              uploadState={posState}
-              icon={
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="7" y="2" width="10" height="6" rx="1" />
-                  <line x1="9" y1="5" x2="15" y2="5" />
-                  <rect x="4" y="9" width="16" height="12" rx="2" />
-                  <line x1="8" y1="13" x2="16" y2="13" />
-                  <line x1="8" y1="17" x2="13" y2="17" />
-                </svg>
-              }
-              register={register}
-              onReject={(message) => {
-                setValidationError(message);
-                setUploadPrompt(message);
-              }}
-            />
-            <FileDropZone
-              key={`ecommerce-${uploadFormKey}`}
-              name="ecommerce"
-              label="Ecommerce"
-              uploadState={ecommerceState}
-              icon={
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="9" cy="21" r="1" />
-                  <circle cx="20" cy="21" r="1" />
-                  <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
-                </svg>
-              }
-              register={register}
-              onReject={(message) => {
-                setValidationError(message);
-                setUploadPrompt(message);
-              }}
-            />
-          </div>
-
-          <div className={styles.privacy}>
-            <div className={styles.privacyIcon}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-            </div>
-            <div className={styles.privacyText}>
-              <strong>Your data stays encrypted.</strong> Encrypted at rest and in transit. Personal details (account numbers, customer names) are tokenized before analysis — our team never sees them in the clear.
-            </div>
-          </div>
-
-          {validationError && (
-            <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 12 }}>
-              <div>{validationError}</div>
-              <button
-                type="button"
-                className={styles.retryBtn}
-                disabled={anySlotChecking}
-                onClick={() => {
-                  setValidationError(null);
-                  setValidationRetryKey((n) => n + 1);
-                }}
-                style={{ marginTop: 8 }}
-              >
-                {anySlotChecking ? 'Retrying…' : 'Retry verification'}
-              </button>
-            </div>
-          )}
-
-          {uploadPrompt && (
-            <div className={styles.uploadPrompt} role="alert">
-              <strong>Upload required</strong>
-              {uploadPrompt}
-            </div>
-          )}
-
-          {error && !headerNotice && !freeTierNotice && !hasBoxWarnings && !isAlreadyStoredMessage(error) && (
-            <div className={styles.micro} style={{ color: 'var(--neg)', marginBottom: 16 }}>
-              {error}
-            </div>
-          )}
-
-          <div className={styles.ctaWrap}>
-            {canOpenSavedReport ? (
-              <button
-                type="button"
-                className={styles.btnPrimary}
-                disabled={duplicateBusy || loading}
-                onClick={() => void openSavedReport(savedStatementId!)}
-              >
-                Open saved dashboard
-                <span>→</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={styles.btnPrimary}
-                disabled={!canSubmitAnalyze}
-                onClick={() => void onContinue()}
-              >
-                {loading ? 'Analyzing…' : 'Continue to dashboard'}
-                <span>→</span>
-              </button>
-            )}
-            <div className={styles.micro}>
-              {uploadedCount} of 3 sources uploaded
-              {loading
-                ? ' · analyzing your statements'
-                : uploadedCount < 1
-                  ? ' · add at least one file to continue'
-                  : anySlotChecking
-                    ? ' · checking uploads'
-                    : canOpenSavedReport
-                      ? ' · this month is already on file — open your saved dashboard'
-                      : uploadedCount < 3
-                        ? ' · add all 3 sources for full reconciliation'
-                        : hasStoredConflict && hasBoxWarnings
-                          ? ' · fix highlighted boxes — this month is already on file'
-                          : hasBoxWarnings
-                            ? ' · fix the highlighted upload boxes'
-                            : validationReady
-                              ? ' · ready to analyze'
-                              : ' · waiting for upload checks'}
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
