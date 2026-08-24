@@ -1,14 +1,23 @@
-export const ASKTILL_AUTH_ORIGIN = 'https://asktill.com';
+/** Vercel login/logout stay on this origin. asktill.com is a separate auth site. */
 
 export function asktillAuthUrl(path: '/login' | '/register' = '/login'): string {
-  return `${ASKTILL_AUTH_ORIGIN}${path}`;
+  if (typeof window === 'undefined') return path;
+  return `${window.location.origin}${path}`;
 }
 
 export function asktillSignedOutLoginUrl(): string {
-  return `${ASKTILL_AUTH_ORIGIN}/login?signedOut=1`;
+  if (typeof window === 'undefined') return '/login?signedOut=1';
+  return `${window.location.origin}/login?signedOut=1`;
 }
 
-/** Vercel is the statement app only. Login/register always happen on asktill.com. */
-export function sendToAsktillAuth(path: '/login' | '/register' = '/login'): void {
+/** Same-origin Vercel auth only — never send the browser to asktill.com. */
+export function sendToAsktillAuth(
+  path: '/login' | '/register' = '/login',
+  options?: { signedOut?: boolean },
+): void {
+  if (path === '/login' && options?.signedOut) {
+    window.location.replace(asktillSignedOutLoginUrl());
+    return;
+  }
   window.location.replace(asktillAuthUrl(path));
 }

@@ -159,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      // Fresh asktill.com login handoff always wins over a leftover sign-out flag.
+      // Admin JWT in the URL only. asktill.com (ec2=1) tokens are dropped.
       const handoff = consumeHandoffTokenFromUrl();
       if (handoff) {
         clearSignedOutIntent();

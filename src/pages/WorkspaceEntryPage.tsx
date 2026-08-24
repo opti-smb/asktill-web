@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 import PageLoader from '../components/common/PageLoader';
 import { useAuth } from '../context/AuthContext';
@@ -12,8 +12,8 @@ import {
 const HISTORY_WAIT_MS = 12_000;
 
 /**
- * asktill.com already authenticated this user. Do not show Vercel /login.
- * New accounts → upload; accounts with statements → dashboard.
+ * After a Vercel/Render login: new accounts → upload; accounts with statements → dashboard.
+ * asktill.com JWTs are not accepted here.
  */
 export default function WorkspaceEntryPage() {
   const { ready, isAuth } = useAuth();
@@ -43,22 +43,7 @@ export default function WorkspaceEntryPage() {
   }, [ready, isAuth, historyReady, waited, savedCount, navigate]);
 
   if (ready && !isAuth && giveUp) {
-    return (
-      <div
-        style={{
-          minHeight: '56vh',
-          display: 'grid',
-          placeItems: 'center',
-          padding: '2rem',
-          textAlign: 'center',
-        }}
-      >
-        <div>
-          <p style={{ marginBottom: 12 }}>Could not open your workspace.</p>
-          <a href="https://asktill.com/login">Sign in on asktill.com</a>
-        </div>
-      </div>
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return (

@@ -1,22 +1,13 @@
-import { useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 
-import PageLoader from '../components/common/PageLoader';
-import { sendToAsktillAuth } from '../lib/asktillAuthSite';
-
-/** Auth UI lives on asktill.com. This Vercel app only parses/stores statements. */
+/** Unused leftover: production routes render LoginPage/RegisterPage on Vercel. */
 export default function RedirectToAsktillAuth({
   path,
+  signedOut = false,
 }: {
   path: '/login' | '/register';
+  signedOut?: boolean;
 }) {
-  useEffect(() => {
-    sendToAsktillAuth(path);
-  }, [path]);
-
-  return (
-    <PageLoader
-      title={path === '/register' ? 'Create your account' : 'Sign in'}
-      detail="Taking you to asktill.com…"
-    />
-  );
+  const to = path === '/login' && signedOut ? '/login?signedOut=1' : path;
+  return <Navigate to={to} replace />;
 }

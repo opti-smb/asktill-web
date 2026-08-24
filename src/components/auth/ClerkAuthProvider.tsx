@@ -20,9 +20,7 @@ export default function ClerkAuthProvider({ children }: { children: ReactNode })
       signUpUrl="/register"
       signInFallbackRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}
       signUpFallbackRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}
-      signInForceRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}
-      signUpForceRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}
-      afterSignOutUrl="/login"
+      afterSignOutUrl="/login?signedOut=1"
       appearance={{
         variables: {
           fontFamily:

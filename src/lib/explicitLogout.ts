@@ -1,56 +1,69 @@
 const SIGNED_OUT_KEY = 'asktill:signed-out';
 
-/** True when the user just signed out and must not be restored from the refresh cookie. */
-export function hasSignedOutIntent(): boolean {
+function storageFlag(storage: Storage): boolean {
   try {
-    if (sessionStorage.getItem(SIGNED_OUT_KEY) === '1') return true;
+    return storage.getItem(SIGNED_OUT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function persistFlag(on: boolean): void {
+  try {
+    if (on) {
+      sessionStorage.setItem(SIGNED_OUT_KEY, '1');
+      localStorage.setItem(SIGNED_OUT_KEY, '1');
+    } else {
+      sessionStorage.removeItem(SIGNED_OUT_KEY);
+      localStorage.removeItem(SIGNED_OUT_KEY);
+    }
   } catch {
     /* ignore */
   }
+}
+
+function urlHasSignedOut(): boolean {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
   return params.get('signedOut') === '1' || params.get('signed_out') === '1';
 }
 
+function stripSignedOutFromUrl(): void {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('signedOut') !== '1' && params.get('signed_out') !== '1') return;
+  params.delete('signedOut');
+  params.delete('signed_out');
+  const search = params.toString();
+  const next = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
+  window.history.replaceState({}, '', next);
+}
+
+/** True when the user signed out of the Vercel session and must not be auto-restored. */
+export function hasSignedOutIntent(): boolean {
+  if (typeof window === 'undefined') return false;
+  return storageFlag(sessionStorage) || storageFlag(localStorage) || urlHasSignedOut();
+}
+
 /** Persist sign-out across the login-page load and strip it from the URL. */
 export function captureSignedOutIntent(): boolean {
   if (typeof window === 'undefined') return false;
-  let flagged = false;
-  try {
-    flagged = sessionStorage.getItem(SIGNED_OUT_KEY) === '1';
-  } catch {
-    /* ignore */
-  }
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('signedOut') === '1' || params.get('signed_out') === '1') {
-    flagged = true;
-    try {
-      sessionStorage.setItem(SIGNED_OUT_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-    params.delete('signedOut');
-    params.delete('signed_out');
-    const search = params.toString();
-    const next = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
-    window.history.replaceState({}, '', next);
+  const flagged = hasSignedOutIntent();
+  if (flagged) {
+    persistFlag(true);
+    stripSignedOutFromUrl();
   }
   return flagged;
 }
 
 export function markSignedOutIntent(): void {
-  try {
-    sessionStorage.setItem(SIGNED_OUT_KEY, '1');
-  } catch {
-    /* ignore */
-  }
+  persistFlag(true);
 }
 
-/** Call after a successful password / Clerk login. */
+/** Call after a successful password / Clerk login on Vercel. */
 export function clearSignedOutIntent(): void {
-  try {
-    sessionStorage.removeItem(SIGNED_OUT_KEY);
-  } catch {
-    /* ignore */
-  }
+  persistFlag(false);
 }
+
+/** Capture before React/Clerk mount so leftover Google sessions cannot race logout. */
+captureSignedOutIntent();
