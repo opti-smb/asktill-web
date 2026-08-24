@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
-import Logo from '../components/common/Logo';
+import LandingSiteHeader from '../components/layout/LandingSiteHeader';
 import { formatPolicyBody } from '../lib/formatPolicyBody';
 import { POLICIES, getPolicy } from '../lib/policies';
 
@@ -10,29 +11,34 @@ export default function PolicyPage() {
   const { slug } = useParams<{ slug: string }>();
   const policy = getPolicy(slug);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [slug]);
+
   if (!policy) {
     return <Navigate to="/" replace />;
   }
 
+  const scrollToPolicyTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className={styles.page}>
-      <header className={styles.nav}>
-        <div className={styles.navInner}>
-          <Link to="/" aria-label="Asktill home">
-            <Logo />
-          </Link>
-          <Link to="/" className={styles.back}>
-            ← Back to home
-          </Link>
-        </div>
-      </header>
+      <LandingSiteHeader />
 
       <main className={styles.shell}>
-        <article className={styles.card}>{formatPolicyBody(policy.body, styles)}</article>
+        <article className={styles.card} id="policy-top">
+          {formatPolicyBody(policy.body, styles)}
+        </article>
 
         <nav className={styles.policyNav} aria-label="Other policies">
           {POLICIES.filter((item) => item.slug !== policy.slug).map((item) => (
-            <Link key={item.slug} to={`/policies/${item.slug}`}>
+            <Link
+              key={item.slug}
+              to={`/policies/${item.slug}`}
+              onClick={scrollToPolicyTop}
+            >
               {item.shortLabel}
             </Link>
           ))}
