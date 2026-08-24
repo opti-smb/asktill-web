@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 import PageLoader from '../components/common/PageLoader';
 import { useAuth } from '../context/AuthContext';
@@ -12,8 +12,7 @@ import {
 const HISTORY_WAIT_MS = 12_000;
 
 /**
- * After asktill.com, open Vercel on a Render session.
- * New accounts → upload; accounts with statements → dashboard.
+ * Render session only. New accounts → upload; accounts with statements → dashboard.
  */
 export default function WorkspaceEntryPage() {
   const { ready, isAuth } = useAuth();
@@ -21,18 +20,11 @@ export default function WorkspaceEntryPage() {
   const navigate = useNavigate();
   const sentRef = useRef(false);
   const [waited, setWaited] = useState(false);
-  const [giveUp, setGiveUp] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setWaited(true), HISTORY_WAIT_MS);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (!ready || isAuth) return;
-    const timer = window.setTimeout(() => setGiveUp(true), 4_000);
-    return () => window.clearTimeout(timer);
-  }, [ready, isAuth]);
 
   useEffect(() => {
     if (!ready || !isAuth || sentRef.current) return;
@@ -42,23 +34,8 @@ export default function WorkspaceEntryPage() {
     navigate(savedCount > 0 ? DEFAULT_DASHBOARD_PATH : '/onboarding', { replace: true });
   }, [ready, isAuth, historyReady, waited, savedCount, navigate]);
 
-  if (ready && !isAuth && giveUp) {
-    return (
-      <div
-        style={{
-          minHeight: '56vh',
-          display: 'grid',
-          placeItems: 'center',
-          padding: '2rem',
-          textAlign: 'center',
-        }}
-      >
-        <div>
-          <p style={{ marginBottom: 12 }}>Could not open your workspace.</p>
-          <a href="/login">Sign in to open upload and dashboard</a>
-        </div>
-      </div>
-    );
+  if (ready && !isAuth) {
+    return <Navigate to="/login" replace />;
   }
 
   return (
