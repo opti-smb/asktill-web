@@ -7,7 +7,9 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
-  envPrefix: ['VITE_', 'TOKEN_'],
+  // CLERK_PUBLISHABLE_KEY (no VITE_ prefix) is what the Vercel dashboard often has.
+  // Do not add a CLERK_ prefix — that would leak CLERK_SECRET_KEY into the browser bundle.
+  envPrefix: ['VITE_', 'TOKEN_', 'CLERK_PUBLISHABLE_KEY'],
   resolve: {
     // Vendored packages — works on Vercel (no sibling-repo dependency).
     alias: {

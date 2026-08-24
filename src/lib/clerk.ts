@@ -1,6 +1,9 @@
 /** Clerk publishable key — used only for email OTP on /register, not dashboard sessions. */
-export const CLERK_PUBLISHABLE_KEY =
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim() || '';
+export const CLERK_PUBLISHABLE_KEY = (
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
+  import.meta.env.CLERK_PUBLISHABLE_KEY ||
+  ''
+).trim();
 
 const CLERK_OAUTH_REDIRECT_PATH = '/sso-callback';
 export const CLERK_OAUTH_COMPLETE_PATH = '/login/oauth-complete';
