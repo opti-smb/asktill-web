@@ -20,7 +20,6 @@ import {
   resolveStatementRange,
   statementRangeToRequest,
   previousCalendarMonthRequest,
-  isoDateLocal,
   type StatementRangeRequest,
 } from './statementRange';
 
@@ -73,20 +72,6 @@ function sumRowsCredits(rows: ParsedPlaidStatement['rows']): number {
 
 function sumRowsDebits(rows: ParsedPlaidStatement['rows']): number {
   return (rows ?? []).reduce((sum, row) => sum + (row.debit || 0), 0);
-}
-
-function sumLedgerCredits(ledger: ParsedPlaidStatement): number {
-  if (ledger.total_credits != null && Number.isFinite(ledger.total_credits)) {
-    return ledger.total_credits;
-  }
-  return sumRowsCredits(ledger.rows);
-}
-
-function sumLedgerDebits(ledger: ParsedPlaidStatement): number {
-  if (ledger.total_debits != null && Number.isFinite(ledger.total_debits)) {
-    return ledger.total_debits;
-  }
-  return sumRowsDebits(ledger.rows);
 }
 
 /** Calendar month start through today — dashboard bank overlay window. */
