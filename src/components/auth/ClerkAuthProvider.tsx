@@ -3,17 +3,25 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import {
   CLERK_OAUTH_COMPLETE_PATH,
-  CLERK_PUBLISHABLE_KEY,
+  getClerkPublishableKey,
 } from '../../lib/clerk';
 import ClerkSessionSync from './ClerkSessionSync';
 
 /** Clerk for register email OTP and login Google OAuth. App sessions use auth-service JWT. */
-export default function ClerkAuthProvider({ children }: { children: ReactNode }) {
+export default function ClerkAuthProvider({
+  children,
+  publishableKey,
+}: {
+  children: ReactNode;
+  publishableKey?: string;
+}) {
   const navigate = useNavigate();
+  const key = (publishableKey || getClerkPublishableKey()).trim();
+  if (!key) return <>{children}</>;
 
   return (
     <ClerkProvider
-      publishableKey={CLERK_PUBLISHABLE_KEY}
+      publishableKey={key}
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
       signInUrl="/login"

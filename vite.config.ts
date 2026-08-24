@@ -15,10 +15,12 @@ const clerkPublishableKey = (
 
 export default defineConfig({
   plugins: [react()],
-  define: {
-    'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
-    'import.meta.env.CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
-  },
+  define: clerkPublishableKey
+    ? {
+        'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+        'import.meta.env.CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+      }
+    : {},
   // Do not add a CLERK_ prefix — that would leak CLERK_SECRET_KEY into the browser bundle.
   envPrefix: ['VITE_', 'TOKEN_', 'CLERK_PUBLISHABLE_KEY', 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'],
   resolve: {

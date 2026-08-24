@@ -1,15 +1,28 @@
-/** Clerk publishable key — used only for email OTP on /register, not dashboard sessions. */
-export const CLERK_PUBLISHABLE_KEY = (
+/** Clerk publishable key from the Vite/Vercel build, if present. */
+const BAKED_CLERK_PUBLISHABLE_KEY = (
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
   import.meta.env.CLERK_PUBLISHABLE_KEY ||
   import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   ''
 ).trim();
 
+let runtimeClerkPublishableKey = BAKED_CLERK_PUBLISHABLE_KEY;
+
+export function getClerkPublishableKey(): string {
+  return runtimeClerkPublishableKey;
+}
+
+export function setRuntimeClerkPublishableKey(key: string): void {
+  runtimeClerkPublishableKey = key.trim();
+}
+
+/** @deprecated Use getClerkPublishableKey() so runtime Vercel env is included. */
+export const CLERK_PUBLISHABLE_KEY = BAKED_CLERK_PUBLISHABLE_KEY;
+
 const CLERK_OAUTH_REDIRECT_PATH = '/sso-callback';
 export const CLERK_OAUTH_COMPLETE_PATH = '/login/oauth-complete';
 
-export const isClerkEnabled = () => Boolean(CLERK_PUBLISHABLE_KEY);
+export const isClerkEnabled = () => Boolean(getClerkPublishableKey());
 
 /** Absolute OAuth URLs — must match Clerk Dashboard → Paths / Redirect URLs. */
 export function clerkOAuthUrls() {
