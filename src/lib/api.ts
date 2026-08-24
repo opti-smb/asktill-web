@@ -2695,32 +2695,3 @@ export async function saveActionPlans(
   );
   return res.data;
 }
-
-export type PlaidIngestApiResponse = {
-  ingested: Array<{
-    ok: boolean;
-    statement_id?: string;
-    period_key?: string;
-    period_label?: string;
-    saved_statement_id?: string;
-    row_count?: number;
-    error?: string;
-  }>;
-  success_count: number;
-  failure_count: number;
-};
-
-export async function ingestPlaidParsedStatements(
-  statements: unknown[],
-  force = false,
-): Promise<PlaidIngestApiResponse> {
-  const res = await mainApi.post<PlaidIngestApiResponse>(
-    '/api/plaid-statements/ingest',
-    { statements },
-    {
-      timeout: ANALYZE_TIMEOUT_MS,
-      params: force ? { force: true } : undefined,
-    },
-  );
-  return res.data;
-}
