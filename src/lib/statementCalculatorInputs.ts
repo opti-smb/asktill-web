@@ -187,14 +187,18 @@ export function statementDefaultsFor(
     cf?.cash_on_hand ??
     cf?.bank_balance ??
     cashKpi ??
+    kpiById(kpis, 'cash_available')?.value ??
     fs?.ending_balance ??
     null;
   const moneyIn =
     cf?.money_in ??
     fs?.expected_bank_inflows ??
     fs?.total_gross ??
+    kpiById(kpis, 'money_in')?.value ??
+    kpiById(kpis, 'revenue')?.value ??
     null;
-  const moneyOut = cf?.money_out ?? null;
+  const moneyOut =
+    cf?.money_out ?? kpiById(kpis, 'money_out')?.value ?? null;
   const periodRevenue = revenue ?? moneyIn;
   const totalFees = fs?.total_fees ?? fs?.processor_fees ?? null;
   const totalRefunds = fs?.total_refunds ?? null;

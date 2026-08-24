@@ -7,7 +7,7 @@ import {
   periodKeyFromLabel,
   resolveAtLetterStatementId,
 } from '../lib/atLetterStatement';
-import { getActiveStatementViewId } from '../lib/activeStatementView';
+import { getActiveStatementViewId, isHistoricalStatementView } from '../lib/activeStatementView';
 import { loadAtLetterCache } from '../lib/atLetterCache';
 import { hasRecentAnalyzeSession, useReportSync } from '../hooks/useReportSync';
 import { getAnalyzeAnalysis } from '../lib/analyzeResponse';
@@ -24,7 +24,7 @@ export function useAtLetterTemplate(): {
 } {
   const { isAuth, ready, user } = useAuth();
   const { result: sessionResult } = useAnalysis();
-  const { historyReady, savedCount, primaryReport } = useReportSync();
+  const { historyReady, savedCount, primaryReport, savedReports } = useReportSync();
 
   const sessionStatementId = sessionResult?.statement_id ?? undefined;
   const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
@@ -41,6 +41,9 @@ export function useAtLetterTemplate(): {
       return undefined;
     }
     const activeViewId = getActiveStatementViewId();
+    const pinnedReport = activeViewId
+      ? savedReports.find((row) => row.statement_id === activeViewId)
+      : undefined;
     const resolved = resolveAtLetterStatementId({
       sessionStatementId,
       sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
@@ -48,6 +51,9 @@ export function useAtLetterTemplate(): {
       historyReady,
       preferSession: hasRecentAnalyzeSession() || activeViewId === sessionStatementId,
       activeViewId,
+      activeViewPeriodKey:
+        pinnedReport?.period_key || periodKeyFromLabel(pinnedReport?.period_label) || null,
+      historicalView: isHistoricalStatementView(),
     });
     if (resolved) return resolved;
     if (sessionStatementId) return sessionStatementId;
@@ -61,6 +67,7 @@ export function useAtLetterTemplate(): {
     sessionAnalysis?.period_label,
     primaryReport,
     cachedStatementId,
+    savedReports,
   ]);
 
   const isSample = ready && !isAuth;

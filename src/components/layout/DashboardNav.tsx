@@ -13,10 +13,8 @@ import styles from './DashboardNav.module.css';
 export default function DashboardNav() {
   const { isAuth, ready } = useAuth();
   const { pathname } = useLocation();
-
   const isAtLedgerRoute = pathname.startsWith('/dashboard/at-ledger');
 
-  // Prevent document scroll so left nav names never move with the page.
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
@@ -78,6 +76,13 @@ export default function DashboardNav() {
               className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
             >
               Save Money
+            </NavLink>
+
+            <NavLink
+              to="/dashboard/linked-accounts"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+            >
+              Linked Accounts
             </NavLink>
 
             <NavLink
