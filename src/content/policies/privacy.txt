@@ -1,0 +1,248 @@
+ASKTILL PRIVACY POLICY
+Last Updated: August 23, 2026
+AskTill Inc. ("AskTill," "we," "us," or "our") respects your privacy.
+This Privacy Policy explains how we collect, use, disclose, protect and retain information when you visit AskTill.com, create an AskTill account, connect business financial accounts, upload information or otherwise use AskTill's products and services.
+AskTill is designed primarily for businesses and business users in the United States.
+By using AskTill, you acknowledge the practices described in this Privacy Policy.
+1. Information We Collect
+The information we collect depends on how you use AskTill.
+A. Account and Contact Information
+We may collect information such as:
+name;
+business name;
+business email address;
+telephone number;
+job title or role;
+account login information;
+communication preferences; and
+information you provide when contacting AskTill.
+B. Business Information
+We may collect information about your business, including:
+business name;
+industry;
+business type;
+location;
+revenue-related information;
+business operating information;
+financial accounts and providers used by the business; and
+information needed to configure AskTill for your business.
+C. Financial and Transaction Information
+If you choose to connect financial or business accounts, AskTill may receive information such as:
+account names and types;
+account balances;
+transaction amounts;
+transaction dates;
+transaction descriptions;
+merchant or counterparty information;
+deposits and withdrawals;
+payment settlements;
+processor fees;
+POS transactions;
+e-commerce transactions;
+payment disputes;
+chargebacks;
+refunds; and
+other transaction-related information.
+AskTill may obtain this information from financial-data connectivity providers, banks, payment processors, POS providers, e-commerce platforms or other services that you authorize.
+D. Connected Account Information
+AskTill may allow you to connect third-party services such as:
+bank accounts;
+payment processors;
+POS systems;
+accounting platforms;
+e-commerce platforms; and
+other business systems.
+AskTill may use providers such as Plaid or other financial-data connectivity providers to facilitate these connections.
+When you connect an account through a third-party provider, that provider may collect information directly from you under its own privacy policy and terms.
+AskTill is designed so that online banking credentials used within third-party connection interfaces are handled by the applicable connectivity provider rather than used by AskTill to independently log into your bank account.
+We do not use your banking credentials to initiate transactions unless AskTill introduces a separate feature that you expressly authorize and that feature is governed by appropriate additional terms.
+E. Uploaded Information
+If you manually upload information, we may process files such as:
+bank statements;
+POS statements;
+e-commerce statements;
+payment reports;
+chargeback documentation;
+spreadsheets; and
+other business records.
+Please upload only information you are authorized to provide.
+F. AskTill Analysis and Derived Information
+AskTill may generate or infer information from data provided to the Service, including:
+financial summaries;
+reconciliations;
+transaction classifications;
+possible missing transactions;
+anomalies;
+business-health indicators;
+cash-flow trends;
+forecasts;
+potential chargebacks;
+possible recoveries;
+suggested questions;
+recommendations; and
+other AskTill-generated insights.
+G. Website and Device Information
+When you use AskTill, we may automatically receive information such as:
+IP address;
+browser type;
+device type;
+operating system;
+pages viewed;
+referring pages;
+approximate location based on IP address;
+date and time of access;
+application activity;
+error logs; and
+security-related events.
+We may use cookies and similar technologies for authentication, security, user preferences, analytics and improving the Service.
+2. How We Use Information
+AskTill may use information to:
+provide and operate the Service;
+connect authorized business accounts;
+consolidate business financial information;
+perform reconciliations;
+identify possible missing, delayed, duplicate or unmatched transactions;
+generate financial summaries and business insights;
+analyze cash flow and business performance;
+identify possible chargebacks, disputes or recoveries;
+generate AI-assisted analysis;
+personalize the AskTill experience;
+provide customer support;
+secure accounts and prevent misuse;
+diagnose technical problems;
+improve AskTill's products and services;
+communicate operational and product information;
+comply with applicable law; and
+establish, exercise or defend legal rights.
+3. AI and Automated Processing
+AskTill may use artificial intelligence, machine learning and other automated systems to analyze business information.
+These systems may classify transactions, identify anomalies, summarize financial activity, generate forecasts or suggest actions.
+AskTill does not intend these tools to replace the Customer's judgment or professional accounting, legal, tax or financial advice.
+Where AskTill uses Customer information with third-party AI infrastructure providers, AskTill will seek to configure those services in a manner appropriate for protecting Customer information and consistent with applicable contractual and privacy requirements.
+AskTill does not sell Customer financial data for the purpose of training unrelated third-party AI models.
+4. How We Disclose Information
+We may disclose information to third parties only as reasonably necessary to operate AskTill, provide requested services, comply with law or protect AskTill and its users.
+Service Providers
+We may use companies that provide services such as:
+cloud infrastructure;
+financial-data connectivity;
+software hosting;
+data processing;
+authentication;
+cybersecurity;
+analytics;
+customer support;
+email communications;
+payment processing; and
+artificial intelligence infrastructure.
+These providers may process information on AskTill's behalf subject to applicable contractual restrictions.
+Financial and Business Integrations
+When you request an integration, information may be exchanged with the relevant bank, processor, POS provider, e-commerce platform, accounting service or connectivity provider.
+Business Partners
+If you request information about a third-party product or service, AskTill may share information necessary to facilitate your request.
+We will not provide a potential lender, insurer or other commercial partner with your detailed financial information for its independent use without appropriate authorization.
+Legal Requirements
+We may disclose information if reasonably necessary to:
+comply with applicable law;
+respond to lawful legal process;
+protect against fraud or security threats;
+enforce our agreements;
+protect AskTill's rights; or
+protect the rights or safety of others.
+Corporate Transactions
+Information may be transferred in connection with a merger, acquisition, financing, restructuring, sale of assets or similar transaction, subject to applicable confidentiality and legal requirements.
+5. We Do Not Sell Customer Financial Data
+AskTill does not sell or rent Customer bank, POS, e-commerce or transaction data to data brokers, advertisers or marketers.
+AskTill does not allow third parties to use Customer financial data for their own unrelated advertising purposes.
+If AskTill's business practices materially change, we will update this Privacy Policy and provide any notice or choices required by law.
+6. Data Minimization
+AskTill seeks to collect and process information reasonably necessary to provide its services.
+We do not intend to collect sensitive information merely because it may be technically available through a connected source.
+AskTill may limit the types, history or frequency of information retrieved where doing so is consistent with the Customer's selected service.
+7. Data Retention
+AskTill retains information only for as long as reasonably necessary to:
+provide the Service;
+maintain Customer accounts;
+fulfill the purposes described in this Privacy Policy;
+maintain legitimate business records;
+resolve disputes;
+protect security;
+comply with contractual obligations; and
+comply with applicable law.
+Different information may have different retention periods.
+AskTill will seek to delete or de-identify information when it is no longer reasonably needed, subject to legal, security, fraud-prevention, backup and recordkeeping requirements.
+Disconnecting a financial account stops future retrieval through that connection but may not automatically delete information previously received.
+Customers may contact AskTill to request account or data deletion.
+8. Account Disconnection and Data Deletion
+Customers may be able to disconnect Connected Accounts through AskTill or the applicable connectivity provider.
+You may also request deletion of your AskTill account and eligible associated information by contacting:
+Support@asktill.com
+AskTill may need to verify your identity or authority before processing a request.
+Certain information may be retained where reasonably necessary for legal, security, fraud-prevention, contractual or recordkeeping purposes.
+9. Security
+AskTill uses administrative, technical and organizational safeguards designed to protect information against unauthorized access, loss, misuse, alteration or disclosure.
+Our security program is described further on the AskTill Security & Trust page.
+No system can guarantee absolute security, and AskTill cannot guarantee that unauthorized access or security incidents will never occur.
+If you believe your AskTill account or information has been compromised, contact:
+support@asktill.com
+10. Cookies and Analytics
+AskTill may use necessary cookies and similar technologies for:
+login and authentication;
+security;
+session management;
+preferences; and
+service functionality.
+We may also use limited analytics technologies to understand how the Service is used and improve its performance.
+Where required by law, AskTill will provide appropriate choices regarding non-essential cookies or tracking technologies.
+11. Marketing
+AskTill may send information about product features, updates or services.
+You may opt out of promotional emails using the unsubscribe mechanism provided in the message.
+Even if you opt out of promotional communications, AskTill may continue to send operational, account, security and legally required communications.
+12. State Privacy Rights
+Depending on where you reside and whether the applicable privacy law applies to AskTill, you may have rights regarding your personal information.
+These may include rights to:
+know or access personal information;
+correct inaccurate personal information;
+request deletion;
+obtain a copy of certain information;
+opt out of certain sales or sharing;
+restrict certain uses of sensitive information; and
+appeal certain privacy decisions.
+AskTill will honor applicable privacy rights where required by law.
+You may submit a privacy request to:
+support@asktill.com
+AskTill may verify your identity or authority before fulfilling a request.
+AskTill will not unlawfully discriminate against individuals for exercising applicable privacy rights.
+AskTill will respond to a verifiable privacy request within the time required by applicable law.
+Where a request relates to personal information about an individual who is not an AskTill account holder - for example, a customer or cardholder of a business that uses AskTill, whose information appears in transaction or dispute data - AskTill will direct the request to the relevant business Customer, who generally holds the direct relationship with that individual and is responsible for responding to the request.
+13. California Privacy Information
+California residents may have additional rights under applicable California privacy laws.
+The categories of personal information AskTill may collect are described in Section 1.
+The purposes for which the information is used are described in Section 2.
+The categories of parties to whom information may be disclosed are described in Section 4.
+AskTill does not sell Customer financial data.
+If AskTill becomes subject to additional California Consumer Privacy Act requirements, AskTill will provide any additional notices, request mechanisms and opt-out mechanisms required by applicable law.
+14. Do Not Track and Privacy Preference Signals
+Web browsers may offer "Do Not Track" or other privacy preference mechanisms.
+Because there is not a single universally applicable standard governing all such signals, AskTill's response may depend on the nature of the signal and applicable law.
+Where AskTill is legally required to recognize a qualifying opt-out preference signal, such as a legally recognized Global Privacy Control signal, AskTill will do so as required.
+15. Children's Privacy
+AskTill is a business service and is not intended for children.
+AskTill does not knowingly solicit personal information from children under 13.
+If you believe a child has provided personal information to AskTill, please contact support@asktill.com.
+16. International Users
+AskTill is currently designed primarily for businesses in the United States.
+If you access AskTill from outside the United States, your information may be processed in the United States and other jurisdictions where AskTill or its service providers operate.
+AskTill may implement additional privacy terms where required before materially expanding into other jurisdictions.
+17. Third-Party Services
+Third-party websites, banks, financial institutions, processors and integrations maintain their own privacy practices.
+This Privacy Policy does not govern information collected independently by those third parties.
+We encourage you to review their applicable privacy policies.
+18. Changes to This Privacy Policy
+AskTill may update this Privacy Policy as its products, technology and legal obligations evolve.
+The date at the beginning of the policy identifies the latest revision.
+If we make a material change, we may provide additional notice through the Service, email or another appropriate method.
+19. Contact Us
+Questions or requests concerning privacy may be directed to:
+AskTill Inc.
+Contacts: support@asktill.com
