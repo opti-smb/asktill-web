@@ -12,7 +12,7 @@ import {
 const HISTORY_WAIT_MS = 12_000;
 
 /**
- * asktill.com already authenticated this user. Do not show Vercel /login.
+ * After asktill.com, open Vercel on a Render session.
  * New accounts → upload; accounts with statements → dashboard.
  */
 export default function WorkspaceEntryPage() {
@@ -55,7 +55,7 @@ export default function WorkspaceEntryPage() {
       >
         <div>
           <p style={{ marginBottom: 12 }}>Could not open your workspace.</p>
-          <a href="https://asktill.com/login">Sign in on asktill.com</a>
+          <a href="/login">Sign in to open upload and dashboard</a>
         </div>
       </div>
     );

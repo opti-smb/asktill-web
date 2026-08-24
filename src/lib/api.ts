@@ -18,6 +18,7 @@ import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from './atLetterStatement';
 import { resolvePublicUrl } from './publicUrls';
+import { clearEc2BackendSession } from './ec2BackendSession';
 export { getAnalyzeAnalysis, formatAskResponseForChat } from './analyzeResponse';
 export type { AnalyzeResult, WeekReportsViewApi } from './analyzeResponse';
 export { normalizeTier, tierDisplayLabel } from './subscription';
@@ -1701,20 +1702,32 @@ export function consumeHandoffTokenFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
   const hash = window.location.hash.replace(/^#/, '');
+  const query = new URLSearchParams(window.location.search);
+  const fromHash = new URLSearchParams(hash);
+  const ec2Handoff = fromHash.get('ec2') === '1' || query.get('ec2') === '1';
+
   const hashMatch = hash.match(/(?:^|&)access_token=([^&]+)/);
   let token = hashMatch ? decodeURIComponent(hashMatch[1]) : null;
 
   if (!token) {
-    const q = new URLSearchParams(window.location.search);
-    token = q.get('access_token');
+    token = query.get('access_token');
   }
-  if (!token?.trim()) return null;
 
-  window.history.replaceState(
-    null,
-    '',
-    `${window.location.pathname}${window.location.search}`,
-  );
+  if (token?.trim() || ec2Handoff) {
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${window.location.search}`,
+    );
+  }
+
+  // asktill.com JWT is not a Render session — never use it on Vercel.
+  if (ec2Handoff) {
+    clearEc2BackendSession();
+    return null;
+  }
+
+  if (!token?.trim()) return null;
   return token.trim();
 }
 

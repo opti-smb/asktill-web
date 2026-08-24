@@ -7,7 +7,6 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { useDismissOnEscape } from '../../hooks/useDismissOnEscape';
 import { getApiError, prefetchAdminDashboard, setAutoRenewalEnabled } from '../../lib/api';
 import { clearClerkSession, isClerkEnabled } from '../../lib/clerk';
-import { isEc2BackendSession } from '../../lib/ec2BackendSession';
 import { isPaidTier, tierDisplayLabel } from '../../lib/subscription';
 import styles from './UserAccountMenu.module.css';
 
@@ -121,7 +120,6 @@ function UserAccountMenuInner({
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
-    const returnToAsktill = isEc2BackendSession() || !import.meta.env.DEV;
     try {
       await logout();
       if (isClerkEnabled() && clerk) {
@@ -129,10 +127,6 @@ function UserAccountMenuInner({
       }
       setConfirmSignOut(false);
       setMenuOpen(false);
-      if (returnToAsktill) {
-        window.location.assign('https://asktill.com/login?signedOut=1');
-        return;
-      }
       navigate('/login', { replace: true });
     } finally {
       setSigningOut(false);

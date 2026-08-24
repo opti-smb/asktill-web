@@ -6,7 +6,6 @@ import LandingPage from '../pages/LandingPage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
-import RedirectToAsktillAuth from '../pages/RedirectToAsktillAuth';
 import WorkspaceEntryPage from '../pages/WorkspaceEntryPage';
 import LoginOAuthCallback from '../pages/LoginOAuthCallback';
 import LoginOAuthComplete from '../pages/LoginOAuthComplete';
@@ -47,10 +46,7 @@ function UploadPageRoute() {
 }
 
 function AuthOnAsktill({ path }: { path: '/login' | '/register' }) {
-  if (import.meta.env.DEV) {
-    return path === '/register' ? <RegisterPage /> : <LoginPage />;
-  }
-  return <RedirectToAsktillAuth path={path} />;
+  return path === '/register' ? <RegisterPage /> : <LoginPage />;
 }
 
 function AppRoutes() {
@@ -68,18 +64,9 @@ function AppRoutes() {
         <Route path="/login" element={<AuthOnAsktill path="/login" />} />
         <Route path="/workspace" element={<WorkspaceEntryPage />} />
         <Route path="/post-login" element={<WorkspaceEntryPage />} />
-        <Route
-          path="/forgot-password"
-          element={import.meta.env.DEV ? <ForgotPasswordPage /> : <AuthOnAsktill path="/login" />}
-        />
-        <Route
-          path="/sso-callback"
-          element={import.meta.env.DEV ? <LoginOAuthCallback /> : <AuthOnAsktill path="/login" />}
-        />
-        <Route
-          path="/login/oauth-complete"
-          element={import.meta.env.DEV ? <LoginOAuthComplete /> : <AuthOnAsktill path="/login" />}
-        />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/sso-callback" element={<LoginOAuthCallback />} />
+        <Route path="/login/oauth-complete" element={<LoginOAuthComplete />} />
         <Route
           path="/pricing/checkout"
           element={
