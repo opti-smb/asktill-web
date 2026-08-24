@@ -9,6 +9,144 @@
   font-family: var(--font-sans);
 }
 
+.dense {
+  padding: 0;
+  border-radius: 12px;
+  text-align: left;
+  box-shadow: none;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.denseHit {
+  display: block;
+  cursor: pointer;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.denseHit:hover {
+  background: #f8fafc;
+}
+
+.denseRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dense .uploadIcon {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.dense .uploadIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.denseCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.dense h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 2px;
+  color: #0f172a;
+  text-align: left;
+}
+
+.dense .sub {
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.35;
+  color: #64748b;
+  text-align: left;
+}
+
+.denseHint {
+  display: none;
+}
+
+.denseStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.dense .statusBadge {
+  font-size: 10px;
+  padding: 3px 8px;
+}
+
+.dense .fileName {
+  font-size: 10px;
+  text-align: left;
+}
+
+.dense .warning {
+  font-size: 10px;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.compactDense.denseHit {
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.compactDense.denseRow {
+  gap: 8px;
+  align-items: center;
+}
+
+.compactDense.dense .uploadIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.compactDense.dense .uploadIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.compactDense.dense h3 {
+  font-size: 11px;
+  margin: 0;
+}
+
+.compactDense.dense .sub {
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.compactDense.dense .uploadIcon :global(.ti) {
+  font-size: 14px;
+}
+
+.toneBank .uploadIcon {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.tonePos .uploadIcon {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.toneEcommerce .uploadIcon {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .uploadCard:hover {
   border-color: var(--brand);
   box-shadow: 0 4px 24px rgba(30, 64, 175, 0.06);

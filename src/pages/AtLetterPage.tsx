@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import ActionPlanModal from '../components/letter/ActionPlanModal';
 import BriefActionCenter from '../components/brief/BriefActionCenter';
@@ -12,8 +12,11 @@ import BriefPriorities, { type PriorityItem } from '../components/brief/BriefPri
 import BriefTrends from '../components/brief/BriefTrends';
 import DashboardEmptyState from '../components/dashboard/DashboardEmptyState';
 import { useAnalysis } from '../context/AnalysisContext';
+import { useAuth } from '../context/AuthContext';
 import { useRiskThresholds } from '../context/RiskThresholdContext';
 import { useAtLetterTemplate } from '../hooks/useAtLetterTemplate';
+import { usePlaidBankMetrics } from '../hooks/usePlaidBankMetrics';
+import { formatBankLinkedFootnote } from '../lib/plaidBankMetrics';
 import { useHasLiveDashboardAnalysis, useReportSync } from '../hooks/useReportSync';
 import { ROLLING_VIEW, useRollingReports } from '../hooks/useRollingReports';
 import { fmtMoney, getAnalyzeAnalysis } from '../lib/analyzeResponse';
@@ -26,8 +29,6 @@ import {
   ptsDelta,
 } from '../lib/briefMetrics';
 import { buildCalculatorHealthOverview } from '../lib/calculatorHealthReadings';
-import { downloadMonthlyReportPdf } from '../lib/api';
-import { downloadPdfWithSaveDialog, filenameFromDisposition } from '../lib/downloadReport';
 import styles from './AtLetterPage.module.css';
 
 function monthOnlyLabelFromPeriod(periodLabel: string | null | undefined): string {
@@ -71,7 +72,9 @@ const briefWidthStyle = {
 
 export default function AtLetterPage() {
   const { result } = useAnalysis();
+  const { user } = useAuth();
   const { evaluate: evaluateRisk, prefs } = useRiskThresholds();
+  const bankMetrics = usePlaidBankMetrics(user?.userId);
   const { historyReady, savedReports } = useReportSync();
   const { statementId, periodLabel, footerMeta } = useAtLetterTemplate();
   const hasLiveAnalysis = useHasLiveDashboardAnalysis(result);
@@ -123,25 +126,71 @@ export default function AtLetterPage() {
       ? series[series.length - 2]!
       : null;
 
-  const moneyIn = latest?.moneyIn ?? null;
-  const moneyOut = latest?.moneyOut ?? null;
-  const cashAvailable = latest?.cashAvailable ?? null;
+  /** Saved upload (POS / ecom / fees / margin / health) — never replaced by Plaid. */
+  const uploadMoneyIn = latest?.moneyIn ?? null;
+  const uploadMoneyOut = latest?.moneyOut ?? null;
+  const uploadCashAvailable = latest?.cashAvailable ?? null;
+
+  /** Top KPI row only — live bank stmt when linked; everything else stays on upload. */
+  const bankLinked = bankMetrics != null;
+  const moneyIn = bankLinked ? bankMetrics.moneyIn : uploadMoneyIn;
+  const moneyOut = bankLinked ? bankMetrics.moneyOut : uploadMoneyOut;
+  const cashAvailable = bankLinked ? bankMetrics.cashAvailable : uploadCashAvailable;
+
   const netMarginPct = latest?.netMarginPct ?? null;
   const runwayDays = latest?.runwayDays ?? null;
   const posIn = latest?.posIn ?? null;
   const ecomIn = latest?.ecomIn ?? null;
   const feesTotal = latest?.feesTotal ?? null;
-  const feesPct = calcFeesPct(moneyIn, feesTotal);
+  const feesPct = calcFeesPct(uploadMoneyIn, feesTotal);
   const startBalance =
     cashAvailable != null && moneyIn != null && moneyOut != null
       ? Math.max(0, cashAvailable - moneyIn + moneyOut)
       : null;
 
-  const moneyInDelta = pctDelta(moneyIn, prior?.moneyIn ?? null);
-  const moneyOutDelta = pctDelta(moneyOut, prior?.moneyOut ?? null);
+  const bankOpeningBalance =
+    bankLinked && bankMetrics.openingBalance != null
+      ? bankMetrics.openingBalance
+      : null;
+
+  const bankLinkedFootnote = bankLinked && bankMetrics
+    ? formatBankLinkedFootnote(bankMetrics)
+    : null;
+
+  const cashMovementModel = bankLinked
+    ? {
+        start: bankOpeningBalance,
+        bankIn: moneyIn,
+        posIn: null,
+        ecomIn: null,
+        billsOut: moneyOut,
+        end: cashAvailable,
+        bankLinked: true,
+        rangeLabel: bankLinkedFootnote?.replace(/^Linked bank · /, '') ?? bankMetrics.periodLabel,
+      }
+    : {
+        start: startBalance,
+        posIn,
+        ecomIn,
+        billsOut: moneyOut,
+        end: cashAvailable,
+        bankLinked: false,
+      };
+
+  const moneyInDelta = pctDelta(
+    bankLinked ? bankMetrics.moneyIn : uploadMoneyIn,
+    prior?.moneyIn ?? null,
+  );
+  const moneyOutDelta = pctDelta(
+    bankLinked ? bankMetrics.moneyOut : uploadMoneyOut,
+    prior?.moneyOut ?? null,
+  );
   const marginDelta = ptsDelta(netMarginPct, prior?.netMarginPct ?? null);
   const runwayDelta = absDelta(runwayDays, prior?.runwayDays ?? null, ' days');
-  const cashDelta = pctDelta(cashAvailable, prior?.cashAvailable ?? null);
+  const cashDelta = pctDelta(
+    bankLinked ? bankMetrics.cashAvailable : uploadCashAvailable,
+    prior?.cashAvailable ?? null,
+  );
 
   /** Same scoreboard as Business Health (calculators) — not runway/margin heuristic. */
   const healthOverview = useMemo(
@@ -223,6 +272,10 @@ export default function AtLetterPage() {
       : priorLabel
         ? `vs ${priorLabel}`
         : 'Latest month';
+    const moneyInFootnote = bankLinkedFootnote
+      ?? (channels > 0
+        ? `${channels} channel${channels > 1 ? 's' : ''} · ${vs}`
+        : vs);
     return [
       {
         id: 'in',
@@ -230,7 +283,7 @@ export default function AtLetterPage() {
         value: dashMoney(moneyIn),
         delta: monthOnly ? null : moneyInDelta,
         deltaTone: (moneyInDelta?.startsWith('-') ? 'down' : 'up') as 'up' | 'down',
-        footnote: channels > 0 ? `${channels} channel${channels > 1 ? 's' : ''} · ${vs}` : vs,
+        footnote: moneyInFootnote,
         icon: 'ti-arrow-down-left',
         iconTone: 'green' as const,
       },
@@ -240,9 +293,10 @@ export default function AtLetterPage() {
         value: dashMoney(moneyOut),
         delta: monthOnly ? null : moneyOutDelta,
         deltaTone: (moneyOutDelta?.startsWith('+') ? 'up' : 'down') as 'up' | 'down',
-        footnote: monthOnly
-          ? vs
-          : (cashFlow?.money_out_subtitle ?? vs),
+        footnote: bankLinkedFootnote
+          ?? (monthOnly
+            ? vs
+            : (cashFlow?.money_out_subtitle ?? vs)),
         icon: 'ti-arrow-up-right',
         iconTone: 'red' as const,
       },
@@ -295,6 +349,8 @@ export default function AtLetterPage() {
     ecomIn,
     priorLabel,
     cashFlow?.money_out_subtitle,
+    bankLinked,
+    bankLinkedFootnote,
   ]);
 
   const payrollFromOutflows = useMemo(() => {
@@ -304,8 +360,8 @@ export default function AtLetterPage() {
   }, [cashFlow?.outflows]);
 
   const payrollPct =
-    payrollFromOutflows != null && moneyIn != null && moneyIn > 0
-      ? (payrollFromOutflows / moneyIn) * 100
+    payrollFromOutflows != null && uploadMoneyIn != null && uploadMoneyIn > 0
+      ? (payrollFromOutflows / uploadMoneyIn) * 100
       : null;
 
   const priorities = useMemo(() => {
@@ -347,6 +403,22 @@ export default function AtLetterPage() {
   }, [monthOnly, runwayDays, runwayDelta, priorLabel, payrollPct, feesPct, feesTotal]);
 
   const incomeSlices = useMemo(() => {
+    if (bankLinked && bankMetrics) {
+      if (bankMetrics.incomeSlices?.length) {
+        return bankMetrics.incomeSlices.map((slice, index) => ({
+          ...slice,
+          color: INCOME_COLORS[index % INCOME_COLORS.length]!,
+        }));
+      }
+      if (bankMetrics.moneyIn > 0) {
+        return [{
+          id: 'bank-in',
+          label: 'Bank deposits',
+          value: bankMetrics.moneyIn,
+          color: INCOME_COLORS[0]!,
+        }];
+      }
+    }
     const slices: { id: string; label: string; value: number; color: string }[] = [];
     if (posIn != null && posIn > 0) {
       slices.push({ id: 'pos', label: 'POS (In-store)', value: posIn, color: INCOME_COLORS[0]! });
@@ -359,13 +431,34 @@ export default function AtLetterPage() {
         color: INCOME_COLORS[1]!,
       });
     }
-    if (!slices.length && moneyIn != null && moneyIn > 0) {
-      slices.push({ id: 'in', label: 'Money in', value: moneyIn, color: INCOME_COLORS[0]! });
+    if (!slices.length && uploadMoneyIn != null && uploadMoneyIn > 0) {
+      slices.push({ id: 'in', label: 'Money in', value: uploadMoneyIn, color: INCOME_COLORS[0]! });
     }
     return slices;
-  }, [posIn, ecomIn, moneyIn]);
+  }, [bankLinked, bankMetrics, posIn, ecomIn, uploadMoneyIn]);
+
+  const incomeBreakdownTotal = useMemo(() => {
+    if (bankLinked && bankMetrics) return bankMetrics.moneyIn;
+    return incomeSlices.reduce((sum, slice) => sum + slice.value, 0) || uploadMoneyIn;
+  }, [bankLinked, bankMetrics, incomeSlices, uploadMoneyIn]);
 
   const spendSlices = useMemo(() => {
+    if (bankLinked && bankMetrics) {
+      if (bankMetrics.spendSlices?.length) {
+        return bankMetrics.spendSlices.map((slice, index) => ({
+          ...slice,
+          color: SPEND_COLORS[index % SPEND_COLORS.length]!,
+        }));
+      }
+      if (bankMetrics.moneyOut > 0) {
+        return [{
+          id: 'bank-out',
+          label: 'Bank outflows',
+          value: bankMetrics.moneyOut,
+          color: SPEND_COLORS[0]!,
+        }];
+      }
+    }
     const rows = cashFlow?.outflows ?? [];
     const parsed = rows
       .map((row, i) => ({
@@ -376,11 +469,16 @@ export default function AtLetterPage() {
       }))
       .filter((r) => r.value > 0);
     if (parsed.length) return parsed;
-    if (moneyOut != null && moneyOut > 0) {
-      return [{ id: 'out', label: 'Money out', value: moneyOut, color: SPEND_COLORS[0]! }];
+    if (uploadMoneyOut != null && uploadMoneyOut > 0) {
+      return [{ id: 'out', label: 'Money out', value: uploadMoneyOut, color: SPEND_COLORS[0]! }];
     }
     return [];
-  }, [cashFlow?.outflows, moneyOut]);
+  }, [bankLinked, bankMetrics, cashFlow?.outflows, uploadMoneyOut]);
+
+  const spendBreakdownTotal = useMemo(() => {
+    if (bankLinked && bankMetrics) return bankMetrics.moneyOut;
+    return spendSlices.reduce((sum, slice) => sum + slice.value, 0) || uploadMoneyOut;
+  }, [bankLinked, bankMetrics, spendSlices, uploadMoneyOut]);
 
   const insights = useMemo(() => {
     const tones = ['green', 'blue', 'orange', 'purple'] as const;
@@ -437,24 +535,6 @@ export default function AtLetterPage() {
       }));
   }, [healthOverview]);
 
-  const onExport = useCallback(async () => {
-    if (!letterStatementId) return;
-    const fallbackName = `Business_Brief_${periodMeta.replace(/\s+/g, '_')}.pdf`;
-    try {
-      await downloadPdfWithSaveDialog({
-        suggestedFilename: fallbackName,
-        fetchBlob: async () => {
-          const { data, headers } = await downloadMonthlyReportPdf(letterStatementId);
-          const disposition = headers?.['content-disposition'] as string | undefined;
-          const filename = filenameFromDisposition(disposition, fallbackName);
-          return new File([data], filename, { type: 'application/pdf' });
-        },
-      });
-    } catch {
-      /* keep brief usable if export fails */
-    }
-  }, [letterStatementId, periodMeta]);
-
   if (!hasLiveAnalysis) {
     return (
       <div className={styles.briefPage} style={briefWidthStyle}>
@@ -495,27 +575,18 @@ export default function AtLetterPage() {
                 onHoverRolling={() => selectViewOnHover(ROLLING_VIEW)}
                 onHoverMonth={() => selectViewOnHover('month')}
                 onFilterMouseLeave={clearHoverTimer}
-                onExport={letterStatementId ? onExport : undefined}
               />
             </div>
 
             <div className={styles.scrollViewport}>
               <BriefKpis items={kpiItems} />
               <BriefPriorities items={priorities} onViewActionPlan={() => setActionPlanOpen(true)} />
-              <BriefCashMovement
-                model={{
-                  start: startBalance,
-                  posIn,
-                  ecomIn,
-                  billsOut: moneyOut,
-                  end: cashAvailable,
-                }}
-              />
+              <BriefCashMovement model={cashMovementModel} />
               <BriefBreakdown
                 income={incomeSlices}
-                incomeTotal={moneyIn}
+                incomeTotal={incomeBreakdownTotal}
                 spend={spendSlices}
-                spendTotal={moneyOut}
+                spendTotal={spendBreakdownTotal}
               />
               <BriefHealth cards={healthCards} overall={healthScore} spark={spark} />
               <BriefInsights items={insights} />
