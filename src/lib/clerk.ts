@@ -1,6 +1,8 @@
-/** Clerk publishable key — used only for email OTP on /register, not dashboard sessions. */
-export const CLERK_PUBLISHABLE_KEY =
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim() || '';
+const clerkFromEnv = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim();
+/** Vercel Clerk from env only. Refuse asktill.com `pk_live_` so EC2 keys never run here. */
+export const CLERK_PUBLISHABLE_KEY = clerkFromEnv.startsWith('pk_live_')
+  ? ''
+  : clerkFromEnv;
 
 const CLERK_OAUTH_REDIRECT_PATH = '/sso-callback';
 export const CLERK_OAUTH_COMPLETE_PATH = '/login/oauth-complete';

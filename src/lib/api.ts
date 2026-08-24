@@ -1728,7 +1728,13 @@ export async function openAdminDashboard(): Promise<void> {
 export function consumeHandoffTokenFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
-  pinEc2BackendFromHandoff();
+  clearEc2BackendSession();
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const queryParams = new URLSearchParams(window.location.search);
+  if (hashParams.get('ec2') === '1' || queryParams.get('ec2') === '1') {
+    window.history.replaceState(null, '', window.location.pathname);
+    return null;
+  }
   if (handoffWantsPostLoginRouting()) {
     markPostLoginRouting();
   }

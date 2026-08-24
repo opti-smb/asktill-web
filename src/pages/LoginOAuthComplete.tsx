@@ -22,6 +22,7 @@ import {
   persistRegisterFromGoogle,
   wasGoogleSignInAttempt,
 } from '../lib/clerk';
+import { hasSignedOutIntent } from '../lib/explicitLogout';
 import styles from './LoginPage.module.css';
 
 import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
@@ -93,6 +94,13 @@ export default function LoginOAuthComplete() {
 
       const fromGoogleOAuth = wasGoogleSignInAttempt();
       const accountEmail = clerkUser?.primaryEmailAddress?.emailAddress?.trim() ?? '';
+
+      if (hasSignedOutIntent() && !fromGoogleOAuth) {
+        finishedRef.current = true;
+        void clearClerkSession(clerk, { stayOnPage: true });
+        navigate('/login', { replace: true });
+        return;
+      }
 
       if (!sessionId) {
         if (!fromGoogleOAuth) {

@@ -1,5 +1,3 @@
-import { EC2_PUBLIC_URLS, isEc2BackendSession } from './ec2BackendSession';
-
 /** Detect developer-machine hosts that must never be used in production browsers. */
 export function isLocalHostUrl(url: string): boolean {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url.trim());
@@ -28,11 +26,6 @@ export function resolvePublicUrl(
 ): string {
   const prodDefault = PROD_URLS[key];
   const raw = envValue?.trim();
-
-  // asktill.com login handoff: parse/show on Vercel, persist on EC2.
-  if (!import.meta.env.DEV && isEc2BackendSession()) {
-    return EC2_PUBLIC_URLS[key].replace(/\/$/, '');
-  }
 
   if (import.meta.env.DEV) {
     const devDefaults: Record<PublicUrlKey, string> = {
