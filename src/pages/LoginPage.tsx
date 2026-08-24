@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { emailFieldRules, isInvalidPasswordFailure, isLoginEmailFailure, loginCredentialErrorMessage } from '../lib/emailValidation';
 import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
-import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
+import { markPostLoginRouting } from '../lib/pendingPdfDownload';
 import { hasSignedOutIntent } from '../lib/explicitLogout';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
@@ -89,7 +89,7 @@ function LoginPageInner() {
     if (hasSignedOutIntent()) return;
     const state = location.state as { from?: string } | null;
     markPostLoginRouting();
-    navigate(resolvePostLoginRedirect(state?.from), { replace: true });
+    navigate('/post-login', { replace: true });
   }, [ready, isAuth, navigate, location.state]);
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -185,9 +185,7 @@ function LoginPageInner() {
       failedAttemptsRef.current = 0;
 
       markPostLoginRouting();
-      navigate(
-        resolvePostLoginRedirect((location.state as { from?: string } | null)?.from),
-      );
+      navigate('/post-login', { replace: true });
 
     } catch (err) {
       failedAttemptsRef.current += 1;
