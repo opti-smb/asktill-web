@@ -62,8 +62,6 @@ export default defineConfig({
       '/api/checkout': { target: 'http://localhost:8005', changeOrigin: true },
       '/api/billing': { target: 'http://localhost:8005', changeOrigin: true },
       '/api/ask': { target: 'http://localhost:8000', changeOrigin: true },
-      '/api/plaid-statements': { target: 'http://localhost:8000', changeOrigin: true },
-      '/api/plaid': { target: 'http://localhost:3000', changeOrigin: true },
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
