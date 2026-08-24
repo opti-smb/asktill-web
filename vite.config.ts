@@ -5,11 +5,22 @@ import { fileURLToPath } from 'node:url'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
+// Vercel dashboard keys are on process.env at build time. Bake publishable only (never secret).
+const clerkPublishableKey = (
+  process.env.VITE_CLERK_PUBLISHABLE_KEY ||
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  ''
+).trim()
+
 export default defineConfig({
   plugins: [react()],
-  // CLERK_PUBLISHABLE_KEY (no VITE_ prefix) is what the Vercel dashboard often has.
+  define: {
+    'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+    'import.meta.env.CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+  },
   // Do not add a CLERK_ prefix — that would leak CLERK_SECRET_KEY into the browser bundle.
-  envPrefix: ['VITE_', 'TOKEN_', 'CLERK_PUBLISHABLE_KEY'],
+  envPrefix: ['VITE_', 'TOKEN_', 'CLERK_PUBLISHABLE_KEY', 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'],
   resolve: {
     // Vendored packages — works on Vercel (no sibling-repo dependency).
     alias: {
