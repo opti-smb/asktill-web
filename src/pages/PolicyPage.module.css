@@ -3,36 +3,7 @@
   background: #f7faf8;
   color: #172136;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  border-bottom: 1px solid #dde4e2;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: saturate(180%) blur(10px);
-}
-
-.navInner {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 14px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.back {
-  color: #335b49;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.back:hover {
-  color: #168755;
+  padding-top: 74px;
 }
 
 .shell {
