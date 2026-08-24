@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { PROD_URLS, resolvePublicUrl } from '../../lib/publicUrls';
+import { RENDER_AGENTS_ORIGIN, resolvePublicUrl } from '../../lib/publicUrls';
 
 import styles from './AtHelpPanel.module.css';
 
@@ -27,9 +27,8 @@ function isTrustedHelpOrigin(origin: string): boolean {
     if (incoming.origin === agentsOrigin) {
       return true;
     }
-    // Legacy Render default baked into PROD_URLS (Vercel stack).
-    const prodAgentsOrigin = new URL(PROD_URLS.agents).origin;
-    return incoming.origin === prodAgentsOrigin;
+    // Allow the Vercel/Render Agents iframe origin if it ever posts here.
+    return incoming.origin === new URL(RENDER_AGENTS_ORIGIN).origin;
   } catch {
     return false;
   }

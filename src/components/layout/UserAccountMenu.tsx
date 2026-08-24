@@ -121,7 +121,7 @@ export default function UserAccountMenu({
       }
       setConfirmSignOut(false);
       setMenuOpen(false);
-      navigate('/login', { replace: true });
+      window.location.assign('/login?signedOut=1');
     } finally {
       setSigningOut(false);
     }

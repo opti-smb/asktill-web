@@ -14,11 +14,9 @@ import {
 } from '../lib/api';
 import { emailFieldRules, normalizeEmail } from '../lib/emailValidation';
 import { PASSWORD_HINT, validatePassword } from '../lib/passwordPolicy';
-import { isPublicBetaGateActive } from '../lib/publicBetaGate';
 import authFieldStyles from '../components/auth/EmailField.module.css';
 import registerStyles from './RegisterPage.module.css';
 import loginStyles from './LoginPage.module.css';
-import BetaAccessPage from './BetaAccessPage';
 
 type Step = 0 | 1 | 2;
 type OtpFeedback = 'none' | 'pending' | 'success' | 'error';
@@ -387,10 +385,6 @@ function ForgotPasswordAuthFlow() {
 }
 
 export default function ForgotPasswordPage() {
-  if (isPublicBetaGateActive()) {
-    return <BetaAccessPage navActive="signin" />;
-  }
-
   return (
     <div className={registerStyles.page}>
       <AuthNav active="signin" />

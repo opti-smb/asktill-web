@@ -3,16 +3,22 @@ export function isLocalHostUrl(url: string): boolean {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url.trim());
 }
 
-/** Known production service origins for asktill-web. */
+/**
+ * EC2 / asktill.com fallbacks only.
+ * Vercel keeps Render URLs in E:\asktill-web — do not copy these into that repo.
+ */
 export const PROD_URLS = {
-  api: 'https://backend-service-9kqp.onrender.com',
-  auth: 'https://authentication-service-s3tl.onrender.com',
-  register: 'https://registration-service-o9ah.onrender.com',
-  subscription: 'https://asktill-subscription.onrender.com',
-  agents: 'https://asktill-agents.onrender.com',
-  admin: 'https://asktill-admin-dashboard.vercel.app',
-  app: 'https://asktill-web-three.vercel.app',
+  api: 'https://asktill.com',
+  auth: 'https://asktill.com/svc/auth',
+  register: 'https://asktill.com/svc/register',
+  subscription: 'https://asktill.com/svc/subscription',
+  agents: 'https://asktill.com/svc/agents',
+  admin: 'https://asktill.com/admin',
+  app: 'https://asktill.com',
 } as const;
+
+/** Vercel/Render Agents origin — iframe trust only, never used as the EC2 API base. */
+export const RENDER_AGENTS_ORIGIN = 'https://asktill-agents.onrender.com';
 
 export type PublicUrlKey = keyof typeof PROD_URLS;
 
