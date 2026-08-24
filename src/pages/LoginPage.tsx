@@ -87,10 +87,9 @@ function LoginPageInner() {
   useEffect(() => {
     if (!(ready && isAuth)) return;
     if (hasSignedOutIntent()) return;
-    const state = location.state as { from?: string } | null;
     markPostLoginRouting();
     navigate('/post-login', { replace: true });
-  }, [ready, isAuth, navigate, location.state]);
+  }, [ready, isAuth, navigate]);
 
   const [successMessage, setSuccessMessage] = useState('');
 
