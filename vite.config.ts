@@ -5,9 +5,24 @@ import { fileURLToPath } from 'node:url'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
+const clerkFromProcess = (
+  process.env.VITE_CLERK_PUBLISHABLE_KEY ||
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  ''
+).trim()
+const clerkPublishableKey = clerkFromProcess.startsWith('pk_live_') ? '' : clerkFromProcess
+
 export default defineConfig({
   plugins: [react()],
-  envPrefix: ['VITE_', 'TOKEN_'],
+  define: clerkPublishableKey
+    ? {
+        'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+        'import.meta.env.CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+      }
+    : {},
+  // Do not add a CLERK_ prefix — that would leak CLERK_SECRET_KEY into the browser bundle.
+  envPrefix: ['VITE_', 'TOKEN_', 'CLERK_PUBLISHABLE_KEY', 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'],
   resolve: {
     // Vendored packages — works on Vercel (no sibling-repo dependency).
     alias: {
