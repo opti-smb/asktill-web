@@ -1111,7 +1111,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 manualUploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
             />
-            {plaid.error ? (
+            {plaid.error && !plaid.linking ? (
               <p className={styles.pageSub} role="alert">
                 {plaid.error}
               </p>

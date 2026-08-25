@@ -184,7 +184,16 @@ export type ParsedPlaidStatement = {
   error?: string;
 };
 
-const PLAID_JSON_TIMEOUT_MS = 90_000;
+export type PlaidRawTransaction = {
+  transaction_id?: string;
+  amount?: number | string;
+  date?: string;
+  name?: string | null;
+  merchant_name?: string | null;
+  pending?: boolean;
+};
+
+const PLAID_JSON_TIMEOUT_MS = 45_000;
 const PLAID_WARM_TTL_MS = 60_000;
 let plaidWarmUntil = 0;
 
@@ -273,7 +282,7 @@ async function plaidJson<T>(
     const retryable =
       Boolean((err as { retryable?: boolean }).retryable)
       || err instanceof TypeError
-      || (err instanceof Error && /waking up|timed out|failed to fetch|network/i.test(err.message));
+      || (err instanceof Error && /failed to fetch|network/i.test(err.message));
     if (!retryable) throw err;
     await warmupPlaidService();
     await sleep(1_500);
@@ -312,8 +321,33 @@ export async function fetchLinkedBankAccounts(businessId: string) {
   const data = await plaidJson<{ accounts?: LinkedBankAccount[] }>(
     `/accounts/${encodeURIComponent(businessId)}`,
     businessId,
+    {},
+    20_000,
   );
   return data.accounts || [];
+}
+
+export async function fetchPlaidTransactions(businessId: string, preset = '1m') {
+  const id = encodeURIComponent(businessId);
+  const data = await plaidJson<{ transactions?: PlaidRawTransaction[] }>(
+    `/transactions/${id}?preset=${encodeURIComponent(preset)}&limit=500`,
+    businessId,
+    {},
+    20_000,
+  );
+  return data.transactions || [];
+}
+
+export async function syncPlaidTransactions(businessId: string) {
+  return plaidJson<{ results?: unknown[] }>(
+    `/sync/${encodeURIComponent(businessId)}`,
+    businessId,
+    {
+      method: 'POST',
+      body: JSON.stringify({ business_id: businessId }),
+    },
+    45_000,
+  );
 }
 
 export async function parseAllPlaidData(businessId: string, preset?: string) {
