@@ -123,16 +123,16 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
       void warmupPlaidService();
 
       try {
-        const existing = await refreshAccounts();
+        const existing = accountsRef.current.length
+          ? accountsRef.current
+          : await refreshAccounts();
 
         // Already linked: Connect real-time / monthly pulls data, it does not open Link again.
         if (intent === 'sync' && existing.length > 0) {
           try {
-            setLinkStatus('Starting bank sync…');
-            await warmupPlaidService();
             setLinkStatus(
               mode === 'monthly'
-                ? 'Pulling your previous month bank statement…'
+                ? 'Loading last month from your linked bank…'
                 : 'Loading live bank transactions…',
             );
             const metrics = await pullAndOverlay(businessId, user.userId, mode);

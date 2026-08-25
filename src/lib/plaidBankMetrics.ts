@@ -546,46 +546,57 @@ async function overlayFromMonthlyStatements(
     previous: PlaidPullCompare | null;
     fallbackCash: number | null;
   },
+  userId?: string,
+  preloadedTxs?: PlaidRawTransaction[],
+  cached?: PlaidBankMetrics | null,
 ): Promise<{ ledgers: ParsedPlaidStatement[]; metrics: PlaidBankMetrics | null }> {
-  let listed: Array<{ year?: number; month?: number }> = [];
-  try {
-    const pull = await pullPlaidStatements(businessId);
-    listed = pull.statements || [];
-  } catch {
-    /* Stored PDFs may still parse if a previous pull saved them. */
+  const txs = preloadedTxs
+    ?? await fetchPlaidTransactions(businessId, 'prev_month').catch(() => []);
+  const txLedger = ledgerFromRawTransactions(txs, range, 'statement');
+  const txLedgers = (txLedger.rows?.length ?? 0) > 0 ? [txLedger] : [];
+  const txMetrics = buildPlaidBankMetrics(txLedgers, accounts, range, buildOpts);
+
+  const refreshFromPdfs = async () => {
+    let listed: Array<{ year?: number; month?: number }> = [];
+    try {
+      const pull = await pullPlaidStatements(businessId);
+      listed = pull.statements || [];
+    } catch {
+      return { ledgers: [] as ParsedPlaidStatement[], metrics: null };
+    }
+    const prevKey = range.start_date.slice(0, 7);
+    const match =
+      listed.find((row) => `${row.year}-${String(row.month ?? 0).padStart(2, '0')}` === prevKey)
+      || listed[0];
+    const targetRange =
+      match?.year && match.month
+        ? rangeFromPeriodKey(`${match.year}-${String(match.month).padStart(2, '0')}`)
+        : range;
+    const ledgers = await parseStatementLedgers(
+      businessId,
+      targetRange ?? { preset: 'prev_month' },
+    );
+    const metrics = buildPlaidBankMetrics(
+      ledgers,
+      accounts,
+      targetRange ?? range,
+      buildOpts,
+    );
+    if (metrics && userId) savePlaidBankMetrics(userId, metrics);
+    return { ledgers, metrics };
+  };
+
+  if (txMetrics) {
+    void refreshFromPdfs().catch(() => undefined);
+    return { ledgers: txLedgers, metrics: txMetrics };
   }
 
-  const prevKey = range.start_date.slice(0, 7);
-  const match =
-    listed.find((row) => `${row.year}-${String(row.month ?? 0).padStart(2, '0')}` === prevKey)
-    || listed[0];
-  const targetRange =
-    match?.year && match.month
-      ? rangeFromPeriodKey(`${match.year}-${String(match.month).padStart(2, '0')}`)
-      : range;
-
-  let ledgers = await parseStatementLedgers(
-    businessId,
-    targetRange ?? { preset: 'prev_month' },
-  );
-  let metrics = buildPlaidBankMetrics(
-    ledgers,
-    accounts,
-    targetRange ?? range,
-    buildOpts,
-  );
-
-  if (!metrics) {
-    ledgers = await parseStatementLedgers(businessId, { preset: 'prev_month' });
-    metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
+  if (cached) {
+    void refreshFromPdfs().catch(() => undefined);
+    return { ledgers: [], metrics: cached };
   }
-  if (metrics) return { ledgers, metrics };
 
-  const txs = await fetchPlaidTransactions(businessId, 'prev_month').catch(() => []);
-  const ledger = ledgerFromRawTransactions(txs, range, 'statement');
-  ledgers = (ledger.rows?.length ?? 0) > 0 ? [ledger] : [];
-  metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
-  return { ledgers, metrics };
+  return refreshFromPdfs();
 }
 
 function overlayFromStoredTransactions(
@@ -624,15 +635,19 @@ export async function refreshPlaidBankMetricsOverlay(
   let metrics: PlaidBankMetrics | null = null;
 
   if (linkMode === 'monthly') {
-    const loadedAccounts = await fetchLinkedBankAccounts(businessId).catch(
-      () => [] as LinkedBankAccount[],
-    );
+    const [loadedAccounts, prevTxs] = await Promise.all([
+      fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]),
+      fetchPlaidTransactions(businessId, 'prev_month').catch(() => [] as PlaidRawTransaction[]),
+    ]);
     accounts = loadedAccounts;
     const monthly = await overlayFromMonthlyStatements(
       businessId,
       range,
       accounts,
       buildOpts,
+      userId,
+      prevTxs,
+      cached,
     );
     ledgers = monthly.ledgers;
     metrics = monthly.metrics;
