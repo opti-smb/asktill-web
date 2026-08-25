@@ -9,6 +9,7 @@ import {
   findDuplicatePlaidLink,
   findSameLinkedBank,
   institutionFromPlaidMeta,
+  warmupPlaidService,
   type LinkedBankAccount,
   type PlaidLinkMode,
 } from '../lib/plaidClient';
@@ -70,7 +71,9 @@ async function pullAndOverlay(businessId: string, userId: string, mode: PlaidLin
   });
   await ensureUploadBaselineSession(userId);
   if (!metrics) {
-    throw new Error('Bank linked, but Money In / Out could not be calculated yet. Try syncing again.');
+    throw new Error(
+      'Bank is linked, but there are no live transactions for this window yet. Try syncing again in a minute.',
+    );
   }
   return metrics;
 }
@@ -101,6 +104,7 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
 
   useEffect(() => {
     if (!canLink) return;
+    void warmupPlaidService();
     void refreshAccounts().catch(() => undefined);
   }, [canLink, refreshAccounts]);
 
@@ -114,6 +118,7 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
       setLinking(true);
       setLinkingMode(mode);
       blockedSameBankRef.current = null;
+      void warmupPlaidService();
 
       try {
         const existing = await refreshAccounts();
@@ -121,6 +126,8 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
         // Already linked: Connect real-time / monthly pulls data, it does not open Link again.
         if (intent === 'sync' && existing.length > 0) {
           try {
+            setLinkStatus('Starting bank sync…');
+            await warmupPlaidService();
             setLinkStatus(
               mode === 'monthly'
                 ? 'Pulling your previous month bank statement…'
@@ -130,11 +137,15 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
             setLinkStatus(
               metrics
                 ? mode === 'monthly'
-                  ? 'Previous month statement pulled and saved. Money In / Out updated from your linked bank.'
-                  : 'Live transactions synced and saved. Money In / Out updated from your linked bank.'
+                  ? 'Previous month statement pulled. Money In / Out updated from your linked bank.'
+                  : 'Live transactions synced. Money In / Out updated from your linked bank.'
                 : 'Nothing new to pull yet. Try again shortly.',
             );
             if (metrics) onDataReady?.();
+          } catch (err) {
+            const raw = err instanceof Error ? err.message : 'Could not sync the linked bank.';
+            setError(raw);
+            setLinkStatus(null);
           } finally {
             setLinking(false);
             setLinkingMode(null);
@@ -231,8 +242,8 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
               await refreshAccounts();
               setLinkStatus(
                 mode === 'monthly'
-                  ? 'Bank linked — previous month statement pulled and saved.'
-                  : 'Bank linked — live transactions saved. Money In / Out updated from your bank.',
+                  ? 'Bank linked — previous month statement pulled.'
+                  : 'Bank linked — live transactions synced. Money In / Out updated from your bank.',
               );
               onDataReady?.();
             } catch (err) {

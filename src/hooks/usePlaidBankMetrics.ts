@@ -45,6 +45,9 @@ export function usePlaidBankMetrics(
         }
 
         const cached = loadPlaidBankMetrics(uid);
+        const cacheAgeMs = cached?.updatedAt
+          ? Date.now() - new Date(cached.updatedAt).getTime()
+          : Number.POSITIVE_INFINITY;
         if (cached) setMetrics(cached);
         else {
           const stored = await loadPlaidMetricsFromStoredReports('realtime');
@@ -54,9 +57,13 @@ export function usePlaidBankMetrics(
           }
         }
 
+        if (Number.isFinite(cacheAgeMs) && cacheAgeMs < 120_000) {
+          await ensureUploadBaselineSession(uid);
+          return;
+        }
+
         const live = await refreshPlaidBankMetricsOverlay(businessId, uid, {
-          sync: true,
-          persist: true,
+          persist: false,
           recordPull: false,
           mode: loadPlaidBankMetrics(uid)?.linkMode ?? 'realtime',
         });
