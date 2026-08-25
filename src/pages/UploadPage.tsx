@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Logo from '../components/common/Logo';
 import UserAccountMenu from '../components/layout/UserAccountMenu';
 import FileDropZone from '../components/upload/FileDropZone';
+import UploadMethodChooser from '../components/upload/UploadMethodChooser';
+import { usePlaidLinkBank } from '../hooks/usePlaidLinkBank';
 import AnalyzeProgressOverlay from '../components/upload/AnalyzeProgressOverlay';
 import UploadContinuityNudge from '../components/upload/UploadContinuityNudge';
 import PreviousReportsPanel from '../components/analysis/PreviousReportsPanel';
@@ -259,7 +261,11 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
     setUploadValidationDraft,
   } = useAnalysis();
   const { isAuth, ready: authReady } = useAuth();
+  const plaid = usePlaidLinkBank({
+    onDataReady: () => navigate(DEFAULT_DASHBOARD_PATH),
+  });
   const { isPaid } = useSubscription();
+  const manualUploadRef = useRef<HTMLDivElement | null>(null);
   const draftHydratedRef = useRef(false);
   const skipEmptyFileSyncRef = useRef(false);
 
@@ -1014,7 +1020,9 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             <span className={styles.pageEyebrow}>Step 2 of 4</span>
             <h1>All your statements in <em>1 page</em></h1>
             <p className={styles.pageSub}>
-              Upload your Bank, Pos, and Ecom statements. Same period will give best results
+              {embedded
+                ? 'Link your bank for automatic sync (month to date), or upload Bank, POS, and Ecom files below.'
+                : 'Link your bank via Plaid, or upload your Bank, POS, and Ecom statements. Same period gives best results.'}
             </p>
             {showValidationContinuityNudge && validationContinuity ? (
               <UploadContinuityNudge
@@ -1088,6 +1096,46 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
             ) : null}
           </div>
 
+          <div className={styles.plaidPullSection}>
+            <UploadMethodChooser
+              variant={embedded ? 'tiles' : 'bar'}
+              compact={embedded}
+              linking={plaid.linking}
+              linkingMode={plaid.linkingMode}
+              linkStatus={plaid.linkStatus}
+              canLink={plaid.canLink}
+              bankLinked={plaid.bankLinked}
+              onConnectRealtime={plaid.connectRealtime}
+              onConnectMonthly={plaid.connectMonthly}
+              onChooseManual={() => {
+                manualUploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+            {plaid.error ? (
+              <p className={styles.pageSub} role="alert">
+                {plaid.error}
+              </p>
+            ) : null}
+            {plaid.bankLinked ? (
+              <p className={styles.plaidLinkedHint}>
+                Bank connected — live transactions sync from the 1st through today. Use{' '}
+                <strong>Pull monthly statements</strong> to fetch PDF statements too. Results appear on your{' '}
+                <button
+                  type="button"
+                  className={styles.plaidLinkedLink}
+                  onClick={() => navigate(DEFAULT_DASHBOARD_PATH)}
+                >
+                  dashboard
+                </button>
+                .{' '}
+                <Link to="/dashboard/linked-accounts" className={styles.plaidLinkedLink}>
+                  Manage linked banks
+                </Link>
+              </p>
+            ) : null}
+          </div>
+
+          <div ref={manualUploadRef} className={styles.manualUploadSection}>
           <div className={styles.uploadGrid}>
             <FileDropZone
               key={`bank-${uploadFormKey}`}
@@ -1148,6 +1196,7 @@ export default function UploadPage({ embedded = false }: { embedded?: boolean })
                 setUploadPrompt(message);
               }}
             />
+          </div>
           </div>
 
           <div className={styles.privacy}>

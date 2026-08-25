@@ -1,4 +1,7 @@
-/** Kept for type compatibility. Vercel never calls asktill.com APIs. */
+const STORAGE_KEY = 'asktill:use-ec2-backend';
+const TOKEN_KEY = 'asktill:ec2-access-token';
+
+/** Same-origin EC2 APIs — used only after asktill.com login handoff (`ec2=1`). */
 export const EC2_PUBLIC_URLS = {
   api: 'https://asktill.com',
   auth: 'https://asktill.com/svc/auth',
@@ -9,37 +12,63 @@ export const EC2_PUBLIC_URLS = {
   app: 'https://asktill-web-three.vercel.app',
 } as const;
 
-function dropEc2Pin(): void {
+function handoffParams(): URLSearchParams {
+  if (typeof window === 'undefined') return new URLSearchParams();
+  const hash = window.location.hash.replace(/^#/, '');
+  const fromHash = new URLSearchParams(hash);
+  const fromQuery = new URLSearchParams(window.location.search);
+  for (const [key, value] of fromQuery.entries()) {
+    if (!fromHash.has(key)) fromHash.set(key, value);
+  }
+  return fromHash;
+}
+
+/** Persist EC2 API pin from the one-time handoff hash before it is stripped. */
+export function pinEc2BackendFromHandoff(): void {
+  if (typeof window === 'undefined') return;
   try {
-    sessionStorage.removeItem('asktill:use-ec2-backend');
-    sessionStorage.removeItem('asktill:ec2-access-token');
+    if (handoffParams().get('ec2') === '1') {
+      sessionStorage.setItem(STORAGE_KEY, '1');
+    }
   } catch {
     /* ignore */
   }
 }
 
-export function clearEc2BackendSession(): void {
-  dropEc2Pin();
-}
-
-/** Vercel talks to Render only — never pin asktill.com APIs from a handoff hash. */
-export function pinEc2BackendFromHandoff(): void {
-  dropEc2Pin();
-}
-
 export function isEc2BackendSession(): boolean {
-  dropEc2Pin();
-  return false;
+  pinEc2BackendFromHandoff();
+  try {
+    return sessionStorage.getItem(STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
-export function persistEc2AccessToken(_token: string): void {
-  /* Vercel does not store EC2 JWTs. */
+export function persistEc2AccessToken(token: string): void {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function readEc2AccessToken(): string | null {
-  return null;
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearEc2BackendSession(): void {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function handoffWantsPostLoginRouting(): boolean {
-  return false;
+  return handoffParams().get('post_login') === '1';
 }

@@ -12,8 +12,7 @@ import {
 const HISTORY_WAIT_MS = 12_000;
 
 /**
- * After a Vercel/Render login: new accounts → upload; accounts with statements → dashboard.
- * asktill.com JWTs are not accepted here.
+ * After asktill.com or Vercel login: new accounts → upload; accounts with statements → dashboard.
  */
 export default function WorkspaceEntryPage() {
   const { ready, isAuth } = useAuth();

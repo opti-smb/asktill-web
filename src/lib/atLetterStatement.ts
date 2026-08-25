@@ -43,16 +43,39 @@ export function periodKeyFromLabel(label: string | null | undefined): string | n
   return null;
 }
 
+export function isPlaidOverlayReport(row: SavedReportSummaryApi): boolean {
+  const name = (row.file_name || '').trim().toLowerCase();
+  return name.startsWith('plaid_');
+}
+
 /** Latest saved report — prefer newest statement period, then upload time. */
 export function pickPrimarySavedReport(
   reports: SavedReportSummaryApi[],
 ): SavedReportSummaryApi | null {
-  if (!reports.length) return null;
-  return [...reports].sort((a, b) => {
+  const uploads = reports.filter((row) => !isPlaidOverlayReport(row));
+  const pool = uploads.length ? uploads : reports;
+  if (!pool.length) return null;
+  return [...pool].sort((a, b) => {
     const byPeriod = comparePeriodKeys(a.period_key, b.period_key);
     if (byPeriod !== 0) return byPeriod;
     return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
   })[0];
+}
+
+/** POS/ecom upload to keep on the brief when a bank is linked — Plaid only overlays KPIs. */
+export function pickUploadBaselineReport(
+  reports: SavedReportSummaryApi[],
+): SavedReportSummaryApi | null {
+  if (!reports.length) return null;
+  const uploads = reports.filter((row) => !isPlaidOverlayReport(row));
+  const pool = uploads.length ? uploads : reports;
+  const complete = pool.filter((row) => row.completeness === 'complete');
+  if (complete.length) return pickPrimarySavedReport(complete);
+  const withGross = pool.filter((row) => row.total_gross != null && row.total_gross > 0);
+  if (withGross.length) {
+    return [...withGross].sort((a, b) => (b.total_gross ?? 0) - (a.total_gross ?? 0))[0] ?? null;
+  }
+  return pickMostRecentlyUploadedReport(pool);
 }
 
 /** Most recently uploaded report (by uploaded_at) — use after analyze/backfill recovery. */

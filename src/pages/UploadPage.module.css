@@ -84,6 +84,25 @@
   font-size: 11px;
 }
 
+.pageBgEmbedded .plaidPullSection {
+  max-width: 100%;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.pageBgEmbedded .plaidLinkedHint {
+  font-size: 11px;
+}
+
+.pageBgEmbedded .manualUploadSection {
+  margin-top: 2px;
+  padding-top: 0;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  flex-shrink: 0;
+}
+
 .pageBgEmbedded .btnPrimary {
   padding: 7px 16px;
   font-size: 12px;
@@ -547,5 +566,44 @@
   text-decoration: underline;
   cursor: pointer;
   font-family: inherit;
+}
+
+.plaidPullSection {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.plaidLinkedHint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.plaidLinkedLink {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: #0f8a57;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.plaidLinkedLink:hover {
+  color: #0a6b44;
+  text-decoration: underline;
+}
+
+.manualUploadSection {
+  margin-top: 4px;
+  padding-top: 0;
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
