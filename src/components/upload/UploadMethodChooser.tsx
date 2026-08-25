@@ -65,12 +65,12 @@ export default function UploadMethodChooser({
   const linkDisabled = !canLink || linking || linkingMode !== null;
 
   const realtimeLabel = linkingMode === 'realtime'
-    ? 'Connecting…'
+    ? (bankLinked ? 'Syncing…' : 'Connecting…')
     : bankLinked
       ? 'Sync live transactions'
       : 'Connect real-time';
   const monthlyLabel = linkingMode === 'monthly'
-    ? 'Connecting…'
+    ? (bankLinked ? 'Pulling…' : 'Connecting…')
     : bankLinked
       ? 'Pull monthly statements'
       : 'Connect monthly';
