@@ -69,10 +69,10 @@ async function pullAndOverlay(businessId: string, userId: string, mode: PlaidLin
     persist: true,
     recordPull: true,
   });
-  await ensureUploadBaselineSession(userId);
+  void ensureUploadBaselineSession(userId);
   if (!metrics) {
     throw new Error(
-      'Bank is linked, but there are no live transactions for this window yet. Try syncing again in a minute.',
+      'Bank is linked, but there are no live transactions for this month yet. Try syncing again in a minute.',
     );
   }
   return metrics;
@@ -131,7 +131,7 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
             setLinkStatus(
               mode === 'monthly'
                 ? 'Pulling your previous month bank statement…'
-                : 'Syncing live bank transactions…',
+                : 'Loading live bank transactions…',
             );
             const metrics = await pullAndOverlay(businessId, user.userId, mode);
             setLinkStatus(
@@ -236,7 +236,7 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
               setLinkStatus(
                 mode === 'monthly'
                   ? 'Pulling your previous month bank statement…'
-                  : 'Syncing live bank transactions…',
+                  : 'Loading live bank transactions…',
               );
               await pullAndOverlay(businessId, user.userId, mode);
               await refreshAccounts();
