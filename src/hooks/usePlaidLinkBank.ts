@@ -72,7 +72,9 @@ async function pullAndOverlay(businessId: string, userId: string, mode: PlaidLin
   void ensureUploadBaselineSession(userId);
   if (!metrics) {
     throw new Error(
-      'Bank is linked, but there are no live transactions for this month yet. Try syncing again in a minute.',
+      mode === 'monthly'
+        ? 'No previous-month statement yet from your bank. Try pulling again in a minute, or use live transactions.'
+        : 'Bank is linked, but there are no live transactions for this month yet. Try syncing again in a minute.',
     );
   }
   return metrics;

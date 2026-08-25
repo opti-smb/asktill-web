@@ -12,7 +12,8 @@ import { parseAndIngestPlaidStatements } from './plaidIngest';
 import {
   fetchLinkedBankAccounts,
   fetchPlaidTransactions,
-  parseAllPlaidData,
+  parsePlaidStatements,
+  pullPlaidStatements,
   syncPlaidTransactions,
   type LinkedBankAccount,
   type ParsedPlaidStatement,
@@ -471,6 +472,7 @@ function pullRangeForMode(linkMode: PlaidLinkMode): StatementRangeRequest {
 function ledgerFromRawTransactions(
   transactions: PlaidRawTransaction[],
   range: StatementRangeRequest,
+  kind: 'mtd' | 'statement' = 'mtd',
 ): ParsedPlaidStatement {
   const rows: NonNullable<ParsedPlaidStatement['rows']> = [];
   for (const tx of transactions) {
@@ -496,19 +498,94 @@ function ledgerFromRawTransactions(
       });
     }
   }
+  const periodKey = range.end_date.slice(0, 7);
+  const monthly = kind === 'statement';
   return {
     ok: true,
-    filename: `plaid_tx_${range.end_date.slice(0, 7)}.csv`,
+    filename: monthly ? `plaid_stmt_${periodKey}.csv` : `plaid_tx_${periodKey}.csv`,
     rows,
     total_credits: Math.round(sumRowsCredits(rows) * 100) / 100,
     total_debits: Math.round(sumRowsDebits(rows) * 100) / 100,
     period: {
-      key: range.end_date.slice(0, 7),
-      label: mtdPeriodLabel(range.end_date),
+      key: periodKey,
+      label: monthly ? statementMonthLabel(range.start_date) : mtdPeriodLabel(range.end_date),
       period_covered: `${range.start_date} → ${range.end_date}`,
       statement_date: range.end_date,
     },
   };
+}
+
+function rangeFromPeriodKey(periodKey: string | null): StatementRangeRequest | null {
+  if (!periodKey || !/^\d{4}-\d{2}$/.test(periodKey)) return null;
+  const [year, month] = periodKey.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    start_date: `${periodKey}-01`,
+    end_date: `${periodKey}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
+async function parseStatementLedgers(
+  businessId: string,
+  range: { preset?: string; start_date?: string; end_date?: string },
+): Promise<ParsedPlaidStatement[]> {
+  try {
+    const parsed = await parsePlaidStatements(businessId, range);
+    return okLedgersFromParse(parsed);
+  } catch {
+    return [];
+  }
+}
+
+async function overlayFromMonthlyStatements(
+  businessId: string,
+  range: StatementRangeRequest,
+  accounts: LinkedBankAccount[],
+  buildOpts: {
+    linkMode: PlaidLinkMode;
+    previous: PlaidPullCompare | null;
+    fallbackCash: number | null;
+  },
+): Promise<{ ledgers: ParsedPlaidStatement[]; metrics: PlaidBankMetrics | null }> {
+  let listed: Array<{ year?: number; month?: number }> = [];
+  try {
+    const pull = await pullPlaidStatements(businessId);
+    listed = pull.statements || [];
+  } catch {
+    /* Stored PDFs may still parse if a previous pull saved them. */
+  }
+
+  const prevKey = range.start_date.slice(0, 7);
+  const match =
+    listed.find((row) => `${row.year}-${String(row.month ?? 0).padStart(2, '0')}` === prevKey)
+    || listed[0];
+  const targetRange =
+    match?.year && match.month
+      ? rangeFromPeriodKey(`${match.year}-${String(match.month).padStart(2, '0')}`)
+      : range;
+
+  let ledgers = await parseStatementLedgers(
+    businessId,
+    targetRange ?? { preset: 'prev_month' },
+  );
+  let metrics = buildPlaidBankMetrics(
+    ledgers,
+    accounts,
+    targetRange ?? range,
+    buildOpts,
+  );
+
+  if (!metrics) {
+    ledgers = await parseStatementLedgers(businessId, { preset: 'prev_month' });
+    metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
+  }
+  if (metrics) return { ledgers, metrics };
+
+  const txs = await fetchPlaidTransactions(businessId, 'prev_month').catch(() => []);
+  const ledger = ledgerFromRawTransactions(txs, range, 'statement');
+  ledgers = (ledger.rows?.length ?? 0) > 0 ? [ledger] : [];
+  metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
+  return { ledgers, metrics };
 }
 
 function overlayFromStoredTransactions(
@@ -547,13 +624,18 @@ export async function refreshPlaidBankMetricsOverlay(
   let metrics: PlaidBankMetrics | null = null;
 
   if (linkMode === 'monthly') {
-    const [loadedAccounts, parsed] = await Promise.all([
-      fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]),
-      parseAllPlaidData(businessId, 'prev_month'),
-    ]);
+    const loadedAccounts = await fetchLinkedBankAccounts(businessId).catch(
+      () => [] as LinkedBankAccount[],
+    );
     accounts = loadedAccounts;
-    ledgers = okLedgersFromParse(parsed);
-    metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
+    const monthly = await overlayFromMonthlyStatements(
+      businessId,
+      range,
+      accounts,
+      buildOpts,
+    );
+    ledgers = monthly.ledgers;
+    metrics = monthly.metrics;
   } else {
     const [loadedAccounts, transactions] = await Promise.all([
       fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]),

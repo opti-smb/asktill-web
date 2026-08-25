@@ -350,6 +350,58 @@ export async function syncPlaidTransactions(businessId: string) {
   );
 }
 
+export type PlaidStoredStatement = {
+  statement_id?: string;
+  year?: number;
+  month?: number;
+};
+
+export async function pullPlaidStatements(businessId: string) {
+  const id = encodeURIComponent(businessId);
+  return plaidJson<{
+    results?: Array<{
+      saved?: number;
+      supported?: boolean;
+      error?: string;
+      error_code?: string;
+    }>;
+    statements?: PlaidStoredStatement[];
+  }>(
+    `/statements/${id}/pull?preset=6m`,
+    businessId,
+    {
+      method: 'POST',
+      body: JSON.stringify({ business_id: businessId, preset: '6m' }),
+    },
+    60_000,
+  );
+}
+
+export async function parsePlaidStatements(
+  businessId: string,
+  range: { preset?: string; start_date?: string; end_date?: string },
+) {
+  const id = encodeURIComponent(businessId);
+  const params = new URLSearchParams();
+  if (range.preset) params.set('preset', range.preset);
+  if (range.start_date) params.set('start_date', range.start_date);
+  if (range.end_date) params.set('end_date', range.end_date);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return plaidJson<{
+    ledgers?: ParsedPlaidStatement[];
+    statements?: ParsedPlaidStatement[];
+    error?: string;
+  }>(
+    `/statements/${id}/parse-all${qs}`,
+    businessId,
+    {
+      method: 'POST',
+      body: JSON.stringify({ business_id: businessId, ...range }),
+    },
+    90_000,
+  );
+}
+
 export async function parseAllPlaidData(businessId: string, preset?: string) {
   const qs = preset ? `?preset=${encodeURIComponent(preset)}` : '';
   const id = encodeURIComponent(businessId);
