@@ -184,33 +184,101 @@ export type ParsedPlaidStatement = {
   error?: string;
 };
 
-async function plaidJson<T>(
+const PLAID_JSON_TIMEOUT_MS = 90_000;
+const PLAID_WARM_TTL_MS = 60_000;
+let plaidWarmUntil = 0;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function isRetryablePlaidFailure(status: number, text: string) {
+  if (status === 502 || status === 503 || status === 504) return true;
+  return /application loading|service waking|cold start/i.test(text);
+}
+
+export async function warmupPlaidService(): Promise<void> {
+  if (Date.now() < plaidWarmUntil) return;
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), 12_000);
+  try {
+    await fetch('/api/plaid/demo-config', { method: 'GET', signal: ctrl.signal });
+    plaidWarmUntil = Date.now() + PLAID_WARM_TTL_MS;
+  } catch {
+    /* Real Plaid calls still retry on a cold Render box. */
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function plaidJsonOnce<T>(
   path: string,
   businessId: string,
-  init: RequestInit = {},
+  init: RequestInit,
+  timeoutMs: number,
 ): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Content-Type', 'application/json');
   headers.set('x-asktill-user-id', businessId);
-  const res = await fetch(`/api/plaid${path}`, { ...init, headers });
-  const text = await res.text();
-  let data: T | { error?: string } = {} as T;
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
+  const parentSignal = init.signal;
+  const onParentAbort = () => ctrl.abort();
+  parentSignal?.addEventListener('abort', onParentAbort);
   try {
-    data = text ? (JSON.parse(text) as T) : ({} as T);
-  } catch {
-    data = { error: text || res.statusText } as { error?: string };
+    const res = await fetch(`/api/plaid${path}`, { ...init, headers, signal: ctrl.signal });
+    const text = await res.text();
+    let data: T | { error?: string } = {} as T;
+    try {
+      data = text ? (JSON.parse(text) as T) : ({} as T);
+    } catch {
+      data = { error: text || res.statusText } as { error?: string };
+    }
+    if (!res.ok) {
+      const err = data as { error?: string; error_code?: string };
+      const error = new Error(err.error || `Plaid request failed (${res.status})`) as Error & {
+        status?: number;
+        error_code?: string;
+        retryable?: boolean;
+      };
+      error.status = res.status;
+      error.error_code = err.error_code;
+      error.retryable = isRetryablePlaidFailure(res.status, text);
+      throw error;
+    }
+    plaidWarmUntil = Date.now() + PLAID_WARM_TTL_MS;
+    return data as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Bank sync timed out. The bank service may be waking up — try again.');
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timer);
+    parentSignal?.removeEventListener('abort', onParentAbort);
   }
-  if (!res.ok) {
-    const err = data as { error?: string; error_code?: string };
-    const error = new Error(err.error || `Plaid request failed (${res.status})`) as Error & {
-      status?: number;
-      error_code?: string;
-    };
-    error.status = res.status;
-    error.error_code = err.error_code;
-    throw error;
+}
+
+async function plaidJson<T>(
+  path: string,
+  businessId: string,
+  init: RequestInit = {},
+  timeoutMs = PLAID_JSON_TIMEOUT_MS,
+): Promise<T> {
+  try {
+    return await plaidJsonOnce<T>(path, businessId, init, timeoutMs);
+  } catch (err) {
+    const retryable =
+      Boolean((err as { retryable?: boolean }).retryable)
+      || err instanceof TypeError
+      || (err instanceof Error && /waking up|timed out|failed to fetch|network/i.test(err.message));
+    if (!retryable) throw err;
+    await warmupPlaidService();
+    await sleep(1_500);
+    return plaidJsonOnce<T>(path, businessId, init, timeoutMs);
   }
-  return data as T;
 }
 
 export async function createLinkToken(businessId: string, mode: PlaidLinkMode) {
@@ -250,19 +318,24 @@ export async function fetchLinkedBankAccounts(businessId: string) {
 
 export async function parseAllPlaidData(businessId: string, preset?: string) {
   const qs = preset ? `?preset=${encodeURIComponent(preset)}` : '';
+  const id = encodeURIComponent(businessId);
+  // Realtime: transactions only. parse-all also downloads statement PDFs and is too slow on Render.
+  const path = preset === 'prev_month'
+    ? `/statements/${id}/parse-all${qs}`
+    : `/transactions/${id}/parse-all${qs}`;
   return plaidJson<{
     ledgers?: ParsedPlaidStatement[];
     statements?: ParsedPlaidStatement[];
     error?: string;
   }>(
-    `/parse-all/${encodeURIComponent(businessId)}${qs}`,
+    path,
     businessId,
     {
       method: 'POST',
       body: JSON.stringify({
         business_id: businessId,
         ...(preset ? { preset } : {}),
-        sync: true,
+        sync: preset !== 'prev_month',
       }),
     },
   );

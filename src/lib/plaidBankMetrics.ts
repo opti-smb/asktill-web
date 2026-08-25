@@ -12,7 +12,6 @@ import { parseAndIngestPlaidStatements } from './plaidIngest';
 import {
   fetchLinkedBankAccounts,
   parseAllPlaidData,
-  refreshLinkedBankBalances,
   type LinkedBankAccount,
   type ParsedPlaidStatement,
   type PlaidLinkMode,
@@ -308,7 +307,11 @@ export function buildPlaidBankMetrics(
   ledgers: ParsedPlaidStatement[],
   accounts: LinkedBankAccount[],
   range?: StatementRangeRequest,
-  options?: { linkMode?: PlaidLinkMode; previous?: PlaidPullCompare | null },
+  options?: {
+    linkMode?: PlaidLinkMode;
+    previous?: PlaidPullCompare | null;
+    fallbackCash?: number | null;
+  },
 ): PlaidBankMetrics | null {
   const linkMode = options?.linkMode ?? 'realtime';
   const picked =
@@ -329,8 +332,14 @@ export function buildPlaidBankMetrics(
     && Number.isFinite(scoped.closing_balance)
       ? scoped.closing_balance
       : null;
-  const cashAvailable = fromAccounts ?? fromStatementClosing;
-  if (cashAvailable == null) return null;
+  const cashAvailable =
+    fromAccounts
+    ?? fromStatementClosing
+    ?? (options?.fallbackCash != null && Number.isFinite(options.fallbackCash)
+      ? options.fallbackCash
+      : null);
+  const hasActivity = moneyIn > 0 || moneyOut > 0 || (scoped.rows?.length ?? 0) > 0;
+  if (cashAvailable == null && !hasActivity) return null;
 
   const rangeStart = range?.start_date?.trim() ?? '';
   const rangeEnd = range?.end_date?.trim() ?? '';
@@ -368,7 +377,7 @@ export function buildPlaidBankMetrics(
   return {
     moneyIn,
     moneyOut,
-    cashAvailable,
+    cashAvailable: cashAvailable ?? 0,
     openingBalance,
     periodLabel,
     rangeStart,
@@ -469,22 +478,21 @@ export async function refreshPlaidBankMetricsOverlay(
 ): Promise<PlaidBankMetrics | null> {
   const cached = loadPlaidBankMetrics(userId);
   const linkMode = options?.mode ?? cached?.linkMode ?? 'realtime';
-  const sync = options?.sync !== false;
   const previous = loadLastPlaidPull(userId);
   const range = pullRangeForMode(linkMode, previous);
 
-  if (sync) {
-    await refreshLinkedBankBalances(businessId);
-  }
-  const parsed = await parseAllPlaidData(
-    businessId,
-    linkMode === 'monthly' ? 'prev_month' : '1m',
-  );
+  const [parsed, accounts] = await Promise.all([
+    parseAllPlaidData(
+      businessId,
+      linkMode === 'monthly' ? 'prev_month' : '1m',
+    ),
+    fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]),
+  ]);
   const ledgers = okLedgersFromParse(parsed);
-  const accounts = await fetchLinkedBankAccounts(businessId);
   const metrics = buildPlaidBankMetrics(ledgers, accounts, range, {
     linkMode,
     previous,
+    fallbackCash: cached?.cashAvailable ?? null,
   });
   if (metrics) {
     savePlaidBankMetrics(userId, metrics);
@@ -513,17 +521,9 @@ export async function refreshPlaidBankMetricsOverlay(
           }
         : undefined,
     }));
-    try {
-      const ingest = await parseAndIngestPlaidStatements(withPull, true);
-      if (!ingest.success_count) {
-        console.warn(
-          ingest.ingested.find((item) => item.error)?.error
-            || 'Bank overlay shown; save to statements failed.',
-        );
-      }
-    } catch (err) {
+    void parseAndIngestPlaidStatements(withPull, true).catch((err) => {
       console.warn(err instanceof Error ? err.message : 'Bank overlay shown; save skipped.');
-    }
+    });
   }
 
   return metrics;

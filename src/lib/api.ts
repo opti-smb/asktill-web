@@ -18,6 +18,7 @@ import { normalizeTier } from './subscription';
 import { getAnalyzeAnalysis, type AnalyzeResult, type WeekReportsViewApi } from './analyzeResponse';
 import { periodKeyFromLabel, pickMostRecentlyUploadedReport } from './atLetterStatement';
 import { resolvePublicUrl } from './publicUrls';
+import { warmupPlaidService } from './plaidClient';
 import {
   clearEc2BackendSession,
   EC2_PUBLIC_URLS,
@@ -1322,6 +1323,7 @@ export function warmupServices() {
   warmupAuthService();
   warmupRegistrationService();
   warmupSubscriptionService();
+  void warmupPlaidService();
   void ensureAuthServiceReady(4_000);
 }
 
@@ -2751,7 +2753,7 @@ export async function ingestPlaidParsedStatements(
     '/api/plaid-statements/ingest',
     { statements },
     {
-      timeout: ANALYZE_TIMEOUT_MS,
+      timeout: 15_000,
       params: force ? { force: true } : undefined,
     },
   );
