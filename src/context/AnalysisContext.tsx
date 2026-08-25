@@ -38,6 +38,7 @@ import {
 } from '../lib/activeStatementView';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
 import { markJustAnalyzed, clearJustAnalyzedGrace, REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
+import { UPLOAD_BASELINE_RESTORE_EVENT } from '../lib/plaidBankMetrics';
 import {
   applyPipelineEvent,
   buildInitialAnalyzeProgress,
@@ -426,6 +427,17 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       void prefetchAtLetterHtml(saved.statement_id, { monthOnly: false });
     }
   }, [isAuth, user]);
+
+  useEffect(() => {
+    const onUploadBaselineRestore = (event: Event) => {
+      const saved = (event as CustomEvent<AnalyzeResult>).detail;
+      if (saved?.statement_id) loadSavedReport(saved);
+    };
+    window.addEventListener(UPLOAD_BASELINE_RESTORE_EVENT, onUploadBaselineRestore);
+    return () => {
+      window.removeEventListener(UPLOAD_BASELINE_RESTORE_EVENT, onUploadBaselineRestore);
+    };
+  }, [loadSavedReport]);
 
   const clearResult = useCallback(() => {
     setResult(null);

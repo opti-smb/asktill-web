@@ -1728,13 +1728,7 @@ export async function openAdminDashboard(): Promise<void> {
 export function consumeHandoffTokenFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
-  clearEc2BackendSession();
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  const queryParams = new URLSearchParams(window.location.search);
-  if (hashParams.get('ec2') === '1' || queryParams.get('ec2') === '1') {
-    window.history.replaceState(null, '', window.location.pathname);
-    return null;
-  }
+  pinEc2BackendFromHandoff();
   if (handoffWantsPostLoginRouting()) {
     markPostLoginRouting();
   }
@@ -2731,6 +2725,44 @@ export async function saveActionPlans(
     '/api/action-plans',
     { plans },
     { timeout: 30_000 },
+  );
+  return res.data;
+}
+
+export type PlaidIngestApiResponse = {
+  ingested: Array<{
+    ok: boolean;
+    statement_id?: string;
+    period_key?: string;
+    period_label?: string;
+    saved_statement_id?: string;
+    row_count?: number;
+    error?: string;
+  }>;
+  success_count: number;
+  failure_count: number;
+};
+
+export async function ingestPlaidParsedStatements(
+  statements: unknown[],
+  force = false,
+): Promise<PlaidIngestApiResponse> {
+  const res = await mainApi.post<PlaidIngestApiResponse>(
+    '/api/plaid-statements/ingest',
+    { statements },
+    {
+      timeout: ANALYZE_TIMEOUT_MS,
+      params: force ? { force: true } : undefined,
+    },
+  );
+  return res.data;
+}
+
+export async function restoreUploadsAfterPlaidUnlink(): Promise<{ ok: boolean; removed: number }> {
+  const res = await mainApi.post<{ ok: boolean; removed: number }>(
+    '/api/plaid-statements/restore-uploads',
+    {},
+    { timeout: 60_000 },
   );
   return res.data;
 }

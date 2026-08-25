@@ -19,6 +19,7 @@ import { extractNotRegistered, warmupServices } from '../lib/api';
 import { consumeLoginFlash, isClerkEnabled } from '../lib/clerk';
 import { resolvePostLoginRedirect, markPostLoginRouting } from '../lib/pendingPdfDownload';
 import { hasSignedOutIntent } from '../lib/explicitLogout';
+import { isEc2BackendSession } from '../lib/ec2BackendSession';
 
 import authFieldStyles from '../components/auth/EmailField.module.css';
 
@@ -87,6 +88,10 @@ function LoginPageInner() {
   useEffect(() => {
     if (!(ready && isAuth)) return;
     if (hasSignedOutIntent()) return;
+    if (isEc2BackendSession()) {
+      navigate('/post-login', { replace: true });
+      return;
+    }
     const state = location.state as { from?: string } | null;
     markPostLoginRouting();
     navigate(resolvePostLoginRedirect(state?.from), { replace: true });

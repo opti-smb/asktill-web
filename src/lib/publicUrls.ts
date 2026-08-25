@@ -1,3 +1,5 @@
+import { EC2_PUBLIC_URLS, isEc2BackendSession } from './ec2BackendSession';
+
 /** Detect developer-machine hosts that must never be used in production browsers. */
 export function isLocalHostUrl(url: string): boolean {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url.trim());
@@ -38,6 +40,10 @@ export function resolvePublicUrl(
       app: 'http://localhost:5173',
     };
     return (raw || devDefaults[key]).replace(/\/$/, '');
+  }
+
+  if (!import.meta.env.DEV && isEc2BackendSession()) {
+    return EC2_PUBLIC_URLS[key].replace(/\/$/, '');
   }
 
   if (!raw || isLocalHostUrl(raw)) {

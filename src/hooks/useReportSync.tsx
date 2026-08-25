@@ -18,9 +18,10 @@ import {
   loadAtLetterCache,
 } from '../lib/atLetterCache';
 import { clearAtLetterHtmlCache, prefetchAtLetterHtml } from '../lib/atLetterHtmlCache';
-import { getActiveStatementViewId } from '../lib/activeStatementView';
+import { clearActiveStatementView, getActiveStatementViewId } from '../lib/activeStatementView';
 import {
   comparePeriodKeys,
+  isPlaidOverlayReport,
   periodKeyFromLabel,
   pickPrimarySavedReport,
   resolveAtLetterStatementId,
@@ -198,22 +199,34 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
       .then(async ({ data }) => {
         if (cancelled) return;
         const reports = data.reports ?? [];
+        const visible = reports.filter((row) => !isPlaidOverlayReport(row));
         const primary = pickPrimarySavedReport(reports);
-        const sorted = [...reports].sort((a, b) => {
+        const sorted = [...visible].sort((a, b) => {
           const byPeriod = comparePeriodKeys(a.period_key, b.period_key);
           if (byPeriod !== 0) return byPeriod;
           return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
         });
-        setSavedCount(reports.length);
+        setSavedCount(visible.length);
         setPrimaryReport(primary);
         setSavedReports(sorted);
 
         if (reports.length > 0) {
+          const liveIds = new Set(visible.map((row) => row.statement_id));
           const sessionResult = resultRef.current;
           const sessionAnalysis = getAnalyzeAnalysis(sessionResult);
           const sessionStatementId = sessionResult?.statement_id?.trim();
-          const activeViewId = getActiveStatementViewId()?.trim() || null;
-          const effectiveSessionId = activeViewId || sessionStatementId || null;
+          let activeViewId = getActiveStatementViewId()?.trim() || null;
+          // Unlink / restore deletes overlay ids; do not keep fetching a gone statement.
+          if (activeViewId && !liveIds.has(activeViewId)) {
+            clearActiveStatementView();
+            clearJustAnalyzedGrace();
+            activeViewId = null;
+          }
+          const sessionGone = Boolean(sessionStatementId && !liveIds.has(sessionStatementId));
+          if (sessionGone) {
+            clearJustAnalyzedGrace();
+          }
+          const effectiveSessionId = activeViewId || (!sessionGone ? sessionStatementId : null) || null;
           const sessionReport = effectiveSessionId
             ? reports.find((row) => row.statement_id === effectiveSessionId)
             : undefined;
@@ -221,16 +234,18 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             periodKeyFromLabel(sessionAnalysis?.period_label)
             ?? sessionReport?.period_key
             ?? null;
-          const inAnalyzeGrace = hasRecentAnalyzeSession();
+          const inAnalyzeGrace = hasRecentAnalyzeSession() && !sessionGone;
           const pinnedId = activeViewId || (inAnalyzeGrace ? sessionStatementId : null);
           const keepPinnedView = Boolean(
             pinnedId
             && primary?.statement_id
-            && pinnedId !== primary.statement_id,
+            && pinnedId !== primary.statement_id
+            && liveIds.has(pinnedId),
           );
           const keepCurrentSessionView = Boolean(
             sessionAnalysis
             && sessionStatementId
+            && !sessionGone
             && (keepPinnedView || inAnalyzeGrace || pinnedId === sessionStatementId),
           );
 
@@ -248,9 +263,10 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           }
 
           // Pinned / just-uploaded month must never be replaced by chronologically newest.
-          if (pinnedId) {
+          if (pinnedId && liveIds.has(pinnedId)) {
             const needsHydrate =
               !sessionAnalysis
+              || sessionGone
               || (sessionStatementId && pinnedId !== sessionStatementId)
               || (sessionAnalysis && sessionStatementId !== pinnedId);
             if (needsHydrate && hydratedStatementIdRef.current !== pinnedId) {
@@ -262,12 +278,12 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
                 /* keep partial session payload */
               }
             }
-          } else if (!keepCurrentSessionView) {
-            // Fresh login / no pin: chronologically latest month.
+          } else if (!keepCurrentSessionView || sessionGone) {
+            // Fresh login / unlink: chronologically latest remaining month.
             const shouldHydrateFromServer =
               primary
               && !analyzeLoadingRef.current
-              && !sessionResult?.analysis;
+              && (!sessionResult?.analysis || sessionGone);
 
             if (
               shouldHydrateFromServer

@@ -32,6 +32,7 @@ import {
 import { clearUserAtLetterOnLogout, LETTER_UPDATED_EVENT } from '../lib/atLetterCache';
 import { REPORT_HISTORY_REFRESH_EVENT } from '../hooks/useReportSync';
 import { consumeCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
+import { isEc2BackendSession } from '../lib/ec2BackendSession';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS, clearSessionExpiredPersisted, markSessionExpiredPersisted, isSessionExpiredPersisted } from '../lib/session';
 import {
@@ -159,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      // Admin JWT in the URL only. asktill.com (ec2=1) tokens are dropped.
+      // asktill.com login handoff (`ec2=1`) is accepted so users skip Vercel login.
       const handoff = consumeHandoffTokenFromUrl();
       if (handoff) {
         clearSignedOutIntent();
@@ -182,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Prefer silent refresh via httpOnly cookie (no access JWT in localStorage).
       let access = getToken();
-      if (!access || isTokenExpired(access)) {
+      if ((!access || isTokenExpired(access)) && !isEc2BackendSession()) {
         clearToken();
         access = await refreshAccessSession();
       }
@@ -227,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         const status = (err as AxiosError)?.response?.status;
         if (status === 401) {
-          const renewed = await refreshAccessSession();
+          const renewed = isEc2BackendSession() ? null : await refreshAccessSession();
           if (renewed && !cancelled) {
             try {
               const { data } = await fetchCurrentUser();
