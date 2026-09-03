@@ -93,8 +93,9 @@ function LoginPageInner() {
       return;
     }
     const state = location.state as { from?: string } | null;
+    const next = resolvePostLoginRedirect(state?.from);
     markPostLoginRouting();
-    navigate(resolvePostLoginRedirect(state?.from), { replace: true });
+    navigate(next, { replace: true });
   }, [ready, isAuth, navigate, location.state]);
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -189,10 +190,11 @@ function LoginPageInner() {
       await login(email, password);
       failedAttemptsRef.current = 0;
 
-      markPostLoginRouting();
-      navigate(
-        resolvePostLoginRedirect((location.state as { from?: string } | null)?.from),
+      const next = resolvePostLoginRedirect(
+        (location.state as { from?: string } | null)?.from,
       );
+      markPostLoginRouting();
+      navigate(next);
 
     } catch (err) {
       failedAttemptsRef.current += 1;

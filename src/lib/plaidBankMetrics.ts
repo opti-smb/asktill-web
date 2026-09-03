@@ -10,6 +10,7 @@ import {
 } from './api';
 import { parseAndIngestPlaidStatements } from './plaidIngest';
 import {
+  ensurePlaidReady,
   fetchLinkedBankAccounts,
   fetchPlaidTransactions,
   parsePlaidStatements,
@@ -18,6 +19,7 @@ import {
   type LinkedBankAccount,
   type ParsedPlaidStatement,
   type PlaidLinkMode,
+  type PlaidPullProgress,
   type PlaidRawTransaction,
 } from './plaidClient';
 
@@ -476,7 +478,6 @@ function ledgerFromRawTransactions(
 ): ParsedPlaidStatement {
   const rows: NonNullable<ParsedPlaidStatement['rows']> = [];
   for (const tx of transactions) {
-    if (tx.pending) continue;
     const day = String(tx.date || '').slice(0, 10);
     if (!day || day < range.start_date || day > range.end_date) continue;
     const amount = typeof tx.amount === 'number' ? tx.amount : Number(tx.amount);
@@ -546,57 +547,45 @@ async function overlayFromMonthlyStatements(
     previous: PlaidPullCompare | null;
     fallbackCash: number | null;
   },
-  userId?: string,
-  preloadedTxs?: PlaidRawTransaction[],
-  cached?: PlaidBankMetrics | null,
+  onProgress?: PlaidPullProgress,
 ): Promise<{ ledgers: ParsedPlaidStatement[]; metrics: PlaidBankMetrics | null }> {
-  const txs = preloadedTxs
-    ?? await fetchPlaidTransactions(businessId, 'prev_month').catch(() => []);
-  const txLedger = ledgerFromRawTransactions(txs, range, 'statement');
-  const txLedgers = (txLedger.rows?.length ?? 0) > 0 ? [txLedger] : [];
-  const txMetrics = buildPlaidBankMetrics(txLedgers, accounts, range, buildOpts);
-
-  const refreshFromPdfs = async () => {
-    let listed: Array<{ year?: number; month?: number }> = [];
-    try {
-      const pull = await pullPlaidStatements(businessId);
-      listed = pull.statements || [];
-    } catch {
-      return { ledgers: [] as ParsedPlaidStatement[], metrics: null };
-    }
-    const prevKey = range.start_date.slice(0, 7);
-    const match =
-      listed.find((row) => `${row.year}-${String(row.month ?? 0).padStart(2, '0')}` === prevKey)
-      || listed[0];
-    const targetRange =
-      match?.year && match.month
-        ? rangeFromPeriodKey(`${match.year}-${String(match.month).padStart(2, '0')}`)
-        : range;
-    const ledgers = await parseStatementLedgers(
-      businessId,
-      targetRange ?? { preset: 'prev_month' },
-    );
-    const metrics = buildPlaidBankMetrics(
-      ledgers,
-      accounts,
-      targetRange ?? range,
-      buildOpts,
-    );
-    if (metrics && userId) savePlaidBankMetrics(userId, metrics);
-    return { ledgers, metrics };
-  };
-
-  if (txMetrics) {
-    void refreshFromPdfs().catch(() => undefined);
-    return { ledgers: txLedgers, metrics: txMetrics };
+  onProgress?.('statements');
+  let listed: Array<{ year?: number; month?: number }> = [];
+  try {
+    const pull = await pullPlaidStatements(businessId);
+    listed = pull.statements || [];
+  } catch {
+    /* Parse anything already stored, then fall back to transactions. */
   }
 
-  if (cached) {
-    void refreshFromPdfs().catch(() => undefined);
-    return { ledgers: [], metrics: cached };
-  }
+  const prevKey = range.start_date.slice(0, 7);
+  const match =
+    listed.find((row) => `${row.year}-${String(row.month ?? 0).padStart(2, '0')}` === prevKey)
+    || listed[0];
+  const targetRange =
+    match?.year && match.month
+      ? rangeFromPeriodKey(`${match.year}-${String(match.month).padStart(2, '0')}`)
+      : range;
 
-  return refreshFromPdfs();
+  onProgress?.('parse');
+  let ledgers = await parseStatementLedgers(
+    businessId,
+    targetRange ?? { preset: 'prev_month' },
+  );
+  let metrics = buildPlaidBankMetrics(
+    ledgers,
+    accounts,
+    targetRange ?? range,
+    buildOpts,
+  );
+  if (metrics) return { ledgers, metrics };
+
+  onProgress?.('transactions');
+  const txs = await fetchPlaidTransactions(businessId, 'prev_month');
+  const ledger = ledgerFromRawTransactions(txs, range, 'statement');
+  ledgers = (ledger.rows?.length ?? 0) > 0 ? [ledger] : [];
+  metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
+  return { ledgers, metrics };
 }
 
 function overlayFromStoredTransactions(
@@ -618,72 +607,65 @@ function overlayFromStoredTransactions(
 export async function refreshPlaidBankMetricsOverlay(
   businessId: string,
   userId: string,
-  options?: { sync?: boolean; persist?: boolean; recordPull?: boolean; mode?: PlaidLinkMode },
+  options?: {
+    sync?: boolean;
+    persist?: boolean;
+    recordPull?: boolean;
+    mode?: PlaidLinkMode;
+    onProgress?: PlaidPullProgress;
+  },
 ): Promise<PlaidBankMetrics | null> {
   const cached = loadPlaidBankMetrics(userId);
   const linkMode = options?.mode ?? cached?.linkMode ?? 'realtime';
   const previous = loadLastPlaidPull(userId);
   const range = pullRangeForMode(linkMode);
+  const onProgress = options?.onProgress;
   const buildOpts = {
     linkMode,
     previous,
     fallbackCash: cached?.cashAvailable ?? null,
   };
 
-  let accounts: LinkedBankAccount[] = [];
+  await ensurePlaidReady(onProgress);
+
+  onProgress?.('accounts');
+  const accounts = await fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]);
+
   let ledgers: ParsedPlaidStatement[] = [];
   let metrics: PlaidBankMetrics | null = null;
 
   if (linkMode === 'monthly') {
-    const [loadedAccounts, prevTxs] = await Promise.all([
-      fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]),
-      fetchPlaidTransactions(businessId, 'prev_month').catch(() => [] as PlaidRawTransaction[]),
-    ]);
-    accounts = loadedAccounts;
     const monthly = await overlayFromMonthlyStatements(
       businessId,
       range,
       accounts,
       buildOpts,
-      userId,
-      prevTxs,
-      cached,
+      onProgress,
     );
     ledgers = monthly.ledgers;
     metrics = monthly.metrics;
+    if (!metrics && options?.sync !== false) {
+      onProgress?.('sync');
+      await syncPlaidTransactions(businessId);
+      onProgress?.('transactions');
+      const txs = await fetchPlaidTransactions(businessId, 'prev_month');
+      const ledger = ledgerFromRawTransactions(txs, range, 'statement');
+      ledgers = (ledger.rows?.length ?? 0) > 0 ? [ledger] : [];
+      metrics = buildPlaidBankMetrics(ledgers, accounts, range, buildOpts);
+    }
   } else {
-    const [loadedAccounts, transactions] = await Promise.all([
-      fetchLinkedBankAccounts(businessId).catch(() => [] as LinkedBankAccount[]),
-      fetchPlaidTransactions(businessId, '1m'),
-    ]);
-    accounts = loadedAccounts;
-    const stored = overlayFromStoredTransactions(transactions, range, accounts, buildOpts);
+    onProgress?.('transactions');
+    let transactions = await fetchPlaidTransactions(businessId, '1m');
+    let stored = overlayFromStoredTransactions(transactions, range, accounts, buildOpts);
+    if (options?.sync !== false) {
+      onProgress?.('sync');
+      await syncPlaidTransactions(businessId);
+      onProgress?.('transactions');
+      transactions = await fetchPlaidTransactions(businessId, '1m');
+      stored = overlayFromStoredTransactions(transactions, range, accounts, buildOpts);
+    }
     ledgers = stored.ledgers;
     metrics = stored.metrics;
-    if (options?.sync !== false && !metrics) {
-      await syncPlaidTransactions(businessId);
-      const afterSync = await overlayFromStoredTransactions(
-        await fetchPlaidTransactions(businessId, '1m'),
-        range,
-        accounts,
-        buildOpts,
-      );
-      ledgers = afterSync.ledgers;
-      metrics = afterSync.metrics;
-    } else if (options?.sync !== false) {
-      void syncPlaidTransactions(businessId)
-        .then(async () => {
-          const next = overlayFromStoredTransactions(
-            await fetchPlaidTransactions(businessId, '1m'),
-            range,
-            accounts,
-            buildOpts,
-          );
-          if (!next.metrics) return;
-          savePlaidBankMetrics(userId, next.metrics);
-        })
-        .catch(() => undefined);
-    }
   }
 
   if (metrics) {

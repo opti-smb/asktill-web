@@ -21,6 +21,7 @@ import {
   logoutApi,
   normalizeUser,
   refreshAccessSession,
+  restoreStashedAccessToken,
   resetUserScopedState,
   resetSessionExpiryDispatchGuard,
   SESSION_EXPIRED_EVENT,
@@ -35,6 +36,7 @@ import { consumeCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
 import { isEc2BackendSession } from '../lib/ec2BackendSession';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS, clearSessionExpiredPersisted, markSessionExpiredPersisted, isSessionExpiredPersisted } from '../lib/session';
+import { peekStripeConnectReturn } from '../lib/chargebacksClient';
 import {
   captureSignedOutIntent,
   clearSignedOutIntent,
@@ -160,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
+      restoreStashedAccessToken();
       // asktill.com login handoff (`ec2=1`) is accepted so users skip Vercel login.
       const handoff = consumeHandoffTokenFromUrl();
       if (handoff) {
@@ -186,6 +189,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if ((!access || isTokenExpired(access)) && !isEc2BackendSession()) {
         clearToken();
         access = await refreshAccessSession();
+        if (!access && peekStripeConnectReturn()) {
+          for (let i = 0; i < 2 && !access; i += 1) {
+            await new Promise((r) => window.setTimeout(r, 800));
+            access = await refreshAccessSession();
+          }
+        }
       }
 
       if (!access) {

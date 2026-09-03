@@ -44,6 +44,14 @@ export function consumePostLoginRouting(): boolean {
 export function resolvePostLoginRedirect(explicitFrom?: string | null): string {
   const from = (explicitFrom || '').trim();
   if (
+    from.startsWith('/dashboard/sources')
+    || from.startsWith('/onboarding')
+    || from.startsWith('/integrations/stripe')
+    || from.startsWith('/integrations/shopify')
+  ) {
+    return DEFAULT_DASHBOARD_PATH;
+  }
+  if (
     from &&
     from !== '/' &&
     from !== '/login' &&

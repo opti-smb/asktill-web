@@ -349,6 +349,9 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           setSavedCount(0);
           setPrimaryReport(null);
           setSavedReports([]);
+          // Do not mark history ready on failure — empty+ready sends existing
+          // customers to upload as if they were new.
+          return;
         }
         setHistoryReady(true);
       });

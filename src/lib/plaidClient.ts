@@ -197,6 +197,25 @@ const PLAID_JSON_TIMEOUT_MS = 45_000;
 const PLAID_WARM_TTL_MS = 60_000;
 let plaidWarmUntil = 0;
 
+export type PlaidPullStage =
+  | 'wake'
+  | 'accounts'
+  | 'transactions'
+  | 'sync'
+  | 'statements'
+  | 'parse';
+
+export const PLAID_PULL_STAGE_LABEL: Record<PlaidPullStage, string> = {
+  wake: 'Waking bank service…',
+  accounts: 'Checking linked banks…',
+  transactions: 'Loading transactions…',
+  sync: 'Syncing transactions from your bank…',
+  statements: 'Loading statements…',
+  parse: 'Parsing statements…',
+};
+
+export type PlaidPullProgress = (stage: PlaidPullStage) => void;
+
 function sleep(ms: number) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -209,17 +228,39 @@ function isRetryablePlaidFailure(status: number, text: string) {
 }
 
 export async function warmupPlaidService(): Promise<void> {
-  if (Date.now() < plaidWarmUntil) return;
-  const ctrl = new AbortController();
-  const timer = window.setTimeout(() => ctrl.abort(), 12_000);
   try {
-    await fetch('/api/plaid/demo-config', { method: 'GET', signal: ctrl.signal });
-    plaidWarmUntil = Date.now() + PLAID_WARM_TTL_MS;
+    await ensurePlaidReady();
   } catch {
-    /* Real Plaid calls still retry on a cold Render box. */
-  } finally {
-    window.clearTimeout(timer);
+    /* Page load should not block; the next pull waits until ready. */
   }
+}
+
+/** Wait until asktill-plaid on Render answers /health. Cold start is the Vercel delay. */
+export async function ensurePlaidReady(onProgress?: PlaidPullProgress): Promise<void> {
+  if (Date.now() < plaidWarmUntil) return;
+  onProgress?.('wake');
+  const deadline = Date.now() + 60_000;
+  let lastError = 'Bank service did not become ready.';
+  while (Date.now() < deadline) {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 8_000);
+    try {
+      const res = await fetch('/api/plaid-health', { method: 'GET', signal: ctrl.signal });
+      const data = await res.json().catch(() => ({} as { status?: string }));
+      if (res.ok && (data.status === 'ok' || data.service === 'plaid-service')) {
+        plaidWarmUntil = Date.now() + PLAID_WARM_TTL_MS;
+        void fetch('/api/plaid-parser-health').catch(() => undefined);
+        return;
+      }
+      lastError = `Bank service not ready (${res.status}).`;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : lastError;
+    } finally {
+      window.clearTimeout(timer);
+    }
+    await sleep(2_000);
+  }
+  throw new Error(`${lastError} Try again in a minute.`);
 }
 
 async function plaidJsonOnce<T>(
@@ -322,7 +363,7 @@ export async function fetchLinkedBankAccounts(businessId: string) {
     `/accounts/${encodeURIComponent(businessId)}`,
     businessId,
     {},
-    20_000,
+    45_000,
   );
   return data.accounts || [];
 }
@@ -333,21 +374,39 @@ export async function fetchPlaidTransactions(businessId: string, preset = '1m') 
     `/transactions/${id}?preset=${encodeURIComponent(preset)}&limit=500`,
     businessId,
     {},
-    20_000,
+    45_000,
   );
   return data.transactions || [];
 }
 
 export async function syncPlaidTransactions(businessId: string) {
-  return plaidJson<{ results?: unknown[] }>(
+  const data = await plaidJson<{
+    results?: Array<{
+      added?: number;
+      modified?: number;
+      error?: string;
+      error_code?: string;
+    }>;
+  }>(
     `/sync/${encodeURIComponent(businessId)}`,
     businessId,
     {
       method: 'POST',
       body: JSON.stringify({ business_id: businessId }),
     },
-    45_000,
+    90_000,
   );
+  const results = data.results || [];
+  const failed = results.filter((row) => row.error || row.error_code);
+  if (results.length && failed.length === results.length) {
+    const first = failed[0];
+    const error = new Error(
+      first?.error || 'Could not sync transactions from your bank.',
+    ) as Error & { error_code?: string };
+    error.error_code = first?.error_code;
+    throw error;
+  }
+  return data;
 }
 
 export type PlaidStoredStatement = {
