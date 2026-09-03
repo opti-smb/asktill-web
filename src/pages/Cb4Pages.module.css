@@ -1,0 +1,279 @@
+.page {
+  background: #f4f6f9;
+  width: calc(100vw - var(--sidebar-width, 220px));
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.main {
+  font-family: var(--font-sans);
+  padding: 8px 28px 28px;
+}
+
+.back {
+  font-size: 13px;
+  font-weight: 650;
+  color: #64748b;
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+.back:hover {
+  color: #0f8a57;
+}
+
+.lead {
+  margin: 8px 0 16px;
+  font-size: 14px;
+  color: #334155;
+  max-width: 720px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.reqTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.reqTable th,
+.reqTable td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.reqTable th {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 750;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 750;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 10px 0 4px;
+}
+
+.select,
+.input {
+  width: 100%;
+  border: 1px solid #e5eaf2;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.select:disabled,
+.input:disabled,
+.input[readonly] {
+  background: #f8fafc;
+  color: #475569;
+  cursor: default;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 150px 110px 72px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.item {
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.evidenceBtn {
+  border: 0;
+  background: transparent;
+  color: #2f5bd8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.evidenceBtn:hover {
+  text-decoration: underline;
+}
+
+.refLine {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.panel {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+  margin: 6px 0 4px;
+}
+
+.refBlock {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eef2f7;
+}
+
+.refBlock:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.run {
+  margin-top: 16px;
+  border: 0;
+  background: #2f5bd8;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.run:disabled,
+.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.disabledBtn {
+  margin-top: 8px;
+  width: 100%;
+  border: 1px solid #e5eaf2;
+  background: #f4f6f9;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+.note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.blockers {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.error {
+  color: #c43c3c;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.result {
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.pending {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 750;
+  color: #b45309;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.codes {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.linkBtn {
+  border: 0;
+  background: transparent;
+  color: #2f5bd8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.policiesLink {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2f5bd8;
+  text-decoration: none;
+}

@@ -5,8 +5,44 @@
       "destination": "https://authentication-service-s3tl.onrender.com/:path*"
     },
     {
+      "source": "/api/plaid-health",
+      "destination": "https://asktill-plaid.onrender.com/health"
+    },
+    {
+      "source": "/api/plaid-parser-health",
+      "destination": "https://asktill-plaid-parser.onrender.com/health"
+    },
+    {
       "source": "/api/plaid/:path*",
       "destination": "https://asktill-plaid.onrender.com/api/plaid/:path*"
+    },
+    {
+      "source": "/api/chargebacks-health",
+      "destination": "https://asktill-chargebacks.onrender.com/health"
+    },
+    {
+      "source": "/integrations/stripe",
+      "destination": "https://asktill-chargebacks.onrender.com/integrations/stripe"
+    },
+    {
+      "source": "/integrations/stripe/:path*",
+      "destination": "https://asktill-chargebacks.onrender.com/integrations/stripe/:path*"
+    },
+    {
+      "source": "/integrations/shopify",
+      "destination": "https://asktill-chargebacks.onrender.com/integrations/shopify"
+    },
+    {
+      "source": "/integrations/shopify/:path*",
+      "destination": "https://asktill-chargebacks.onrender.com/integrations/shopify/:path*"
+    },
+    {
+      "source": "/api/cb4",
+      "destination": "https://asktill-chargebacks.onrender.com/api/cb4"
+    },
+    {
+      "source": "/api/cb4/:path*",
+      "destination": "https://asktill-chargebacks.onrender.com/api/cb4/:path*"
     },
     {
       "source": "/((?!api/).*)",
@@ -40,7 +76,7 @@
         },
         {
           "key": "X-Asktill-Build",
-          "value": "2026-07-31-marketing-landing"
+          "value": "2026-09-03-cb4"
         }
       ]
     }

@@ -15,6 +15,7 @@ export default function DashboardNav() {
   const { pathname } = useLocation();
 
   const isAtLedgerRoute = pathname.startsWith('/dashboard/at-ledger');
+  const isChargebacksRoute = pathname.startsWith('/dashboard/chargebacks');
 
   // Prevent document scroll so left nav names never move with the page.
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function DashboardNav() {
 
             <NavLink
               to="/dashboard/chargebacks"
-              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+              className={() => `${styles.navTab} ${isChargebacksRoute ? styles.active : ''}`}
             >
               Money Reclaimed
             </NavLink>

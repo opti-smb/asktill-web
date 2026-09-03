@@ -23,6 +23,8 @@ export function plaidLinkStatusKind(message: string): PlaidLinkStatusKind {
     lower.includes('fetching') ||
     lower.includes('pulling') ||
     lower.includes('loading') ||
+    lower.includes('waking') ||
+    lower.includes('checking') ||
     lower.includes('…') ||
     lower.includes('...')
   ) {

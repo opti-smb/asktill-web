@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useReportSync } from '../../hooks/useReportSync';
 import {
   consumePostLoginRouting,
+  DEFAULT_DASHBOARD_PATH,
   peekPostLoginRouting,
 } from '../../lib/pendingPdfDownload';
 
@@ -33,7 +34,12 @@ export default function PostLoginDestination() {
 
     if (!sawFreshFetchRef.current) return;
     if (!consumePostLoginRouting()) return;
-    if (savedCount > 0) return;
+    if (savedCount > 0) {
+      if (pathname.startsWith('/onboarding') || pathname.startsWith('/dashboard/sources')) {
+        navigate(DEFAULT_DASHBOARD_PATH, { replace: true });
+      }
+      return;
+    }
     if (pathname.startsWith('/onboarding')) return;
     navigate('/onboarding', { replace: true });
   }, [historyReady, savedCount, navigate, pathname]);

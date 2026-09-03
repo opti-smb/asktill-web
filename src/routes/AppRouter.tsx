@@ -22,8 +22,12 @@ import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
 import LinkedAccountsPage from '../pages/LinkedAccountsPage';
-import AtRewardsPage from '../pages/AtRewardsPage';
 import AtChargebacksPage from '../pages/AtChargebacksPage';
+import ChargebacksPayPage from '../pages/ChargebacksPayPage';
+import ChargebacksOrdersPage from '../pages/ChargebacksOrdersPage';
+import Cb4PoliciesPage from '../pages/Cb4PoliciesPage';
+import Cb4DecisionPage from '../pages/Cb4DecisionPage';
+import AtRewardsPage from '../pages/AtRewardsPage';
 import ProfilePage from '../pages/ProfilePage';
 import AdminHandoffPage from '../pages/AdminHandoffPage';
 import PricingPage from '../pages/PricingPage';
@@ -134,6 +138,10 @@ function AppRoutes() {
           <Route path="calculators" element={<CalculatorsPage />} />
           <Route path="calculators/:slug" element={<CalculatorsPage />} />
           <Route path="chargebacks" element={<AtChargebacksPage />} />
+          <Route path="chargebacks/pay" element={<ChargebacksPayPage />} />
+          <Route path="chargebacks/orders" element={<ChargebacksOrdersPage />} />
+          <Route path="chargebacks/policies" element={<Cb4PoliciesPage />} />
+          <Route path="chargebacks/decision/:caseId" element={<Cb4DecisionPage />} />
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
           <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />

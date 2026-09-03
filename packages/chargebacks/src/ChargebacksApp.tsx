@@ -22,16 +22,23 @@ import {
   Landmark,
   TrendingUp,
   CircleDollarSign,
-  ChevronDown,
   Info,
   Gamepad2,
   FileText,
   ShieldX,
 } from 'lucide-react';
+import {
+  RANGE_LABELS,
+  buildOverview,
+  filterDisputes,
+  usdFromCents,
+  type ChargebackDispute,
+  type RangeKey,
+} from './disputeMetrics';
 
 /**
- * Asktill · Chargebacks — customer dispute overview.
- * Only-on-win ($20/win) model. Mock data for prototype.
+ * Asktill · Chargebacks — customer dispute overview from Stripe.
+ * Only-on-win ($20/win) fees are computed from won disputes.
  * Visual tokens aligned with Financials green UI.
  */
 
@@ -59,46 +66,14 @@ const C = {
   redSoft: '#FDE8E8',
 } as const;
 
-const winTrend = [
-  { m: 'Feb', win: 52, rec: 47 },
-  { m: 'Mar', win: 55, rec: 50 },
-  { m: 'Apr', win: 58, rec: 54 },
-  { m: 'May', win: 60, rec: 56 },
-  { m: 'Jun', win: 63, rec: 60 },
-  { m: 'Jul', win: 61, rec: 58 },
-];
-
-const byMonth = [
-  { m: 'Feb', n: 12 },
-  { m: 'Mar', n: 14 },
-  { m: 'Apr', n: 18 },
-  { m: 'May', n: 15 },
-  { m: 'Jun', n: 16 },
-  { m: 'Jul', n: 15 },
-];
-
-const byReason = [
-  { name: 'Fraud (card not present)', n: 34 },
-  { name: 'Product not received', n: 22 },
-  { name: 'Not as described', n: 16 },
-  { name: 'Subscription canceled', n: 12 },
-  { name: 'Duplicate charge', n: 6 },
-];
-
-const byNetwork = [
-  { name: 'Visa', n: 58 },
-  { name: 'Mastercard', n: 30 },
-  { name: 'Amex', n: 8 },
-  { name: 'Discover', n: 4 },
-];
-
 const NETC = [C.brandDeep, C.accent, C.green, '#14B8A6'];
 const REASON_COLORS = [C.brand, C.green, C.accent, C.purple, C.faint];
 
-const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
-
 export type ChargebacksAppProps = {
   userName?: string | null;
+  disputes?: ChargebackDispute[];
+  connected?: boolean;
+  loading?: boolean;
 };
 
 function ShieldHeroArt() {
@@ -171,10 +146,21 @@ function ShieldHeroArt() {
   );
 }
 
-export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
-  const [range] = useState('Last 6 months');
-  const [scope, setScope] = useState<'all' | 'asktill'>('asktill');
+export default function ChargebacksApp({
+  userName,
+  disputes = [],
+  connected = false,
+  loading = false,
+}: ChargebacksAppProps) {
+  const [range, setRange] = useState<RangeKey>('6m');
+  const [scope, setScope] = useState<'all' | 'asktill'>('all');
   const greet = userName?.trim() || 'there';
+  const rows = filterDisputes(disputes, range, scope);
+  const stats = buildOverview(rows);
+  const currency = rows.find((r) => r.currency)?.currency || 'usd';
+  const usd = (cents: number) => usdFromCents(cents, currency);
+  const pct = (n: number | null) => (n == null ? '—' : `${n.toFixed(1)}%`);
+  const empty = !loading && rows.length === 0;
 
   return (
     <div
@@ -210,7 +196,9 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
           <div style={{ fontSize: 12, color: C.sub, marginRight: 'auto' }}>
             Good morning, {greet}
           </div>
-          <div
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value as RangeKey)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -222,10 +210,16 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
               fontSize: 12,
               fontWeight: 700,
               color: C.ink,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
             }}
           >
-            <Clock size={14} color={C.green} /> {range} <ChevronDown size={14} color={C.faint} />
-          </div>
+            {(Object.keys(RANGE_LABELS) as RangeKey[]).map((key) => (
+              <option key={key} value={key}>
+                {RANGE_LABELS[key]}
+              </option>
+            ))}
+          </select>
           <div
             style={{
               width: 36,
@@ -265,22 +259,22 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                 marginBottom: 6,
               }}
             >
-              Recovered for you · YTD
+              Recovered for you · {RANGE_LABELS[range]}
             </div>
             <div className="cb-mono" style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, color: C.brand }}>
-              {usd(18240)}
+              {loading ? '…' : usd(stats.recoveredCents)}
             </div>
             <div style={{ fontSize: 12, color: C.sub, marginTop: 8, lineHeight: 1.4 }}>
-              across <span className="cb-mono" style={{ fontWeight: 750, color: C.ink }}>47</span> won
+              across <span className="cb-mono" style={{ fontWeight: 750, color: C.ink }}>{stats.wonCount}</span> won
               disputes · you paid{' '}
-              <span className="cb-mono" style={{ fontWeight: 750, color: C.ink }}>$940</span> in win fees
+              <span className="cb-mono" style={{ fontWeight: 750, color: C.ink }}>{usd(stats.winFeesCents)}</span> in win fees
             </div>
           </div>
 
           <div style={{ minWidth: 180, flex: '0 1 200px' }}>
             <div style={{ fontSize: 12, color: C.sub, marginBottom: 6 }}>Net kept in your pocket</div>
             <div className="cb-mono" style={{ fontSize: 32, fontWeight: 800, color: C.green, lineHeight: 1 }}>
-              {usd(17300)}
+              {loading ? '…' : usd(stats.netCents)}
             </div>
             <div
               style={{
@@ -296,7 +290,8 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                 borderRadius: 99,
               }}
             >
-              <TrendingUp size={13} /> 19.4× return on fees
+              <TrendingUp size={13} />{' '}
+              {stats.feeMultiple == null ? 'No win fees yet' : `${stats.feeMultiple.toFixed(1)}× return on fees`}
             </div>
           </div>
 
@@ -374,32 +369,32 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
           <Metric
             icon={<Gamepad2 size={15} />}
             label="Active disputes"
-            value="12"
-            sub={`${usd(3180)} in play`}
+            value={loading ? '…' : String(stats.activeCount)}
+            sub={`${usd(stats.activeCents)} in play`}
             tint={C.brand}
             soft={C.brandTint}
           />
           <Metric
             icon={<Zap size={15} />}
             label="Evidence submitted"
-            value="8"
-            sub={`${usd(2090)} contested`}
+            value={loading ? '…' : String(stats.evidenceCount)}
+            sub={`${usd(stats.evidenceCents)} contested`}
             tint={C.green}
             soft={C.greenSoft}
           />
           <Metric
             icon={<Landmark size={15} />}
             label="Under review"
-            value="9"
-            sub={`${usd(2460)} awaiting`}
+            value={loading ? '…' : String(stats.reviewCount)}
+            sub={`${usd(stats.reviewCents)} awaiting`}
             tint={C.accent}
             soft={C.accentSoft}
           />
           <Metric
             icon={<Trophy size={15} />}
             label="Win rate"
-            value="61.4%"
-            sub="value recovery 58.2%"
+            value={loading ? '…' : pct(stats.winRate)}
+            sub={stats.valueRecovery == null ? 'No closed disputes yet' : `value recovery ${pct(stats.valueRecovery)}`}
             tint={C.purple}
             soft={C.purpleSoft}
           />
@@ -408,32 +403,32 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
           <Metric
             icon={<FileText size={15} />}
             label="Disputes created"
-            value="90"
-            sub={`${usd(24800)} total`}
+            value={loading ? '…' : String(stats.createdCount)}
+            sub={`${usd(stats.createdCents)} total`}
             tint={C.brand}
             soft={C.brandTint}
           />
           <Metric
             icon={<ShieldX size={15} />}
             label="Auto-declined"
-            value="18"
-            sub="low win odds · $0 charged"
+            value="0"
+            sub="AskTill has not declined any yet"
             tint={C.red}
             soft={C.redSoft}
           />
           <Metric
             icon={<Clock size={15} />}
             label="Time saved"
-            value="142h"
-            sub="of manual filing"
+            value="—"
+            sub="tracked after AskTill files evidence"
             tint={C.brand}
             soft={C.brandTint}
           />
           <Metric
             icon={<CircleDollarSign size={15} />}
             label="You paid"
-            value="$940"
-            sub="47 wins × $20 · only on wins"
+            value={loading ? '…' : usd(stats.winFeesCents)}
+            sub={`${stats.wonCount} wins × $20 · only on wins`}
             tint={C.green}
             soft={C.greenSoft}
           />
@@ -442,8 +437,11 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
         <div className="cb-charts2" style={{ marginBottom: 12 }}>
           <Panel title="Win rate trend" note="Win rate vs. value recovery, last 6 months">
             <div style={{ height: 200 }}>
+              {empty ? (
+                <EmptyChart note={scope === 'asktill' ? 'AskTill has not fought any disputes yet.' : 'No disputes in this period.'} />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={winTrend} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <AreaChart data={stats.winTrend} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                   <defs>
                     <linearGradient id="cbG1" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={C.brand} stopOpacity={0.3} />
@@ -456,7 +454,7 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                     tick={{ fontSize: 11, fill: C.faint }}
                     axisLine={false}
                     tickLine={false}
-                    domain={[40, 70]}
+                    domain={[0, 100]}
                   />
                   <Tooltip
                     contentStyle={{ borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 12 }}
@@ -479,16 +477,20 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </div>
           </Panel>
 
           <Panel title="Disputes by month" note="New chargebacks received">
             <div style={{ height: 200 }}>
+              {empty ? (
+                <EmptyChart note="No chargebacks received in this period." />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byMonth} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <BarChart data={stats.byMonth} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                   <CartesianGrid stroke={C.border} vertical={false} />
                   <XAxis dataKey="m" tick={{ fontSize: 11, fill: C.faint }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: C.faint }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: C.faint }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
                     cursor={{ fill: C.brandTint }}
                     contentStyle={{ borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 12 }}
@@ -496,6 +498,7 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                   <Bar dataKey="n" fill={C.brand} radius={[5, 5, 0, 0]} name="Disputes" />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </div>
           </Panel>
         </div>
@@ -503,8 +506,11 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
         <div className="cb-charts2">
           <Panel title="Disputes by reason" note="What customers are disputing">
             <div style={{ paddingTop: 4 }}>
-              {byReason.map((r, i) => {
-                const max = byReason[0].n;
+              {stats.byReason.length === 0 ? (
+                <EmptyChart note="No dispute reasons yet." />
+              ) : (
+              stats.byReason.map((r, i) => {
+                const max = stats.byReason[0].n;
                 return (
                   <div key={r.name} style={{ marginBottom: 10 }}>
                     <div
@@ -530,7 +536,7 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                     >
                       <div
                         style={{
-                          width: `${(r.n / max) * 100}%`,
+                          width: `${max ? (r.n / max) * 100 : 0}%`,
                           height: '100%',
                           borderRadius: 99,
                           background: REASON_COLORS[i % REASON_COLORS.length],
@@ -539,17 +545,21 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                     </div>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           </Panel>
 
           <Panel title="Disputes by card network" note="Share of disputes by brand">
+            {stats.byNetwork.length === 0 ? (
+              <EmptyChart note="No card-network data yet." />
+            ) : (
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 4 }}>
               <div style={{ width: 140, height: 140, flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={byNetwork}
+                      data={stats.byNetwork}
                       dataKey="n"
                       nameKey="name"
                       innerRadius={42}
@@ -557,8 +567,8 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                       paddingAngle={2}
                       stroke="none"
                     >
-                      {byNetwork.map((_, i) => (
-                        <Cell key={byNetwork[i].name} fill={NETC[i]} />
+                      {stats.byNetwork.map((row, i) => (
+                        <Cell key={row.name} fill={NETC[i % NETC.length]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -569,7 +579,7 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                 </ResponsiveContainer>
               </div>
               <div style={{ flex: 1 }}>
-                {byNetwork.map((n, i) => (
+                {stats.byNetwork.map((n, i) => (
                   <div
                     key={n.name}
                     style={{
@@ -581,7 +591,7 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                     }}
                   >
                     <span
-                      style={{ width: 10, height: 10, borderRadius: 3, background: NETC[i] }}
+                      style={{ width: 10, height: 10, borderRadius: 3, background: NETC[i % NETC.length] }}
                     />
                     <span style={{ color: C.ink, flex: 1, fontWeight: 650 }}>{n.name}</span>
                     <span className="cb-mono" style={{ color: C.sub, fontWeight: 750 }}>
@@ -591,6 +601,7 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
                 ))}
               </div>
             </div>
+            )}
           </Panel>
         </div>
 
@@ -605,10 +616,33 @@ export default function ChargebacksApp({ userName }: ChargebacksAppProps) {
             marginTop: 14,
           }}
         >
-          <Info size={12} /> Prototype · mock data. Fees charged solely on recovered disputes ($20 /
-          win).
+          <Info size={12} />{' '}
+          {loading
+            ? 'Loading Stripe disputes…'
+            : connected
+              ? 'Figures from your connected Stripe account. Win fees are $20 only on recovered disputes.'
+              : 'Connect Stripe to load live disputes. Win fees are $20 only on recovered disputes.'}
         </div>
       </div>
+    </div>
+  );
+}
+
+function EmptyChart({ note }: { note: string }) {
+  return (
+    <div
+      style={{
+        height: '100%',
+        minHeight: 120,
+        display: 'grid',
+        placeItems: 'center',
+        color: C.faint,
+        fontSize: 12,
+        textAlign: 'center',
+        padding: 12,
+      }}
+    >
+      {note}
     </div>
   );
 }

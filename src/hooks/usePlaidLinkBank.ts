@@ -9,9 +9,11 @@ import {
   findDuplicatePlaidLink,
   findSameLinkedBank,
   institutionFromPlaidMeta,
+  PLAID_PULL_STAGE_LABEL,
   warmupPlaidService,
   type LinkedBankAccount,
   type PlaidLinkMode,
+  type PlaidPullStage,
 } from '../lib/plaidClient';
 import {
   ensureUploadBaselineSession,
@@ -62,12 +64,18 @@ function loadPlaidScript() {
 }
 
 /** Overlay Plaid Money In / Out on the saved upload — do not replace the brief with a bank-only ingest. */
-async function pullAndOverlay(businessId: string, userId: string, mode: PlaidLinkMode) {
+async function pullAndOverlay(
+  businessId: string,
+  userId: string,
+  mode: PlaidLinkMode,
+  onProgress?: (stage: PlaidPullStage) => void,
+) {
   const metrics = await refreshPlaidBankMetricsOverlay(businessId, userId, {
     sync: true,
     mode,
     persist: true,
     recordPull: true,
+    onProgress,
   });
   void ensureUploadBaselineSession(userId);
   if (!metrics) {
@@ -91,6 +99,7 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
   const handlerRef = useRef<PlaidHandler | null>(null);
   const accountsRef = useRef<LinkedBankAccount[]>([]);
   const blockedSameBankRef = useRef<string | null>(null);
+  const pullGenRef = useRef(0);
   accountsRef.current = accounts;
 
   const businessId = user?.userId ? businessIdFromUser(user.userId) : '';
@@ -120,6 +129,11 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
       setLinking(true);
       setLinkingMode(mode);
       blockedSameBankRef.current = null;
+      const pullGen = ++pullGenRef.current;
+      const onProgress = (stage: PlaidPullStage) => {
+        if (pullGenRef.current !== pullGen) return;
+        setLinkStatus(PLAID_PULL_STAGE_LABEL[stage]);
+      };
       void warmupPlaidService();
 
       try {
@@ -130,12 +144,8 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
         // Already linked: Connect real-time / monthly pulls data, it does not open Link again.
         if (intent === 'sync' && existing.length > 0) {
           try {
-            setLinkStatus(
-              mode === 'monthly'
-                ? 'Loading last month from your linked bank…'
-                : 'Loading live bank transactions…',
-            );
-            const metrics = await pullAndOverlay(businessId, user.userId, mode);
+            const metrics = await pullAndOverlay(businessId, user.userId, mode, onProgress);
+            if (pullGenRef.current !== pullGen) return;
             setLinkStatus(
               metrics
                 ? mode === 'monthly'
@@ -145,12 +155,15 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
             );
             if (metrics) onDataReady?.();
           } catch (err) {
+            if (pullGenRef.current !== pullGen) return;
             const raw = err instanceof Error ? err.message : 'Could not sync the linked bank.';
             setError(raw);
             setLinkStatus(null);
           } finally {
-            setLinking(false);
-            setLinkingMode(null);
+            if (pullGenRef.current === pullGen) {
+              setLinking(false);
+              setLinkingMode(null);
+            }
           }
           return;
         }
@@ -240,7 +253,7 @@ export function usePlaidLinkBank(options: UsePlaidLinkBankOptions = {}) {
                   ? 'Pulling your previous month bank statement…'
                   : 'Loading live bank transactions…',
               );
-              await pullAndOverlay(businessId, user.userId, mode);
+              await pullAndOverlay(businessId, user.userId, mode, onProgress);
               await refreshAccounts();
               setLinkStatus(
                 mode === 'monthly'

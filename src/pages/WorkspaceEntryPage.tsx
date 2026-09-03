@@ -38,7 +38,9 @@ export default function WorkspaceEntryPage() {
     if (!historyReady && !waited) return;
     sentRef.current = true;
     consumePostLoginRouting();
-    navigate(savedCount > 0 ? DEFAULT_DASHBOARD_PATH : '/onboarding', { replace: true });
+    const next =
+      savedCount > 0 || !historyReady ? DEFAULT_DASHBOARD_PATH : '/onboarding';
+    navigate(next, { replace: true });
   }, [ready, isAuth, historyReady, waited, savedCount, navigate]);
 
   if (ready && !isAuth && giveUp) {

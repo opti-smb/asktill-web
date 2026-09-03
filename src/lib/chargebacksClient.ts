@@ -58,6 +58,11 @@ export type DisputeCaseRow = {
   refund_reconciliation?: string | null;
   fulfillment_claim?: string | null;
   fulfillment_count?: number | null;
+  avs_line1_check?: string | null;
+  avs_postal_check?: string | null;
+  cvc_check?: string | null;
+  three_d_secure_result?: string | null;
+  tracking_numbers?: string | null;
   evidence_status?: string | null;
   evidence_outcome?: string | null;
   snapshot_refreshed_at?: string | null;
@@ -420,4 +425,155 @@ export async function approveCaseDecision(
     throw new Error('Decision returned no case.');
   }
   return { case: body.case, payload: body.payload };
+}
+
+export type Cb4EvidenceStatus =
+  | 'VERIFIED'
+  | 'FOUND_NOT_VERIFIED'
+  | 'MISSING'
+  | 'CONFLICTING'
+  | 'NOT_APPLICABLE';
+
+export type Cb4Requirement = {
+  evidence_code: string;
+  display_name: string;
+  mandatory: boolean;
+  weight: number;
+  preferred_source?: string | null;
+  description?: string | null;
+};
+
+export type Cb4ReasonPolicy = {
+  reason_policy_id: string;
+  reason_code: string;
+  display_name: string;
+  policy_version: number;
+  minimum_score_to_fight: number;
+  missing_mandatory_action: string;
+  active?: boolean;
+  requirements: Cb4Requirement[];
+};
+
+export type Cb4EvidenceReference = {
+  source?: string | null;
+  source_reference?: string | null;
+  notes?: string | null;
+};
+
+export type Cb4EvidenceItem = {
+  evidence_code: string;
+  display_name: string;
+  mandatory: boolean;
+  weight: number;
+  status: Cb4EvidenceStatus;
+  points_awarded: number;
+  source?: string | null;
+  source_reference?: string | null;
+  notes?: string | null;
+  system_derived?: boolean;
+  references?: Cb4EvidenceReference[];
+};
+
+export type Cb4EvidenceReadiness = {
+  evidence_readiness_id: string;
+  dispute_id: string;
+  reason_policy_id: string;
+  reason_policy_version?: number | null;
+  computed_at?: string | null;
+  score: number;
+  mandatory_missing_count: number;
+  has_conflict: boolean;
+  blockers: string[];
+  items: Cb4EvidenceItem[];
+};
+
+export type Cb4Economics = {
+  economics_id: string;
+  dispute_id: string;
+  dispute_amount: string;
+  currency: string;
+  estimated_dispute_fee: string;
+  estimated_operations_cost: string;
+  merchant_win_rate_cohort: string;
+  win_rate_source: string;
+  cogs?: string | null;
+  fulfillment_status?: string | null;
+  risk_value?: string | null;
+  expected_recovery: string;
+  expected_net_value: string;
+};
+
+export type Cb4Recommendation = {
+  decision_id: string;
+  dispute_id: string;
+  merchant_id: string;
+  recommendation: 'FIGHT' | 'ACCEPT' | 'MANUAL_REVIEW';
+  recommendation_reason_codes: string[];
+  ruleset_version: string;
+  final_decision: string;
+  evidence?: Cb4EvidenceReadiness | null;
+  economics?: Cb4Economics | null;
+};
+
+export async function listCb4ReasonPolicies(): Promise<Cb4ReasonPolicy[]> {
+  return chargebacksJson<Cb4ReasonPolicy[]>('/api/cb4/reason-policies');
+}
+
+export async function getCb4ReasonPolicy(reasonCode: string): Promise<Cb4ReasonPolicy> {
+  return chargebacksJson<Cb4ReasonPolicy>(`/api/cb4/reason-policies/${encodeURIComponent(reasonCode)}`);
+}
+
+export type Cb4DerivedEvidence = {
+  case_id: string;
+  reason_code: string;
+  items: Cb4EvidenceItem[];
+  match_status?: string | null;
+  match_method?: string | null;
+  shopify_order_name?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  status?: string | null;
+};
+
+export async function getCb4DerivedEvidence(caseId: string): Promise<Cb4DerivedEvidence> {
+  return chargebacksJson<Cb4DerivedEvidence>(`/api/cb4/cases/${encodeURIComponent(caseId)}/evidence`);
+}
+
+export async function runCb4Case(
+  caseId: string,
+  body: {
+    evidence?: Array<{
+      evidence_code: string;
+      status: Cb4EvidenceStatus;
+      source?: string;
+      source_reference?: string;
+      notes?: string;
+      system_derived?: boolean;
+      references?: Cb4EvidenceReference[];
+    }>;
+    estimated_dispute_fee?: string;
+    estimated_operations_cost?: string;
+    merchant_win_rate_cohort?: string;
+    win_rate_source?: string;
+    cogs?: string;
+    risk_value?: string;
+  },
+): Promise<Cb4Recommendation> {
+  return chargebacksJson<Cb4Recommendation>(`/api/cb4/cases/${encodeURIComponent(caseId)}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getCb4Recommendation(disputeId: string): Promise<Cb4Recommendation | null> {
+  try {
+    return await chargebacksJson<Cb4Recommendation>(
+      `/api/cb4/recommendations/${encodeURIComponent(disputeId)}`,
+    );
+  } catch (err) {
+    const status = (err as Error & { status?: number }).status;
+    if (status === 404) return null;
+    throw err;
+  }
 }

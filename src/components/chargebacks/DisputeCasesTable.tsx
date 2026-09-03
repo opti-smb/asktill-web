@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { approveCaseDecision, type DisputeCaseRow } from '../../lib/chargebacksClient';
 import { reasonLabel } from '@asktill/chargebacks';
 import styles from './DisputeCasesTable.module.css';
@@ -52,11 +53,17 @@ function gateNote(row: DisputeCaseRow): string | null {
   return null;
 }
 
+function isManualReview(row: DisputeCaseRow): boolean {
+  return (row.decision_recommendation || '').trim().toLowerCase().replace(/\s+/g, '_') === 'manual_review';
+}
+
 export default function DisputeCasesTable({
   cases,
+  loading = false,
   onChanged,
 }: {
   cases: DisputeCaseRow[];
+  loading?: boolean;
   onChanged?: (next: DisputeCaseRow) => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -85,6 +92,9 @@ export default function DisputeCasesTable({
           <div className={styles.title}>Disputes</div>
           <div className={styles.sub}>Stripe chargeback plus matched Shopify order. Accept or Fight once — then it stays.</div>
         </div>
+        <Link to="/dashboard/chargebacks/policies" className={styles.policiesLink}>
+          Reason policies
+        </Link>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
       <div className={styles.tableWrap}>
@@ -104,7 +114,9 @@ export default function DisputeCasesTable({
             {cases.length === 0 ? (
               <tr>
                 <td colSpan={7} className={styles.empty}>
-                  No disputes yet. After a payment is disputed, it shows here with Stripe and Shopify data.
+                  {loading
+                    ? 'Loading disputes…'
+                    : 'No disputes yet. After a payment is disputed, it shows here with Stripe and Shopify data.'}
                 </td>
               </tr>
             ) : (
@@ -128,8 +140,29 @@ export default function DisputeCasesTable({
                         {pretty(row.shopify_fulfillment_status || row.fulfillment_claim, 'no order')}
                       </div>
                     </td>
-                    <td>{pretty(row.match_status)}</td>
-                    <td>{pretty(row.decision_recommendation, '—')}</td>
+                    <td>
+                      <div
+                        className={
+                          (row.match_status || '').toLowerCase() === 'matched' ? styles.matchOk : styles.primary
+                        }
+                      >
+                        {pretty(row.match_status)}
+                      </div>
+                      <div className={styles.meta}>{pretty(row.match_method, '')}</div>
+                    </td>
+                    <td>
+                      {isManualReview(row) ? (
+                        <Link
+                          to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}`}
+                          className={styles.reviewLink}
+                          title="Open CB4 recommendation form"
+                        >
+                          {pretty(row.decision_recommendation)}
+                        </Link>
+                      ) : (
+                        <div className={styles.primary}>{pretty(row.decision_recommendation, '—')}</div>
+                      )}
+                    </td>
                     <td>
                       {locked ? (
                         <span

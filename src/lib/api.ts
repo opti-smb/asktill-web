@@ -99,6 +99,31 @@ export const clearToken = () => {
   }
 };
 
+/** Tab-scoped stash so a full-page Stripe redirect does not drop the in-memory JWT. */
+const EXTERNAL_OAUTH_TOKEN_STASH = 'asktill:oauth-access-stash';
+
+export function stashAccessTokenForExternalRedirect(): void {
+  const token = getToken()?.trim();
+  if (!token) return;
+  try {
+    sessionStorage.setItem(EXTERNAL_OAUTH_TOKEN_STASH, token);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function restoreStashedAccessToken(): string | null {
+  try {
+    const token = sessionStorage.getItem(EXTERNAL_OAUTH_TOKEN_STASH)?.trim() || '';
+    if (!token) return null;
+    sessionStorage.removeItem(EXTERNAL_OAUTH_TOKEN_STASH);
+    setToken(token);
+    return token;
+  } catch {
+    return null;
+  }
+}
+
 export interface AuthUser {
   userId: string;
   email: string | null;
@@ -2289,7 +2314,8 @@ function isRetryableHistoryError(err: unknown): boolean {
     return Boolean(token && !isTokenExpired(token));
   }
   return (
-    status === 503
+    status === 500
+    || status === 503
     || status === 502
     || status === 504
     || isLikelyTimeoutError(err)

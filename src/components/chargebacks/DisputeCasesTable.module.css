@@ -9,6 +9,10 @@
 .header {
   padding: 14px 16px 12px;
   border-bottom: 1px solid #eef2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .title {
@@ -70,6 +74,11 @@
 
 .primary {
   font-weight: 700;
+}
+
+.matchOk {
+  font-weight: 750;
+  color: #0f8a57;
 }
 
 .meta {
@@ -145,4 +154,18 @@
 .badgeAccept {
   background: #f1f5f9;
   color: #475569;
+}
+
+.policiesLink,
+.reviewLink {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2f5bd8;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.policiesLink:hover,
+.reviewLink:hover {
+  text-decoration: underline;
 }

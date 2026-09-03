@@ -21,7 +21,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!isAuth) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    const from = location.pathname.startsWith('/integrations/stripe')
+      || location.pathname.startsWith('/integrations/shopify')
+      ? '/dashboard/chargebacks'
+      : location.pathname;
+    return <Navigate to="/login" replace state={{ from }} />;
   }
 
   return <>{children}</>;

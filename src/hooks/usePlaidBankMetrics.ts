@@ -34,6 +34,9 @@ export function usePlaidBankMetrics(
     const businessId = businessIdFromUser(uid);
 
     const sync = async () => {
+      const cached = loadPlaidBankMetrics(uid);
+      if (cached) setMetrics(cached);
+
       try {
         const accounts = await fetchLinkedBankAccounts(businessId);
         if (cancelled) return;
@@ -44,12 +47,10 @@ export function usePlaidBankMetrics(
           return;
         }
 
-        const cached = loadPlaidBankMetrics(uid);
         const cacheAgeMs = cached?.updatedAt
           ? Date.now() - new Date(cached.updatedAt).getTime()
           : Number.POSITIVE_INFINITY;
-        if (cached) setMetrics(cached);
-        else {
+        if (!cached) {
           const stored = await loadPlaidMetricsFromStoredReports('realtime');
           if (!cancelled && stored) {
             savePlaidBankMetrics(uid, stored);
@@ -58,20 +59,21 @@ export function usePlaidBankMetrics(
         }
 
         if (Number.isFinite(cacheAgeMs) && cacheAgeMs < 120_000) {
-          await ensureUploadBaselineSession(uid);
+          void ensureUploadBaselineSession(uid);
           return;
         }
 
         const live = await refreshPlaidBankMetricsOverlay(businessId, uid, {
+          sync: false,
           persist: false,
           recordPull: false,
           mode: loadPlaidBankMetrics(uid)?.linkMode ?? 'realtime',
         });
-        await ensureUploadBaselineSession(uid);
-        if (!cancelled) setMetrics(live ?? cached);
+        void ensureUploadBaselineSession(uid);
+        if (!cancelled) setMetrics(live ?? loadPlaidBankMetrics(uid) ?? cached);
       } catch {
         if (!cancelled) {
-          setMetrics(loadPlaidBankMetrics(uid));
+          setMetrics(loadPlaidBankMetrics(uid) ?? cached);
         }
       }
     };
