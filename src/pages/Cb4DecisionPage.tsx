@@ -5,9 +5,11 @@ import {
   getCb4DerivedEvidence,
   getCb4ReasonPolicy,
   getCb4Recommendation,
+  getCb4Decision,
   listCb4ReasonPolicies,
   listDisputeCases,
   runCb4Case,
+  type Cb4DecisionWorkflow,
   type Cb4EvidenceItem,
   type Cb4EvidenceReference,
   type Cb4EvidenceStatus,
@@ -15,6 +17,10 @@ import {
   type Cb4Recommendation,
   type DisputeCaseRow,
 } from '../lib/chargebacksClient';
+import EnhancedEvidenceView from '../components/cb4/EnhancedEvidenceView';
+import OverrideDecision from '../components/cb4/OverrideDecision';
+import ReReviewRequired from '../components/cb4/ReReviewRequired';
+import ReviewDecision from '../components/cb4/ReviewDecision';
 import styles from './AtChargebacksPage.module.css';
 import cb4 from './Cb4Pages.module.css';
 import headerStyles from '../components/layout/SectionHeader.module.css';
@@ -149,6 +155,8 @@ export default function Cb4DecisionPage() {
   const [cogs, setCogs] = useState('');
   const [riskValue, setRiskValue] = useState('MEDIUM');
   const [result, setResult] = useState<Cb4Recommendation | null>(null);
+  const [workflow, setWorkflow] = useState<Cb4DecisionWorkflow | null>(null);
+  const [showOverride, setShowOverride] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
@@ -214,6 +222,11 @@ export default function Cb4DecisionPage() {
               );
             }
             setResult(existing);
+            if (existing.decision_id) {
+              void getCb4Decision(existing.decision_id)
+                .then(setWorkflow)
+                .catch(() => undefined);
+            }
           }
         } catch {
           /* No prior CB4 recommendation is fine. */
@@ -303,6 +316,9 @@ export default function Cb4DecisionPage() {
         risk_value: riskValue || 'MEDIUM',
       });
       setResult(rec);
+      if (rec.decision_id) {
+        void getCb4Decision(rec.decision_id).then(setWorkflow).catch(() => undefined);
+      }
       if (rec.evidence?.items) {
         setDrafts((prev) => {
           const next = { ...prev };
@@ -330,7 +346,16 @@ export default function Cb4DecisionPage() {
           AskTill recommends FIGHT, ACCEPT, or MANUAL_REVIEW. Stripe 3DS/AVS/CVC and Shopify match
           or tracking are filled from the case and cannot be marked VERIFIED by typing a source.
           Customer communication stays reviewer-entered. This does not submit a Stripe dispute.
-          Final decision stays PENDING APPROVAL until CB4-09.
+          AskTill recommendation stays separate from human approval and from any later Stripe action.
+        </p>
+        <p className={cb4.meta} style={{ marginBottom: 14 }}>
+          <Link to="/dashboard/chargebacks/queue" className={cb4.policiesLink}>
+            Decision queue
+          </Link>
+          {' · '}
+          <Link to="/dashboard/chargebacks/settings" className={cb4.policiesLink}>
+            Decision settings
+          </Link>
         </p>
         {row ? (
           <div className={cb4.meta} style={{ marginBottom: 14 }}>
@@ -581,24 +606,37 @@ export default function Cb4DecisionPage() {
               </>
             ) : (
               <div className={cb4.meta}>
-                Generate a recommendation to see FIGHT / ACCEPT / MANUAL_REVIEW. Final decision stays
-                PENDING APPROVAL.
+                Generate a recommendation to see FIGHT / ACCEPT / MANUAL_REVIEW. Human approval is a
+                separate internal CB4 step and does not call Stripe.
               </div>
             )}
-            <button
-              type="button"
-              className={cb4.disabledBtn}
-              disabled
-              title="CB4-09 approval/send-to-review is not implemented yet"
-            >
-              Send to Review (CB4-09)
-            </button>
             <p className={cb4.note}>
-              CB4-09 approval/send-to-review is not implemented yet. This button does not approve
-              FIGHT or ACCEPT and does not call Stripe.
+              Merchant Fight/Accept on the disputes table is still the Stripe action. CB4 approval
+              only writes an internal command for a later module.
             </p>
           </aside>
         </div>
+        {caseKey ? <EnhancedEvidenceView disputeId={caseKey} /> : null}
+        {workflow?.re_review_required ? (
+          <ReReviewRequired decisionId={workflow.decision_id} onChanged={setWorkflow} />
+        ) : null}
+        {result && workflow && !showOverride && !workflow.re_review_required ? (
+          <ReviewDecision
+            decisionId={workflow.decision_id}
+            onOverride={() => setShowOverride(true)}
+            onChanged={setWorkflow}
+          />
+        ) : null}
+        {result && workflow && showOverride ? (
+          <OverrideDecision
+            decision={workflow}
+            onDone={(next) => {
+              setWorkflow(next);
+              setShowOverride(false);
+            }}
+            onCancel={() => setShowOverride(false)}
+          />
+        ) : null}
       </div>
     </div>
   );

@@ -90,11 +90,14 @@ export default function DisputeCasesTable({
       <div className={styles.header}>
         <div>
           <div className={styles.title}>Disputes</div>
-          <div className={styles.sub}>Stripe chargeback plus matched Shopify order. Accept or Fight once — then it stays.</div>
+          <div className={styles.sub}>
+            Stripe chargeback plus matched Shopify order. Accept or Fight once — then it stays.
+          </div>
         </div>
-        <Link to="/dashboard/chargebacks/policies" className={styles.policiesLink}>
-          Reason policies
-        </Link>
+        <div className={styles.sub} style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Link to="/dashboard/chargebacks/queue">Decision queue</Link>
+          <Link to="/dashboard/chargebacks/settings">Decision settings</Link>
+        </div>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
       <div className={styles.tableWrap}>

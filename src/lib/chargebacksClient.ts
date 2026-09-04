@@ -577,3 +577,148 @@ export async function getCb4Recommendation(disputeId: string): Promise<Cb4Recomm
     throw err;
   }
 }
+
+export type Cb4DecisionValue = 'FIGHT' | 'ACCEPT' | 'MANUAL_REVIEW';
+
+export type Cb4EnhancedEligibility = {
+  enhanced_eligibility_id: string;
+  dispute_id: string;
+  eligibility_type: string;
+  eligible: boolean;
+  source: string;
+  supporting_transactions: Array<Record<string, unknown>>;
+  details: Record<string, unknown>;
+  observed_at?: string | null;
+};
+
+export type Cb4MerchantDecisionPolicy = {
+  merchant_policy_id: string;
+  merchant_id: string;
+  version: number;
+  min_evidence_score_to_fight: number;
+  auto_accept_ceiling: string;
+  mandatory_review_amount: string;
+  maker_checker_amount: string;
+  minimum_expected_net_value: string;
+  operational_buffer_hours: number;
+  timezone: string;
+  active: boolean;
+  inherited_from_global: boolean;
+};
+
+export type Cb4DecisionWorkflow = {
+  decision_id: string;
+  dispute_id: string;
+  merchant_id: string;
+  recommendation: string;
+  proposed_final_decision: string | null;
+  final_decision: string;
+  approval_status: string;
+  proposer_user_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  override_flag: boolean;
+  re_review_required: boolean;
+  decision_version: number;
+  handoff_status: string;
+  maker_checker_required?: boolean;
+  amount?: string | null;
+};
+
+export type Cb4QueueItem = {
+  decision_id: string;
+  dispute_id: string;
+  reason_code: string;
+  amount: string;
+  currency: string;
+  internal_due_by: string;
+  hours_remaining: number;
+  evidence_score: number;
+  recommendation: string;
+  final_decision: string;
+  approval_status: string;
+  readiness_status: string;
+  priority: 'CRITICAL' | 'URGENT' | 'HIGH' | 'NORMAL';
+  re_review_required: boolean;
+};
+
+export type Cb4ReReviewPayload = {
+  workflow: Cb4DecisionWorkflow;
+  rereview: {
+    rereview_id: string;
+    previous_final_decision: string;
+    previous_recommendation: string;
+    new_recommendation: string;
+    changed_fields: string[];
+    created_at?: string | null;
+  } | null;
+};
+
+export async function getCb4EnhancedEligibility(disputeId: string): Promise<Cb4EnhancedEligibility[]> {
+  return chargebacksJson<Cb4EnhancedEligibility[]>(
+    `/api/cb4/disputes/${encodeURIComponent(disputeId)}/enhanced-eligibility`,
+  );
+}
+
+export async function getCb4MerchantPolicy(): Promise<Cb4MerchantDecisionPolicy> {
+  return chargebacksJson<Cb4MerchantDecisionPolicy>('/api/cb4/merchant/decision-policy');
+}
+
+export async function saveCb4MerchantPolicy(
+  payload: Omit<
+    Cb4MerchantDecisionPolicy,
+    'merchant_policy_id' | 'merchant_id' | 'version' | 'active' | 'inherited_from_global'
+  >,
+): Promise<Cb4MerchantDecisionPolicy> {
+  return chargebacksJson<Cb4MerchantDecisionPolicy>('/api/cb4/merchant/decision-policy', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCb4Decision(decisionId: string): Promise<Cb4DecisionWorkflow> {
+  return chargebacksJson<Cb4DecisionWorkflow>(`/api/cb4/decisions/${encodeURIComponent(decisionId)}`);
+}
+
+export async function proposeCb4Decision(
+  decisionId: string,
+  proposedDecision: string,
+  notes?: string,
+): Promise<Cb4DecisionWorkflow> {
+  return chargebacksJson<Cb4DecisionWorkflow>(`/api/cb4/decisions/${encodeURIComponent(decisionId)}/propose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ proposed_decision: proposedDecision, notes }),
+  });
+}
+
+export async function approveCb4Decision(decisionId: string, notes?: string): Promise<Cb4DecisionWorkflow> {
+  return chargebacksJson<Cb4DecisionWorkflow>(`/api/cb4/decisions/${encodeURIComponent(decisionId)}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  });
+}
+
+export async function overrideCb4Decision(
+  decisionId: string,
+  newDecision: string,
+  reasonCode: string,
+  notes?: string,
+): Promise<Cb4DecisionWorkflow> {
+  return chargebacksJson<Cb4DecisionWorkflow>(`/api/cb4/decisions/${encodeURIComponent(decisionId)}/override`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_decision: newDecision, reason_code: reasonCode, notes }),
+  });
+}
+
+export async function getCb4DecisionQueue(priority?: string): Promise<Cb4QueueItem[]> {
+  const query = priority ? `?priority=${encodeURIComponent(priority)}` : '';
+  return chargebacksJson<Cb4QueueItem[]>(`/api/cb4/decision-queue${query}`);
+}
+
+export async function getCb4ReReview(decisionId: string): Promise<Cb4ReReviewPayload> {
+  return chargebacksJson<Cb4ReReviewPayload>(`/api/cb4/decisions/${encodeURIComponent(decisionId)}/rereview`);
+}
