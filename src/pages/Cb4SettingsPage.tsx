@@ -10,9 +10,14 @@ export default function Cb4SettingsPage() {
         <Link to="/dashboard/chargebacks" className={cb4.back}>
           ← Money Reclaimed
         </Link>
-        <h1 className={headerStyles.h1}>Decision settings</h1>
+        <h1 className={headerStyles.h1}>Chargeback Controls</h1>
         <p className={cb4.lead}>
           Merchant thresholds for recommendations and maker-checker. Saving creates a new version.
+        </p>
+        <p className={cb4.meta} style={{ marginBottom: 14 }}>
+          <Link to="/dashboard/chargebacks/settings/evidence-matrix" className={cb4.policiesLink}>
+            Evidence Matrix
+          </Link>
         </p>
         <MerchantDecisionSettings />
       </div>

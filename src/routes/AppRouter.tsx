@@ -28,6 +28,14 @@ import ChargebacksOrdersPage from '../pages/ChargebacksOrdersPage';
 import Cb4DecisionPage from '../pages/Cb4DecisionPage';
 import Cb4QueuePage from '../pages/Cb4QueuePage';
 import Cb4SettingsPage from '../pages/Cb4SettingsPage';
+import EvidenceWorkspace from '../cb5/EvidenceWorkspace';
+import EvidencePacketOverview from '../cb5/EvidencePacketOverview';
+import EvidenceMatrixAdmin from '../cb5/EvidenceMatrixAdmin';
+import SourceLineagePanel from '../cb5/SourceLineagePanel';
+import OrderProofPanel from '../cb5/OrderProofPanel';
+import DeliveryProofPanel from '../cb5/DeliveryProofPanel';
+import ServiceProofPanel from '../cb5/ServiceProofPanel';
+import PolicyEvidencePanel from '../cb5/PolicyEvidencePanel';
 import AtRewardsPage from '../pages/AtRewardsPage';
 import ProfilePage from '../pages/ProfilePage';
 import AdminHandoffPage from '../pages/AdminHandoffPage';
@@ -142,8 +150,26 @@ function AppRoutes() {
           <Route path="chargebacks/pay" element={<ChargebacksPayPage />} />
           <Route path="chargebacks/orders" element={<ChargebacksOrdersPage />} />
           <Route path="chargebacks/decision/:caseId" element={<Cb4DecisionPage />} />
+          <Route path="chargebacks/decision/:caseId/evidence" element={<EvidenceWorkspace />}>
+            <Route index element={<EvidencePacketOverview />} />
+            <Route path="order" element={<OrderProofPanel />} />
+            <Route path="delivery" element={<DeliveryProofPanel />} />
+            <Route path="service" element={<ServiceProofPanel />} />
+            <Route path="policy" element={<PolicyEvidencePanel />} />
+            <Route path="lineage" element={<SourceLineagePanel />} />
+          </Route>
+          <Route path="chargebacks/:caseId/evidence" element={<EvidenceWorkspace />}>
+            <Route index element={<EvidencePacketOverview />} />
+            <Route path="order" element={<OrderProofPanel />} />
+            <Route path="delivery" element={<DeliveryProofPanel />} />
+            <Route path="service" element={<ServiceProofPanel />} />
+            <Route path="policy" element={<PolicyEvidencePanel />} />
+            <Route path="lineage" element={<SourceLineagePanel />} />
+          </Route>
           <Route path="chargebacks/queue" element={<Cb4QueuePage />} />
           <Route path="chargebacks/settings" element={<Cb4SettingsPage />} />
+          <Route path="chargebacks/settings/evidence-matrix" element={<EvidenceMatrixAdmin />} />
+          <Route path="settings/chargebacks/evidence-matrix" element={<EvidenceMatrixAdmin />} />
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
           <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />

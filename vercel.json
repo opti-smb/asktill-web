@@ -45,6 +45,14 @@
       "destination": "https://asktill-chargebacks.onrender.com/api/cb4/:path*"
     },
     {
+      "source": "/api/cb5",
+      "destination": "https://asktill-chargebacks.onrender.com/api/cb5"
+    },
+    {
+      "source": "/api/cb5/:path*",
+      "destination": "https://asktill-chargebacks.onrender.com/api/cb5/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
@@ -76,7 +84,7 @@
         },
         {
           "key": "X-Asktill-Build",
-          "value": "2026-09-03-cb4"
+          "value": "2026-09-07-cb5"
         }
       ]
     }
