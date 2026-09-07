@@ -97,6 +97,7 @@ export default function DisputeCasesTable({
         <div className={styles.sub} style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link to="/dashboard/chargebacks/queue">Decision queue</Link>
           <Link to="/dashboard/chargebacks/settings">Decision settings</Link>
+          <Link to="/dashboard/chargebacks/settings/evidence-matrix">Evidence Matrix</Link>
         </div>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
@@ -155,26 +156,48 @@ export default function DisputeCasesTable({
                     </td>
                     <td>
                       {isManualReview(row) ? (
-                        <Link
-                          to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}`}
-                          className={styles.reviewLink}
-                          title="Open CB4 recommendation form"
-                        >
-                          {pretty(row.decision_recommendation)}
-                        </Link>
+                        <div>
+                          <Link
+                            to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}`}
+                            className={styles.reviewLink}
+                            title="Open CB4 recommendation form"
+                          >
+                            {pretty(row.decision_recommendation)}
+                          </Link>
+                          <div className={styles.meta}>
+                            <Link
+                              to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}/evidence`}
+                              className={styles.reviewLink}
+                            >
+                              Evidence
+                            </Link>
+                          </div>
+                        </div>
                       ) : (
                         <div className={styles.primary}>{pretty(row.decision_recommendation, '—')}</div>
                       )}
                     </td>
                     <td>
                       {locked ? (
-                        <span
-                          className={
-                            row.decision_status === 'fight_approved' ? styles.badgeFight : styles.badgeAccept
-                          }
-                        >
-                          {row.decision_status === 'fight_approved' ? 'Fight' : 'Accept'}
-                        </span>
+                        <div>
+                          <span
+                            className={
+                              row.decision_status === 'fight_approved' ? styles.badgeFight : styles.badgeAccept
+                            }
+                          >
+                            {row.decision_status === 'fight_approved' ? 'Fight' : 'Accept'}
+                          </span>
+                          {row.decision_status === 'fight_approved' ? (
+                            <div className={styles.meta}>
+                              <Link
+                                to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}/evidence`}
+                                className={styles.reviewLink}
+                              >
+                                Evidence
+                              </Link>
+                            </div>
+                          ) : null}
+                        </div>
                       ) : (
                         <div className={styles.actions}>
                           <button

@@ -82,6 +82,7 @@ export default defineConfig({
       '/api/plaid-parser-health': { target: 'http://localhost:8006', changeOrigin: true, rewrite: () => '/health' },
       '/api/chargebacks-health': { target: 'http://localhost:8010', changeOrigin: true, rewrite: () => '/health' },
       '/api/cb4': { target: 'http://localhost:8010', changeOrigin: true },
+      '/api/cb5': { target: 'http://localhost:8010', changeOrigin: true },
       '/integrations/stripe': { target: 'http://localhost:8010', changeOrigin: true },
       '/integrations/shopify': { target: 'http://localhost:8010', changeOrigin: true },
       '/api/plaid': { target: 'http://localhost:3000', changeOrigin: true },

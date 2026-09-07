@@ -356,6 +356,17 @@ export default function Cb4DecisionPage() {
           <Link to="/dashboard/chargebacks/settings" className={cb4.policiesLink}>
             Decision settings
           </Link>
+          {caseKey ? (
+            <>
+              {' · '}
+              <Link
+                to={`/dashboard/chargebacks/decision/${encodeURIComponent(caseKey)}/evidence`}
+                className={cb4.policiesLink}
+              >
+                Evidence (CB5)
+              </Link>
+            </>
+          ) : null}
         </p>
         {row ? (
           <div className={cb4.meta} style={{ marginBottom: 14 }}>
