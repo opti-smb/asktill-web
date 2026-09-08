@@ -44,9 +44,6 @@ export default function EvidenceWorkspace() {
     setLoading(true);
     setError(null);
     try {
-      const cases = await listDisputeCases();
-      const found = cases.find((item) => item.case_id === caseId) || null;
-      setRow(found);
       try {
         setPacket(await getEvidencePacket(caseId));
       } catch (err) {
@@ -59,6 +56,12 @@ export default function EvidenceWorkspace() {
     } finally {
       setLoading(false);
     }
+    void listDisputeCases()
+      .then((cases) => {
+        const found = cases.find((item) => item.case_id === caseId) || null;
+        if (found) setRow(found);
+      })
+      .catch(() => undefined);
   }, [caseId]);
 
   useEffect(() => {

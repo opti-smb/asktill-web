@@ -27,6 +27,7 @@ import ChargebacksPayPage from '../pages/ChargebacksPayPage';
 import ChargebacksOrdersPage from '../pages/ChargebacksOrdersPage';
 import Cb4DecisionPage from '../pages/Cb4DecisionPage';
 import Cb4QueuePage from '../pages/Cb4QueuePage';
+import AttentionQueuePage from '../pages/AttentionQueuePage';
 import Cb4SettingsPage from '../pages/Cb4SettingsPage';
 import EvidenceWorkspace from '../cb5/EvidenceWorkspace';
 import EvidencePacketOverview from '../cb5/EvidencePacketOverview';
@@ -167,6 +168,7 @@ function AppRoutes() {
             <Route path="lineage" element={<SourceLineagePanel />} />
           </Route>
           <Route path="chargebacks/queue" element={<Cb4QueuePage />} />
+          <Route path="chargebacks/attention" element={<AttentionQueuePage />} />
           <Route path="chargebacks/settings" element={<Cb4SettingsPage />} />
           <Route path="chargebacks/settings/evidence-matrix" element={<EvidenceMatrixAdmin />} />
           <Route path="settings/chargebacks/evidence-matrix" element={<EvidenceMatrixAdmin />} />

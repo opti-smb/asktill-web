@@ -14,14 +14,25 @@ async function cb5Json<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  const res = await fetch(path, { ...init, headers });
-  const body = (await res.json().catch(() => ({}))) as T & { detail?: string };
-  if (!res.ok) {
-    const err = new Error(body.detail || `CB5 request failed (${res.status})`) as Error & { status?: number };
-    err.status = res.status;
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 12_000);
+  try {
+    const res = await fetch(path, { ...init, headers, signal: init.signal ?? controller.signal });
+    const body = (await res.json().catch(() => ({}))) as T & { detail?: string };
+    if (!res.ok) {
+      const err = new Error(body.detail || `CB5 request failed (${res.status})`) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+    return body;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Evidence request timed out. Refresh the page.');
+    }
     throw err;
+  } finally {
+    window.clearTimeout(timer);
   }
-  return body;
 }
 
 export async function getActiveTemplate(reason: string, productType: string): Promise<EvidenceTemplate> {

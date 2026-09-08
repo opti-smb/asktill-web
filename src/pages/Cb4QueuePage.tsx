@@ -13,7 +13,10 @@ export default function Cb4QueuePage() {
         <h1 className={headerStyles.h1}>Decision queue</h1>
         <p className={cb4.lead}>
           Analyst and reviewer work queue. Priority is time remaining, then amount. It does not
-          change the final decision.
+          change the final decision.{' '}
+          <Link to="/dashboard/chargebacks/attention" className={cb4.policiesLink}>
+            Attention queue
+          </Link>
         </p>
         <DecisionQueue />
       </div>
