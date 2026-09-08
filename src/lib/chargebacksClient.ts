@@ -1,4 +1,5 @@
 import { getToken, stashAccessTokenForExternalRedirect } from './api';
+import { stashCheckoutAccessBridge } from './checkoutSessionBridge';
 
 export type StripeConnectionView = {
   connection_id?: string;
@@ -135,12 +136,28 @@ export type ShopifyConnectionResponse = {
 };
 
 const STRIPE_CONNECT_RETURN_KEY = 'asktill:stripe-connect-return';
+const STRIPE_PAY_RETURN_KEY = 'asktill:stripe-pay-return';
 
 export function peekStripeConnectReturn(): string | null {
   try {
     return sessionStorage.getItem(STRIPE_CONNECT_RETURN_KEY);
   } catch {
     return null;
+  }
+}
+
+/** True when returning from Stripe Checkout (sandbox pay). */
+export function peekChargebacksPayReturn(): boolean {
+  try {
+    const pay = new URLSearchParams(window.location.search).get('pay');
+    if (pay === 'success' || pay === 'cancel') return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    return sessionStorage.getItem(STRIPE_PAY_RETURN_KEY) === '1';
+  } catch {
+    return false;
   }
 }
 
@@ -491,6 +508,14 @@ export async function startSandboxCheckout(amount: number): Promise<string> {
   const url = body.url?.trim() || '';
   if (!url.startsWith('https://')) {
     throw new Error('Stripe did not return a payment page.');
+  }
+  // Memory JWT dies on the Stripe full-page leave; restore it on /dashboard/chargebacks.
+  stashAccessTokenForExternalRedirect();
+  stashCheckoutAccessBridge();
+  try {
+    sessionStorage.setItem(STRIPE_PAY_RETURN_KEY, '1');
+  } catch {
+    /* ignore */
   }
   return url;
 }

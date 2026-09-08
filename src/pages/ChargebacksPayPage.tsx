@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { CreditCard } from 'lucide-react';
 
+import { stashAccessTokenForExternalRedirect } from '../lib/api';
+import { stashCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
 import { getStripeConnection, startSandboxCheckout } from '../lib/chargebacksClient';
+import { assignStripeRedirect } from '../lib/safeRedirect';
 import styles from './AtChargebacksPage.module.css';
 import payStyles from './ChargebacksPayPage.module.css';
 import headerStyles from '../components/layout/SectionHeader.module.css';
@@ -63,7 +66,9 @@ export default function ChargebacksPayPage() {
     setError(null);
     try {
       const url = await startSandboxCheckout(amount);
-      window.location.assign(url);
+      stashAccessTokenForExternalRedirect();
+      stashCheckoutAccessBridge();
+      assignStripeRedirect(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open payment.');
       setBusy(false);
