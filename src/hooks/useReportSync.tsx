@@ -147,14 +147,9 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     if (result?.statement_id || hasRecentAnalyzeSession()) return;
     const cachedId = loadAtLetterCache(user.userId)?.statementId?.trim();
     if (cachedId) {
-      const idlePrefetch = () => {
+      window.setTimeout(() => {
         void prefetchAtLetterHtml(cachedId, { monthOnly: true });
-      };
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        window.requestIdleCallback(idlePrefetch, { timeout: 8_000 });
-      } else {
-        window.setTimeout(idlePrefetch, 2_000);
-      }
+      }, 2_000);
     }
   }, [ready, isAuth, user?.userId, result?.statement_id]);
 
@@ -285,14 +280,9 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
           }
 
           if (statementId) {
-            const idlePrefetch = () => {
+            window.setTimeout(() => {
               void prefetchAtLetterHtml(statementId, { monthOnly: true });
-            };
-            if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-              window.requestIdleCallback(idlePrefetch, { timeout: 8_000 });
-            } else {
-              window.setTimeout(idlePrefetch, 2_000);
-            }
+            }, 2_000);
           }
         }
 
