@@ -233,8 +233,15 @@ function authApiBase(): string {
   return '/auth-api';
 }
 
+/** Same-origin on Vercel so Render 503/CORS cannot surface as a browser Network Error. */
+function mainApiBase(): string {
+  if (import.meta.env.DEV) return '';
+  if (isEc2BackendSession()) return resolvePublicUrl(import.meta.env.VITE_API_BASE_URL, 'api');
+  return '';
+}
+
 const mainApi = axios.create({
-  baseURL: devBase() ?? resolvePublicUrl(import.meta.env.VITE_API_BASE_URL, 'api'),
+  baseURL: mainApiBase(),
 });
 const authApi = axios.create({
   baseURL: authApiBase(),
@@ -1015,6 +1022,10 @@ function serviceOrigin(
     }
     return '/auth-api';
   }
+  if (envKey === 'VITE_API_BASE_URL' && !import.meta.env.DEV && !isEc2BackendSession()) {
+    if (typeof window !== 'undefined') return window.location.origin;
+    return '';
+  }
   const key =
     envKey === 'VITE_API_BASE_URL'
       ? 'api'
@@ -1057,9 +1068,7 @@ async function ensureBackendReady(probeTimeoutMs = 45_000): Promise<boolean> {
       attempt += 1;
       const slice = Math.min(20_000, Math.max(4_000, deadline - Date.now()));
       // /api/ready is cheap; fall back to full /api/health for older deploys.
-      const ok =
-        (await probeServiceHealth(`${base}/api/ready`, Math.min(slice, 10_000)))
-        || (await probeServiceHealth(`${base}/api/health`, slice));
+      const ok = await probeServiceHealth(`${base}/api/ready`, Math.min(slice, 10_000));
       if (ok) {
         markBackendServiceWarm();
         return true;
@@ -1822,7 +1831,7 @@ function analyzeFormData(bank?: File, pos?: File, ecommerce?: File): FormData {
 }
 
 function mainApiBaseUrl(): string {
-  return import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? '');
+  return mainApiBase();
 }
 
 const analyze = (bank?: File, pos?: File, ecommerce?: File, force = false) =>
@@ -2681,16 +2690,38 @@ export async function fetchRewardsReferral(): Promise<RewardsReferralShare> {
 }
 
 export async function fetchRewardsBalance(): Promise<RewardsBalance> {
-  const res = await mainApi.get<RewardsBalance>('/api/rewards/balance', { timeout: 30_000 });
-  return res.data;
+  warmupBackend();
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await mainApi.get<RewardsBalance>('/api/rewards/balance', { timeout: 30_000 });
+      return res.data;
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableHistoryError(err) || attempt === 2) throw err;
+      await new Promise((r) => window.setTimeout(r, 600 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 export async function fetchRewardsLedger(limit = 50): Promise<{ entries: RewardsLedgerEntry[] }> {
-  const res = await mainApi.get<{ entries: RewardsLedgerEntry[] }>('/api/rewards/ledger', {
-    params: { limit },
-    timeout: 30_000,
-  });
-  return res.data;
+  warmupBackend();
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await mainApi.get<{ entries: RewardsLedgerEntry[] }>('/api/rewards/ledger', {
+        params: { limit },
+        timeout: 30_000,
+      });
+      return res.data;
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableHistoryError(err) || attempt === 2) throw err;
+      await new Promise((r) => window.setTimeout(r, 600 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 export async function fetchRewardsCatalog(): Promise<RewardsCatalog> {

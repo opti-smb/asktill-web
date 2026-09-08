@@ -424,7 +424,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
     if (saved.statement_id) {
       void prefetchAtLetterHtml(saved.statement_id, { monthOnly: true });
-      void prefetchAtLetterHtml(saved.statement_id, { monthOnly: false });
     }
   }, [isAuth, user]);
 

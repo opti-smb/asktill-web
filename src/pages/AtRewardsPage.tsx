@@ -5,6 +5,7 @@ import Spinner from '../components/common/Spinner';
 import {
   fetchRewardsBalance,
   fetchRewardsLedger,
+  getApiError,
   type RewardsBalance,
   type RewardsLedgerEntry,
 } from '../lib/api';
@@ -96,7 +97,7 @@ export default function AtRewardsPage() {
       setLive(true);
     } catch (err) {
       setLive(false);
-      setError(err instanceof Error ? err.message : 'Could not load rewards wallet.');
+      setError(getApiError(err, 'Could not load rewards wallet.'));
     } finally {
       inFlight.current = false;
       setLoading(false);

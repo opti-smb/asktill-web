@@ -61,6 +61,10 @@
       "destination": "https://backend-service-9kqp.onrender.com/api/agent/:path*"
     },
     {
+      "source": "/api/:path*",
+      "destination": "https://backend-service-9kqp.onrender.com/api/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
