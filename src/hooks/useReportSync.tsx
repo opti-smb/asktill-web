@@ -147,27 +147,16 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
     if (result?.statement_id || hasRecentAnalyzeSession()) return;
     const cachedId = loadAtLetterCache(user.userId)?.statementId?.trim();
     if (cachedId) {
-      void prefetchAtLetterHtml(cachedId, { monthOnly: true });
-      void prefetchAtLetterHtml(cachedId, { monthOnly: false });
+      const idlePrefetch = () => {
+        void prefetchAtLetterHtml(cachedId, { monthOnly: true });
+      };
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(idlePrefetch, { timeout: 8_000 });
+      } else {
+        window.setTimeout(idlePrefetch, 2_000);
+      }
     }
   }, [ready, isAuth, user?.userId, result?.statement_id]);
-
-  useEffect(() => {
-    if (!ready || !isAuth) return;
-    const sessionAnalysis = getAnalyzeAnalysis(result);
-    const statementId = resolveAtLetterStatementId({
-      sessionStatementId: result?.statement_id,
-      sessionPeriodKey: periodKeyFromLabel(sessionAnalysis?.period_label),
-      primaryReport,
-      historyReady,
-      preferSession: hasRecentAnalyzeSession(),
-      activeViewId: getActiveStatementViewId(),
-    });
-    if (statementId) {
-      void prefetchAtLetterHtml(statementId, { monthOnly: true });
-      void prefetchAtLetterHtml(statementId, { monthOnly: false });
-    }
-  }, [ready, isAuth, result?.statement_id, result?.analysis, primaryReport, historyReady]);
 
   useEffect(() => {
     if (!ready) {
@@ -257,10 +246,6 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
             preferSession: inAnalyzeGrace || keepPinnedView || keepCurrentSessionView,
             activeViewId: pinnedId,
           });
-          if (statementId) {
-            void prefetchAtLetterHtml(statementId, { monthOnly: true });
-            void prefetchAtLetterHtml(statementId, { monthOnly: false });
-          }
 
           // Pinned / just-uploaded month must never be replaced by chronologically newest.
           if (pinnedId && liveIds.has(pinnedId)) {
@@ -296,6 +281,17 @@ export function ReportSyncProvider({ children }: { children: ReactNode }) {
               } catch {
                 /* overview can still open saved report manually */
               }
+            }
+          }
+
+          if (statementId) {
+            const idlePrefetch = () => {
+              void prefetchAtLetterHtml(statementId, { monthOnly: true });
+            };
+            if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+              window.requestIdleCallback(idlePrefetch, { timeout: 8_000 });
+            } else {
+              window.setTimeout(idlePrefetch, 2_000);
             }
           }
         }
