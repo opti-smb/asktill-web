@@ -36,7 +36,7 @@ import { consumeCheckoutAccessBridge } from '../lib/checkoutSessionBridge';
 import { isEc2BackendSession } from '../lib/ec2BackendSession';
 import { getTokenExpiryMs, getTokenSubject, isTokenExpired } from '../lib/jwt';
 import { SESSION_TTL_MS, clearSessionExpiredPersisted, markSessionExpiredPersisted, isSessionExpiredPersisted } from '../lib/session';
-import { peekStripeConnectReturn } from '../lib/chargebacksClient';
+import { peekChargebacksPayReturn, peekStripeConnectReturn } from '../lib/chargebacksClient';
 import {
   captureSignedOutIntent,
   clearSignedOutIntent,
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if ((!access || isTokenExpired(access)) && !isEc2BackendSession()) {
         clearToken();
         access = await refreshAccessSession();
-        if (!access && peekStripeConnectReturn()) {
+        if (!access && (peekStripeConnectReturn() || peekChargebacksPayReturn())) {
           for (let i = 0; i < 2 && !access; i += 1) {
             await new Promise((r) => window.setTimeout(r, 800));
             access = await refreshAccessSession();

@@ -19,6 +19,8 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const onChangedRef = useRef(onChanged);
+  onChangedRef.current = onChanged;
   const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -30,11 +32,8 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
       setConnection(body.connection);
       writeCachedShopifyConnection(body);
     } catch (err) {
-      if (readCachedShopifyConnection()?.connection) {
-        setReady(true);
-        return;
-      }
-      setReady(false);
+      writeCachedShopifyConnection(null);
+      setReady(true);
       setStatus('disconnected');
       setConnection(null);
       setError(err instanceof Error ? err.message : 'Could not load Shopify connection.');
@@ -42,7 +41,14 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
   }, []);
 
   useEffect(() => {
+    const pay = new URLSearchParams(window.location.search).get('pay');
     void refresh();
+    if (pay === 'success') {
+      window.setTimeout(() => {
+        void refresh();
+        onChangedRef.current?.();
+      }, 2000);
+    }
   }, [refresh]);
 
   async function onConnect() {
