@@ -188,6 +188,7 @@ export type CustomerHistoryView = {
   lookback_end?: string | null;
   lookback_months?: number | null;
   insufficient_history?: boolean;
+  first_time_customer?: boolean;
   facts?: {
     successful_orders?: number;
     previous_disputes?: number;
