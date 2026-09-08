@@ -53,6 +53,14 @@
       "destination": "https://asktill-chargebacks.onrender.com/api/cb5/:path*"
     },
     {
+      "source": "/api/agent",
+      "destination": "https://backend-service-9kqp.onrender.com/api/agent"
+    },
+    {
+      "source": "/api/agent/:path*",
+      "destination": "https://backend-service-9kqp.onrender.com/api/agent/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
@@ -84,7 +92,7 @@
         },
         {
           "key": "X-Asktill-Build",
-          "value": "2026-09-07-cb5"
+          "value": "2026-09-08-agent"
         }
       ]
     }

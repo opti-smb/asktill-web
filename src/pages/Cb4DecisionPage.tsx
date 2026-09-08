@@ -6,9 +6,23 @@ import {
   getCb4ReasonPolicy,
   getCb4Recommendation,
   getCb4Decision,
+  getAgentCase,
+  getCaseHumanQuestion,
+  getCustomerHistory,
+  getCustomerIdentity,
+  getCustomerScore,
+  answerHumanQuestion,
+  createDevOrderMatchQuestion,
+  isAgentDevHelperEnabled,
+  customerHistoryRelevance,
   listCb4ReasonPolicies,
   listDisputeCases,
   runCb4Case,
+  type AgentCaseView,
+  type CustomerHistoryView,
+  type CustomerIdentityView,
+  type CustomerScoreView,
+  type HumanQuestionView,
   type Cb4DecisionWorkflow,
   type Cb4EvidenceItem,
   type Cb4EvidenceReference,
@@ -156,6 +170,14 @@ export default function Cb4DecisionPage() {
   const [riskValue, setRiskValue] = useState('MEDIUM');
   const [result, setResult] = useState<Cb4Recommendation | null>(null);
   const [workflow, setWorkflow] = useState<Cb4DecisionWorkflow | null>(null);
+  const [agentCase, setAgentCase] = useState<AgentCaseView | null>(null);
+  const [customerIdentity, setCustomerIdentity] = useState<CustomerIdentityView | null>(null);
+  const [customerHistory, setCustomerHistory] = useState<CustomerHistoryView | null>(null);
+  const [customerScore, setCustomerScore] = useState<CustomerScoreView | null>(null);
+  const [humanQuestion, setHumanQuestion] = useState<HumanQuestionView | null>(null);
+  const [questionChoice, setQuestionChoice] = useState('');
+  const [questionBusy, setQuestionBusy] = useState(false);
+  const [questionNote, setQuestionNote] = useState<string | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -240,6 +262,31 @@ export default function Cb4DecisionPage() {
             if (found) setRow(found);
           })
           .catch(() => undefined);
+        void getAgentCase(caseKey)
+          .then((next) => {
+            if (!cancelled) setAgentCase(next);
+          })
+          .catch(() => undefined);
+        void getCustomerIdentity(caseKey)
+          .then((next) => {
+            if (!cancelled) setCustomerIdentity(next);
+          })
+          .catch(() => undefined);
+        void getCustomerHistory(caseKey)
+          .then((next) => {
+            if (!cancelled) setCustomerHistory(next);
+          })
+          .catch(() => undefined);
+        void getCustomerScore(caseKey)
+          .then((next) => {
+            if (!cancelled) setCustomerScore(next);
+          })
+          .catch(() => undefined);
+        void getCaseHumanQuestion(caseKey)
+          .then((next) => {
+            if (!cancelled) setHumanQuestion(next);
+          })
+          .catch(() => undefined);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load CB4 decision.');
       } finally {
@@ -273,6 +320,17 @@ export default function Cb4DecisionPage() {
     [drafts],
   );
 
+  const historySnap = result?.input_snapshot;
+  const historyInsufficient = Boolean(
+    customerScore?.insufficient_history ||
+      customerScore?.status === 'INSUFFICIENT_HISTORY' ||
+      historySnap?.customer_history_insufficient ||
+      historySnap?.customer_history_status === 'INSUFFICIENT_HISTORY',
+  );
+  const historyRelevance =
+    historySnap?.customer_history_relevance ||
+    customerHistoryRelevance(row?.reason || policy?.reason_code);
+
   function patchDraft(code: string, update: Partial<EvidenceRowDraft>) {
     setDrafts((prev) => ({
       ...prev,
@@ -287,6 +345,44 @@ export default function Cb4DecisionPage() {
       refs[index] = { ...refs[index], ...update };
       return { ...prev, [code]: { ...current, refs } };
     });
+  }
+
+  async function createTestQuestion() {
+    if (!caseKey || questionBusy) return;
+    setQuestionBusy(true);
+    setQuestionNote(null);
+    try {
+      await createDevOrderMatchQuestion(caseKey);
+      const next = await getCaseHumanQuestion(caseKey);
+      setHumanQuestion(next);
+      setQuestionChoice('');
+      setQuestionNote('Test question created');
+      const nextCase = await getAgentCase(caseKey);
+      setAgentCase(nextCase);
+    } catch (err) {
+      setQuestionNote(err instanceof Error ? err.message : 'Could not create test question.');
+    } finally {
+      setQuestionBusy(false);
+    }
+  }
+
+  async function submitHumanAnswer() {
+    if (!humanQuestion?.id || !questionChoice || questionBusy) return;
+    setQuestionBusy(true);
+    setQuestionNote(null);
+    try {
+      const stored = await answerHumanQuestion(humanQuestion.id, questionChoice);
+      setHumanQuestion(stored.status === 'OPEN' ? stored : null);
+      setQuestionNote(stored.status === 'ANSWERED' ? `Answered: ${stored.answer_json?.answer || questionChoice}` : null);
+      if (caseKey) {
+        const nextCase = await getAgentCase(caseKey);
+        setAgentCase(nextCase);
+      }
+    } catch (err) {
+      setQuestionNote(err instanceof Error ? err.message : 'Could not save that answer.');
+    } finally {
+      setQuestionBusy(false);
+    }
   }
 
   async function run() {
@@ -342,6 +438,71 @@ export default function Cb4DecisionPage() {
         <div className={styles.titleChrome}>
           <h1 className={headerStyles.h1}>CB4 recommendation</h1>
         </div>
+        {agentCase?.agent_state ? (
+          <p className={cb4.meta} style={{ marginBottom: 8 }}>
+            AskTill AI: {agentCase.agent_state === 'DETECTED' ? 'Detected' : agentCase.agent_state.replace(/_/g, ' ')}
+          </p>
+        ) : null}
+        {isAgentDevHelperEnabled() && caseKey ? (
+          <div className={cb4.actions} style={{ marginBottom: 12 }}>
+            <button
+              type="button"
+              className={cb4.optionBtn}
+              disabled={questionBusy}
+              onClick={() => void createTestQuestion()}
+            >
+              Create test question
+            </button>
+          </div>
+        ) : null}
+        {humanQuestion || questionNote ? (
+          <section className={cb4.helpCard}>
+            <div className={cb4.cardTitle}>AskTill needs your help</div>
+            {humanQuestion ? (
+              <>
+                <p className={cb4.lead} style={{ marginBottom: 8 }}>
+                  {humanQuestion.title}
+                </p>
+                <p className={cb4.meta}>{humanQuestion.question_text}</p>
+                {(humanQuestion.source_refs || humanQuestion.source_refs_json || []).length ? (
+                  <p className={cb4.meta}>
+                    Sources:{' '}
+                    {(humanQuestion.source_refs || humanQuestion.source_refs_json || [])
+                      .map((ref) =>
+                        typeof ref === 'string'
+                          ? ref
+                          : String(ref.label || ref.source_object_id || ref.source_system || 'source'),
+                      )
+                      .join(' · ')}
+                  </p>
+                ) : null}
+                <div className={cb4.actions}>
+                  {(humanQuestion.allowed_options || humanQuestion.allowed_options_json || []).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={questionChoice === option ? cb4.optionBtnSelected : cb4.optionBtn}
+                      onClick={() => setQuestionChoice(option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <div className={cb4.actions}>
+                  <button
+                    type="button"
+                    className={cb4.optionBtnSelected}
+                    disabled={!questionChoice || questionBusy}
+                    onClick={() => void submitHumanAnswer()}
+                  >
+                    {questionBusy ? 'Saving…' : 'Submit answer'}
+                  </button>
+                </div>
+              </>
+            ) : null}
+            {questionNote ? <p className={cb4.success}>{questionNote}</p> : null}
+          </section>
+        ) : null}
         <p className={cb4.lead}>
           AskTill recommends FIGHT, ACCEPT, or MANUAL_REVIEW. Stripe 3DS/AVS/CVC and Shopify match
           or tracking are filled from the case and cannot be marked VERIFIED by typing a source.
@@ -356,6 +517,10 @@ export default function Cb4DecisionPage() {
           <Link to="/dashboard/chargebacks/settings" className={cb4.policiesLink}>
             Decision settings
           </Link>
+          {' · '}
+          <Link to="/dashboard/chargebacks/attention" className={cb4.policiesLink}>
+            Attention queue
+          </Link>
           {caseKey ? (
             <>
               {' · '}
@@ -368,6 +533,103 @@ export default function Cb4DecisionPage() {
             </>
           ) : null}
         </p>
+        {customerIdentity || customerHistory || customerScore || result?.input_snapshot || row?.reason ? (
+          <section className={cb4.card}>
+            <div className={cb4.cardTitle}>Customer Context</div>
+            <div className={cb4.meta}>
+              Customer history is supporting context and does not replace evidence requirements.
+            </div>
+            <table className={cb4.reqTable}>
+              <tbody>
+                <tr>
+                  <th>Customer status</th>
+                  <td>
+                    {customerIdentity?.status === 'RESOLVED'
+                      ? 'Resolved'
+                      : customerIdentity?.status === 'UNKNOWN'
+                        ? 'Unknown'
+                        : customerIdentity?.status || '—'}
+                  </td>
+                </tr>
+                <tr>
+                  <th>Confidence</th>
+                  <td>{customerIdentity?.confidence ?? '—'}</td>
+                </tr>
+                <tr>
+                  <th>Prior successful orders</th>
+                  <td>
+                    {customerHistory?.insufficient_history
+                      ? 'Unknown'
+                      : (customerHistory?.facts?.successful_orders ?? 'Unknown')}
+                  </td>
+                </tr>
+                <tr>
+                  <th>Prior disputes</th>
+                  <td>
+                    {customerHistory?.insufficient_history
+                      ? 'Unknown'
+                      : (customerHistory?.facts?.previous_disputes ?? 'Unknown')}
+                  </td>
+                </tr>
+                <tr>
+                  <th>Prior refunds</th>
+                  <td>
+                    {customerHistory?.insufficient_history
+                      ? 'Unknown'
+                      : (customerHistory?.facts?.previous_refunds ?? 'Unknown')}
+                  </td>
+                </tr>
+                <tr>
+                  <th>History lookback window</th>
+                  <td>
+                    {customerHistory?.lookback_start && customerHistory?.lookback_end
+                      ? `${customerHistory.lookback_start.slice(0, 10)} → ${customerHistory.lookback_end.slice(0, 10)}`
+                      : '—'}
+                    {customerHistory?.lookback_months ? ` (${customerHistory.lookback_months} months)` : ''}
+                  </td>
+                </tr>
+                {customerScore || historySnap?.customer_history_score != null || historyInsufficient ? (
+                  <>
+                    <tr>
+                      <th>Customer History Score</th>
+                      <td>
+                        {historyInsufficient
+                          ? 'Insufficient history'
+                          : (customerScore?.score ?? historySnap?.customer_history_score ?? '—')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>Score band</th>
+                      <td>
+                        {historyInsufficient
+                          ? 'Insufficient history'
+                          : (customerScore?.band || historySnap?.customer_history_band || '—').replace(/_/g, ' ')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>Score components</th>
+                      <td>
+                        {historyInsufficient
+                          ? 'Insufficient history — not treated as a bad customer'
+                          : [
+                              `Relationship ${customerScore?.component_scores?.relationship_history ?? '—'}`,
+                              `Payments ${customerScore?.component_scores?.payment_history ?? '—'}`,
+                              `Fulfillment ${customerScore?.component_scores?.order_or_usage_consistency ?? '—'}`,
+                              `Identity ${customerScore?.component_scores?.identity_consistency ?? '—'}`,
+                              `Refunds/disputes ${customerScore?.component_scores?.refund_dispute_behavior ?? '—'}`,
+                            ].join(' · ')}
+                      </td>
+                    </tr>
+                  </>
+                ) : null}
+                <tr>
+                  <th>Customer history relevance</th>
+                  <td>{historyRelevance}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        ) : null}
         {row ? (
           <div className={cb4.meta} style={{ marginBottom: 14 }}>
             {money(row.amount, row.currency)} · {(row.reason || 'general').replace(/_/g, ' ')} · match{' '}

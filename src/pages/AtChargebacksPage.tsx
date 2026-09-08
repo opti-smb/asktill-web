@@ -79,7 +79,7 @@ export default function AtChargebacksPage() {
     try {
       const listedP = listDisputeCases()
         .then((rows) => {
-          if (rows.length > 0) applyCases(rows);
+          applyCases(rows);
         })
         .catch(() => undefined);
       const connP = getStripeConnection()

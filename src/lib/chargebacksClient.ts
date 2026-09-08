@@ -154,6 +154,177 @@ export function consumeStripeConnectReturn(): string | null {
   return next;
 }
 
+export type AgentCaseView = {
+  case_id: string;
+  merchant_id?: string;
+  agent_state?: string | null;
+  requires_human?: boolean;
+  current_task?: string | null;
+  workflow_execution_id?: string | null;
+  orchestration_enabled?: boolean;
+};
+
+export async function getAgentCase(caseId: string): Promise<AgentCaseView | null> {
+  const token = getToken()?.trim();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`/api/agent/cases/${encodeURIComponent(caseId)}`, { headers });
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  const body = (await res.json().catch(() => ({}))) as { case?: AgentCaseView };
+  return body.case || null;
+}
+
+export type CustomerIdentityView = {
+  status?: string | null;
+  confidence?: number | null;
+  customer_key?: string | null;
+  identity_source?: string | null;
+};
+
+export type CustomerHistoryView = {
+  snapshot_version?: string | null;
+  lookback_start?: string | null;
+  lookback_end?: string | null;
+  lookback_months?: number | null;
+  insufficient_history?: boolean;
+  facts?: {
+    successful_orders?: number;
+    previous_disputes?: number;
+    previous_refunds?: number;
+  };
+};
+
+export type CustomerScoreView = {
+  score?: number | null;
+  band?: string | null;
+  score_version?: string | null;
+  status?: string | null;
+  insufficient_history?: boolean;
+  created_at?: string | null;
+  snapshot_version?: string | null;
+  component_scores?: {
+    relationship_history?: number | null;
+    payment_history?: number | null;
+    order_or_usage_consistency?: number | null;
+    identity_consistency?: number | null;
+    refund_dispute_behavior?: number | null;
+  };
+};
+
+async function getAgentJson<T>(path: string): Promise<T | null> {
+  const token = getToken()?.trim();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(path, { headers });
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  return (await res.json().catch(() => ({}))) as T;
+}
+
+export async function getCustomerIdentity(caseId: string): Promise<CustomerIdentityView | null> {
+  const body = await getAgentJson<{ identity?: CustomerIdentityView | null }>(
+    `/api/agent/cases/${encodeURIComponent(caseId)}/customer-identity`,
+  );
+  return body?.identity || null;
+}
+
+export async function getCustomerHistory(caseId: string): Promise<CustomerHistoryView | null> {
+  const body = await getAgentJson<{ snapshot?: CustomerHistoryView | null }>(
+    `/api/agent/cases/${encodeURIComponent(caseId)}/customer-history`,
+  );
+  return body?.snapshot || null;
+}
+
+export async function getCustomerScore(caseId: string): Promise<CustomerScoreView | null> {
+  const body = await getAgentJson<{ score?: CustomerScoreView | null }>(
+    `/api/agent/cases/${encodeURIComponent(caseId)}/customer-score`,
+  );
+  return body?.score || null;
+}
+
+export type HumanQuestionView = {
+  id: string;
+  case_id?: string;
+  dispute_case_id?: string;
+  question_type?: string;
+  title?: string;
+  question_text?: string;
+  allowed_options?: string[];
+  allowed_options_json?: string[];
+  source_refs?: Array<string | { label?: string; source_object_id?: string; source_system?: string }>;
+  source_refs_json?: Array<string | { label?: string; source_object_id?: string; source_system?: string }>;
+  status?: string;
+  answer_json?: { answer?: string; user_role?: string } | null;
+  created_at?: string | null;
+};
+
+export async function getOpenHumanQuestions(): Promise<HumanQuestionView[]> {
+  const body = await getAgentJson<{ questions?: HumanQuestionView[] }>('/api/agent/human-questions/open');
+  return body?.questions || [];
+}
+
+export async function getCaseHumanQuestion(caseId: string): Promise<HumanQuestionView | null> {
+  const body = await getAgentJson<{ question?: HumanQuestionView | null }>(
+    `/api/agent/cases/${encodeURIComponent(caseId)}/human-question`,
+  );
+  return body?.question || null;
+}
+
+export async function answerHumanQuestion(questionId: string, answer: string): Promise<HumanQuestionView> {
+  const token = getToken()?.trim();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`/api/agent/human-questions/${encodeURIComponent(questionId)}/answer`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ answer, user_role: 'merchant' }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { question?: HumanQuestionView; detail?: string };
+  if (!res.ok) {
+    const err = new Error(body.detail || `Could not save answer (${res.status})`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return body.question as HumanQuestionView;
+}
+
+export type DevOrderMatchQuestion = {
+  question_id: string;
+  case_id: string;
+  question_type: string;
+  status: string;
+  reused: boolean;
+  agent_state: string;
+  requires_human: boolean;
+};
+
+export function isAgentDevHelperEnabled(): boolean {
+  const flag = String(import.meta.env.VITE_AGENT_DEV_HELPERS || '').trim().toLowerCase();
+  if (flag === '0' || flag === 'false' || flag === 'off' || flag === 'no') return false;
+  if (flag === '1' || flag === 'true' || flag === 'yes' || flag === 'on') return true;
+  return Boolean(import.meta.env.DEV);
+}
+
+export async function createDevOrderMatchQuestion(caseId: string): Promise<DevOrderMatchQuestion> {
+  const token = getToken()?.trim();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `/api/agent/cases/${encodeURIComponent(caseId)}/human-questions/dev-create-order-match`,
+    { method: 'POST', headers },
+  );
+  const body = (await res.json().catch(() => ({}))) as DevOrderMatchQuestion & { detail?: string };
+  if (!res.ok) {
+    const err = new Error(body.detail || `Could not create test question (${res.status})`) as Error & {
+      status?: number;
+    };
+    err.status = res.status;
+    throw err;
+  }
+  return body;
+}
+
 async function chargebacksJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken()?.trim();
   const headers = new Headers(init.headers);
@@ -238,8 +409,12 @@ export function readCachedDisputeCases(userId?: string | null): DisputeCaseRow[]
 
 export function writeCachedDisputeCases(userId: string | null | undefined, rows: DisputeCaseRow[]): void {
   const id = (userId || '').trim();
-  if (!id || rows.length === 0) return;
+  if (!id) return;
   try {
+    if (rows.length === 0) {
+      sessionStorage.removeItem(CASES_CACHE_PREFIX + id);
+      return;
+    }
     sessionStorage.setItem(CASES_CACHE_PREFIX + id, JSON.stringify(rows));
   } catch {
     /* ignore quota */
@@ -511,9 +686,27 @@ export type Cb4Recommendation = {
   recommendation_reason_codes: string[];
   ruleset_version: string;
   final_decision: string;
+  input_snapshot?: {
+    customer_history_score?: number | null;
+    customer_history_band?: string | null;
+    customer_history_score_version?: string | null;
+    customer_history_component_scores?: Record<string, unknown> | null;
+    customer_history_insufficient?: boolean;
+    customer_history_relevance?: string | null;
+    customer_history_status?: string | null;
+  } | null;
   evidence?: Cb4EvidenceReadiness | null;
   economics?: Cb4Economics | null;
 };
+
+export function customerHistoryRelevance(reasonCode?: string | null): 'HIGH' | 'MEDIUM' | 'LOW' {
+  const reason = (reasonCode || '').trim().toLowerCase();
+  if (['fraud', 'fraudulent', 'unrecognized', 'card_not_present', 'cnp'].includes(reason)) return 'HIGH';
+  if (['duplicate', 'subscription', 'subscription_canceled', 'credit_not_processed'].includes(reason)) {
+    return 'MEDIUM';
+  }
+  return 'LOW';
+}
 
 export async function listCb4ReasonPolicies(): Promise<Cb4ReasonPolicy[]> {
   return chargebacksJson<Cb4ReasonPolicy[]>('/api/cb4/reason-policies');

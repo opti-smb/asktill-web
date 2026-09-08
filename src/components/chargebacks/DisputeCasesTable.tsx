@@ -53,10 +53,6 @@ function gateNote(row: DisputeCaseRow): string | null {
   return null;
 }
 
-function isManualReview(row: DisputeCaseRow): boolean {
-  return (row.decision_recommendation || '').trim().toLowerCase().replace(/\s+/g, '_') === 'manual_review';
-}
-
 export default function DisputeCasesTable({
   cases,
   loading = false,
@@ -132,7 +128,15 @@ export default function DisputeCasesTable({
                   (row.shopify_order_number ? `#${row.shopify_order_number}` : null);
                 return (
                   <tr key={row.case_id}>
-                    <td className={styles.amount}>{money(row.amount, row.currency)}</td>
+                    <td className={styles.amount}>
+                      <Link
+                        to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}`}
+                        className={styles.reviewLink}
+                        title="Open recommendation"
+                      >
+                        {money(row.amount, row.currency)}
+                      </Link>
+                    </td>
                     <td>{reasonLabel(row.reason || undefined)}</td>
                     <td>
                       <div className={styles.primary}>{shortId(row.stripe_dispute_id)}</div>
@@ -155,27 +159,23 @@ export default function DisputeCasesTable({
                       <div className={styles.meta}>{pretty(row.match_method, '')}</div>
                     </td>
                     <td>
-                      {isManualReview(row) ? (
-                        <div>
+                      <div>
+                        <Link
+                          to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}`}
+                          className={styles.reviewLink}
+                          title="Open recommendation"
+                        >
+                          {pretty(row.decision_recommendation, 'Review')}
+                        </Link>
+                        <div className={styles.meta}>
                           <Link
                             to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}`}
                             className={styles.reviewLink}
-                            title="Open CB4 recommendation form"
                           >
-                            {pretty(row.decision_recommendation)}
+                            Open case
                           </Link>
-                          <div className={styles.meta}>
-                            <Link
-                              to={`/dashboard/chargebacks/decision/${encodeURIComponent(row.case_id)}/evidence`}
-                              className={styles.reviewLink}
-                            >
-                              Evidence
-                            </Link>
-                          </div>
                         </div>
-                      ) : (
-                        <div className={styles.primary}>{pretty(row.decision_recommendation, '—')}</div>
-                      )}
+                      </div>
                     </td>
                     <td>
                       {locked ? (
