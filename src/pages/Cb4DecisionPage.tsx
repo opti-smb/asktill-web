@@ -154,10 +154,7 @@ function money(amount?: number | null, currency?: string | null): string {
   }
 }
 
-function isFirstTimeCustomer(
-  identity: CustomerIdentityView | null,
-  history: CustomerHistoryView | null,
-): boolean {
+function isFirstTimeCustomer(history: CustomerHistoryView | null): boolean {
   if (history?.first_time_customer || history?.insufficient_history) return true;
   const facts = history?.facts || {};
   return !((facts.successful_orders || 0) > 0 || (facts.previous_disputes || 0) > 0 || (facts.previous_refunds || 0) > 0);
@@ -345,7 +342,7 @@ export default function Cb4DecisionPage() {
   );
 
   const historySnap = result?.input_snapshot;
-  const firstTimeCustomer = isFirstTimeCustomer(customerIdentity, customerHistory);
+  const firstTimeCustomer = isFirstTimeCustomer(customerHistory);
   const historyInsufficient = Boolean(
     firstTimeCustomer ||
       customerScore?.insufficient_history ||
