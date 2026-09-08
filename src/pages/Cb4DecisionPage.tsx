@@ -195,6 +195,7 @@ export default function Cb4DecisionPage() {
   const [customerIdentity, setCustomerIdentity] = useState<CustomerIdentityView | null>(null);
   const [customerHistory, setCustomerHistory] = useState<CustomerHistoryView | null>(null);
   const [customerScore, setCustomerScore] = useState<CustomerScoreView | null>(null);
+  const [customerContextLoading, setCustomerContextLoading] = useState(false);
   const [humanQuestion, setHumanQuestion] = useState<HumanQuestionView | null>(null);
   const [questionChoice, setQuestionChoice] = useState('');
   const [questionBusy, setQuestionBusy] = useState(false);
@@ -208,6 +209,7 @@ export default function Cb4DecisionPage() {
     let cancelled = false;
     void (async () => {
       setLoadingChecklist(true);
+      setCustomerContextLoading(Boolean(caseKey));
       setError(null);
       try {
         const policies = await listCb4ReasonPolicies();
@@ -283,35 +285,28 @@ export default function Cb4DecisionPage() {
             if (found) setRow(found);
           })
           .catch(() => undefined);
-        void getAgentCase(caseKey)
-          .then((next) => {
-            if (!cancelled) setAgentCase(next);
-          })
-          .catch(() => undefined);
-        void getCustomerIdentity(caseKey)
-          .then((next) => {
-            if (!cancelled) setCustomerIdentity(next);
-          })
-          .catch(() => undefined);
-        void getCustomerHistory(caseKey)
-          .then((next) => {
-            if (!cancelled) setCustomerHistory(next);
-          })
-          .catch(() => undefined);
-        void getCustomerScore(caseKey)
-          .then((next) => {
-            if (!cancelled) setCustomerScore(next);
-          })
-          .catch(() => undefined);
-        void getCaseHumanQuestion(caseKey)
-          .then((next) => {
-            if (!cancelled) setHumanQuestion(next);
-          })
-          .catch(() => undefined);
+        setCustomerContextLoading(true);
+        const [identity, history, score, nextAgent, question] = await Promise.all([
+          getCustomerIdentity(caseKey).catch(() => null),
+          getCustomerHistory(caseKey).catch(() => null),
+          getCustomerScore(caseKey).catch(() => null),
+          getAgentCase(caseKey).catch(() => null),
+          getCaseHumanQuestion(caseKey).catch(() => null),
+        ]);
+        if (!cancelled) {
+          setCustomerIdentity(identity);
+          setCustomerHistory(history);
+          setCustomerScore(score);
+          setAgentCase(nextAgent);
+          setHumanQuestion(question);
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load CB4 decision.');
       } finally {
-        if (!cancelled) setLoadingChecklist(false);
+        if (!cancelled) {
+          setLoadingChecklist(false);
+          setCustomerContextLoading(false);
+        }
       }
     })();
     return () => {
@@ -560,69 +555,101 @@ export default function Cb4DecisionPage() {
           <section className={cb4.card}>
             <div className={cb4.cardTitle}>Customer Context</div>
             <div className={cb4.meta}>
-              Customer history is supporting context and does not replace evidence requirements.
+              {customerContextLoading
+                ? 'Fetching Stripe and Shopify customer history…'
+                : 'Customer history is supporting context and does not replace evidence requirements.'}
             </div>
             <table className={cb4.reqTable}>
               <tbody>
                 <tr>
                   <th>Customer status</th>
-                  <td>{customerStatusLabel(customerIdentity, firstTimeCustomer)}</td>
+                  <td>
+                    {customerContextLoading
+                      ? 'Fetching…'
+                      : customerStatusLabel(customerIdentity, firstTimeCustomer)}
+                  </td>
                 </tr>
                 <tr>
                   <th>Confidence</th>
-                  <td>{customerIdentity?.confidence ?? (firstTimeCustomer ? 0 : '—')}</td>
+                  <td>
+                    {customerContextLoading
+                      ? 'Fetching…'
+                      : (customerIdentity?.confidence ?? (firstTimeCustomer ? 0 : '—'))}
+                  </td>
                 </tr>
                 <tr>
                   <th>Prior successful orders</th>
-                  <td>{historyCountLabel(customerHistory?.facts?.successful_orders, firstTimeCustomer)}</td>
+                  <td>
+                    {customerContextLoading
+                      ? 'Fetching…'
+                      : historyCountLabel(customerHistory?.facts?.successful_orders, firstTimeCustomer)}
+                  </td>
                 </tr>
                 <tr>
                   <th>Prior disputes</th>
-                  <td>{historyCountLabel(customerHistory?.facts?.previous_disputes, firstTimeCustomer)}</td>
+                  <td>
+                    {customerContextLoading
+                      ? 'Fetching…'
+                      : historyCountLabel(customerHistory?.facts?.previous_disputes, firstTimeCustomer)}
+                  </td>
                 </tr>
                 <tr>
                   <th>Prior refunds</th>
-                  <td>{historyCountLabel(customerHistory?.facts?.previous_refunds, firstTimeCustomer)}</td>
+                  <td>
+                    {customerContextLoading
+                      ? 'Fetching…'
+                      : historyCountLabel(customerHistory?.facts?.previous_refunds, firstTimeCustomer)}
+                  </td>
                 </tr>
                 <tr>
                   <th>History lookback window</th>
                   <td>
-                    {customerHistory?.lookback_start && customerHistory?.lookback_end
-                      ? `${customerHistory.lookback_start.slice(0, 10)} → ${customerHistory.lookback_end.slice(0, 10)}`
-                      : 'Last 12 months from today'}
-                    {customerHistory?.lookback_months ? ` (${customerHistory.lookback_months} months)` : ''}
+                    {customerContextLoading
+                      ? 'Fetching…'
+                      : customerHistory?.lookback_start && customerHistory?.lookback_end
+                        ? `${customerHistory.lookback_start.slice(0, 10)} → ${customerHistory.lookback_end.slice(0, 10)}`
+                        : 'Last 12 months from today'}
+                    {!customerContextLoading && customerHistory?.lookback_months
+                      ? ` (${customerHistory.lookback_months} months)`
+                      : ''}
                   </td>
                 </tr>
-                {customerScore || historySnap?.customer_history_score != null || historyInsufficient ? (
+                {customerContextLoading || customerScore || historySnap?.customer_history_score != null || historyInsufficient ? (
                   <>
                     <tr>
                       <th>Customer History Score</th>
                       <td>
-                        {historyInsufficient
-                          ? 'First time'
-                          : (customerScore?.score ?? historySnap?.customer_history_score ?? '—')}
+                        {customerContextLoading
+                          ? 'Fetching…'
+                          : historyInsufficient
+                            ? 'First time'
+                            : (customerScore?.score ?? historySnap?.customer_history_score ?? '—')}
                       </td>
                     </tr>
                     <tr>
                       <th>Score band</th>
                       <td>
-                        {historyInsufficient
-                          ? 'First time'
-                          : (customerScore?.band || historySnap?.customer_history_band || '—').replace(/_/g, ' ')}
+                        {customerContextLoading
+                          ? 'Fetching…'
+                          : historyInsufficient
+                            ? 'First time'
+                            : (customerScore?.band || historySnap?.customer_history_band || '—').replace(/_/g, ' ')}
                       </td>
                     </tr>
                     <tr>
                       <th>Score components</th>
                       <td>
-                        {historyInsufficient
-                          ? 'First time — not treated as a bad customer'
-                          : [
-                              `Relationship ${customerScore?.component_scores?.relationship_history ?? '—'}`,
-                              `Payments ${customerScore?.component_scores?.payment_history ?? '—'}`,
-                              `Fulfillment ${customerScore?.component_scores?.order_or_usage_consistency ?? '—'}`,
-                              `Identity ${customerScore?.component_scores?.identity_consistency ?? '—'}`,
-                              `Refunds/disputes ${customerScore?.component_scores?.refund_dispute_behavior ?? '—'}`,
-                            ].join(' · ')}
+                        {customerContextLoading
+                          ? 'Fetching…'
+                          : historyInsufficient
+                            ? 'First time — not treated as a bad customer'
+                            : [
+                                `Relationship ${customerScore?.component_scores?.relationship_history ?? '—'}`,
+                                `Payments ${customerScore?.component_scores?.payment_history ?? '—'}`,
+                                `Fulfillment ${customerScore?.component_scores?.order_or_usage_consistency ?? '—'}`,
+                                `Identity ${customerScore?.component_scores?.identity_consistency ?? '—'}`,
+                                `Refunds/disputes ${customerScore?.component_scores?.refund_dispute_behavior ?? '—'}`,
+                              ].join(' · ')}
                       </td>
                     </tr>
                   </>
