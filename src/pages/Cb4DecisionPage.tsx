@@ -154,6 +154,30 @@ function money(amount?: number | null, currency?: string | null): string {
   }
 }
 
+function isFirstTimeCustomer(
+  identity: CustomerIdentityView | null,
+  history: CustomerHistoryView | null,
+): boolean {
+  if (history?.first_time_customer || history?.insufficient_history) return true;
+  const facts = history?.facts || {};
+  return !((facts.successful_orders || 0) > 0 || (facts.previous_disputes || 0) > 0 || (facts.previous_refunds || 0) > 0);
+}
+
+function customerStatusLabel(
+  identity: CustomerIdentityView | null,
+  firstTime: boolean,
+): string {
+  if (identity?.status === 'CONFLICTING') return 'Conflicting';
+  if (firstTime) return 'First time';
+  if (identity?.status === 'RESOLVED') return 'Returning';
+  return identity?.status || 'First time';
+}
+
+function historyCountLabel(value: number | undefined, firstTime: boolean): string {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return firstTime ? 'First time' : '0';
+}
+
 export default function Cb4DecisionPage() {
   const { caseId = '' } = useParams();
   const caseKey = caseId.trim();
@@ -321,8 +345,10 @@ export default function Cb4DecisionPage() {
   );
 
   const historySnap = result?.input_snapshot;
+  const firstTimeCustomer = isFirstTimeCustomer(customerIdentity, customerHistory);
   const historyInsufficient = Boolean(
-    customerScore?.insufficient_history ||
+    firstTimeCustomer ||
+      customerScore?.insufficient_history ||
       customerScore?.status === 'INSUFFICIENT_HISTORY' ||
       historySnap?.customer_history_insufficient ||
       historySnap?.customer_history_status === 'INSUFFICIENT_HISTORY',
@@ -533,7 +559,7 @@ export default function Cb4DecisionPage() {
             </>
           ) : null}
         </p>
-        {customerIdentity || customerHistory || customerScore || result?.input_snapshot || row?.reason ? (
+        {caseKey ? (
           <section className={cb4.card}>
             <div className={cb4.cardTitle}>Customer Context</div>
             <div className={cb4.meta}>
@@ -543,48 +569,30 @@ export default function Cb4DecisionPage() {
               <tbody>
                 <tr>
                   <th>Customer status</th>
-                  <td>
-                    {customerIdentity?.status === 'RESOLVED'
-                      ? 'Resolved'
-                      : customerIdentity?.status === 'UNKNOWN'
-                        ? 'Unknown'
-                        : customerIdentity?.status || '—'}
-                  </td>
+                  <td>{customerStatusLabel(customerIdentity, firstTimeCustomer)}</td>
                 </tr>
                 <tr>
                   <th>Confidence</th>
-                  <td>{customerIdentity?.confidence ?? '—'}</td>
+                  <td>{customerIdentity?.confidence ?? (firstTimeCustomer ? 0 : '—')}</td>
                 </tr>
                 <tr>
                   <th>Prior successful orders</th>
-                  <td>
-                    {customerHistory?.insufficient_history
-                      ? 'Unknown'
-                      : (customerHistory?.facts?.successful_orders ?? 'Unknown')}
-                  </td>
+                  <td>{historyCountLabel(customerHistory?.facts?.successful_orders, firstTimeCustomer)}</td>
                 </tr>
                 <tr>
                   <th>Prior disputes</th>
-                  <td>
-                    {customerHistory?.insufficient_history
-                      ? 'Unknown'
-                      : (customerHistory?.facts?.previous_disputes ?? 'Unknown')}
-                  </td>
+                  <td>{historyCountLabel(customerHistory?.facts?.previous_disputes, firstTimeCustomer)}</td>
                 </tr>
                 <tr>
                   <th>Prior refunds</th>
-                  <td>
-                    {customerHistory?.insufficient_history
-                      ? 'Unknown'
-                      : (customerHistory?.facts?.previous_refunds ?? 'Unknown')}
-                  </td>
+                  <td>{historyCountLabel(customerHistory?.facts?.previous_refunds, firstTimeCustomer)}</td>
                 </tr>
                 <tr>
                   <th>History lookback window</th>
                   <td>
                     {customerHistory?.lookback_start && customerHistory?.lookback_end
                       ? `${customerHistory.lookback_start.slice(0, 10)} → ${customerHistory.lookback_end.slice(0, 10)}`
-                      : '—'}
+                      : 'Last 12 months from today'}
                     {customerHistory?.lookback_months ? ` (${customerHistory.lookback_months} months)` : ''}
                   </td>
                 </tr>
@@ -594,7 +602,7 @@ export default function Cb4DecisionPage() {
                       <th>Customer History Score</th>
                       <td>
                         {historyInsufficient
-                          ? 'Insufficient history'
+                          ? 'First time'
                           : (customerScore?.score ?? historySnap?.customer_history_score ?? '—')}
                       </td>
                     </tr>
@@ -602,7 +610,7 @@ export default function Cb4DecisionPage() {
                       <th>Score band</th>
                       <td>
                         {historyInsufficient
-                          ? 'Insufficient history'
+                          ? 'First time'
                           : (customerScore?.band || historySnap?.customer_history_band || '—').replace(/_/g, ' ')}
                       </td>
                     </tr>
@@ -610,7 +618,7 @@ export default function Cb4DecisionPage() {
                       <th>Score components</th>
                       <td>
                         {historyInsufficient
-                          ? 'Insufficient history — not treated as a bad customer'
+                          ? 'First time — not treated as a bad customer'
                           : [
                               `Relationship ${customerScore?.component_scores?.relationship_history ?? '—'}`,
                               `Payments ${customerScore?.component_scores?.payment_history ?? '—'}`,
