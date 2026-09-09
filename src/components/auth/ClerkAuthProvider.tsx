@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import {
   CLERK_OAUTH_COMPLETE_PATH,
+  clerkAllowedRedirectOrigins,
   getClerkPublishableKey,
 } from '../../lib/clerk';
 import ClerkSessionSync from './ClerkSessionSync';
@@ -24,6 +25,7 @@ export default function ClerkAuthProvider({
       publishableKey={key}
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
+      allowedRedirectOrigins={clerkAllowedRedirectOrigins()}
       signInUrl="/login"
       signUpUrl="/register"
       signInFallbackRedirectUrl={CLERK_OAUTH_COMPLETE_PATH}

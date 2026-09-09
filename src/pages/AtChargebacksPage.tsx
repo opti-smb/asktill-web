@@ -79,6 +79,10 @@ export default function AtChargebacksPage() {
     try {
       const listedP = listDisputeCases()
         .then((rows) => {
+          if (!rows.length) {
+            const cached = readCachedDisputeCases(userId);
+            if (cached.length) return;
+          }
           applyCases(rows);
         })
         .catch(() => undefined);
