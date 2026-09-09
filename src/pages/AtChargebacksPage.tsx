@@ -75,14 +75,12 @@ export default function AtChargebacksPage() {
   }, [userId]);
 
   const refreshDisputes = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!userId) return;
     if (!opts?.quiet) setLoading(true);
     try {
       const listedP = listDisputeCases()
         .then((rows) => {
-          if (!rows.length) {
-            const cached = readCachedDisputeCases(userId);
-            if (cached.length) return;
-          }
+          if (!rows.length) return;
           applyCases(rows);
         })
         .catch(() => undefined);
@@ -95,7 +93,7 @@ export default function AtChargebacksPage() {
     } finally {
       if (!opts?.quiet) setLoading(false);
     }
-  }, [applyCases]);
+  }, [applyCases, userId]);
 
   useEffect(() => {
     void refreshDisputes();
