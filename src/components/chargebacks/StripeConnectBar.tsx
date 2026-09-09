@@ -10,6 +10,7 @@ import {
   type StripeConnectionView,
 } from '../../lib/chargebacksClient';
 import ConnectLiveMonitor from './ConnectLiveMonitor';
+import bar from './ConnectBar.module.css';
 
 const SLOW_POLL_MS = 8000;
 const BURST_POLL_MS = 3000;
@@ -146,19 +147,11 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
   }
 
   return (
-    <section
-      style={{
-        background: '#fff',
-        border: '1px solid #E5EAF2',
-        borderRadius: 12,
-        padding: '14px 16px',
-        marginBottom: 14,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 13, fontWeight: 750, color: '#0F172A' }}>Stripe</div>
-          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+    <section className={bar.card}>
+      <div className={bar.row}>
+        <div className={bar.brand}>
+          <div className={bar.title}>Stripe</div>
+          <div className={bar.meta}>
             {!ready
               ? 'Chargebacks API is not running.'
               : connected
@@ -170,49 +163,30 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
         </div>
         {connected ? (
           <>
-            <ConnectLiveMonitor
-              stamps={[
-                { label: 'Stripe connected', at: connection.connected_at },
-                { label: 'Last pay', at: connection.last_pay_at },
-                { label: 'Dispute raised', at: connection.last_dispute_at },
-              ]}
-            />
+            <div className={bar.monitor}>
+              <ConnectLiveMonitor
+                stamps={[
+                  { label: 'Connected', at: connection.connected_at },
+                  { label: 'Last pay', at: connection.last_pay_at },
+                  { label: 'Dispute raised', at: connection.last_dispute_at },
+                ]}
+              />
+            </div>
             <button
               type="button"
+              className={bar.primary}
               onClick={() => navigate('/dashboard/chargebacks/pay')}
               disabled={busy}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                border: 0,
-                background: '#2F5BD8',
-                color: '#fff',
-                borderRadius: 8,
-                padding: '8px 12px',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: busy ? 'wait' : 'pointer',
-              }}
+              style={{ cursor: busy ? 'wait' : 'pointer' }}
             >
               <CreditCard size={14} /> Pay
             </button>
             <button
               type="button"
+              className={bar.ghost}
               onClick={() => void onDisconnect()}
               disabled={busy}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                border: '1px solid #E5EAF2',
-                background: '#F4F6F9',
-                borderRadius: 8,
-                padding: '8px 12px',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: busy ? 'wait' : 'pointer',
-              }}
+              style={{ cursor: busy ? 'wait' : 'pointer' }}
             >
               <Unlink size={14} /> {busy ? 'Disconnecting…' : 'Disconnect'}
             </button>
@@ -220,32 +194,16 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
         ) : (
           <button
             type="button"
+            className={`${bar.connect} ${bar.connectEnd}`}
             onClick={() => void onConnect()}
             disabled={busy || !ready}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              border: 0,
-              background: '#2F5BD8',
-              color: '#fff',
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: busy || !ready ? 'not-allowed' : 'pointer',
-            }}
           >
             <Link2 size={14} /> {busy ? 'Connecting…' : 'Connect'}
           </button>
         )}
       </div>
-      {notice && !error ? (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: '#0F8A57' }}>{notice}</p>
-      ) : null}
-      {error ? (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: '#C43C3C' }}>{error}</p>
-      ) : null}
+      {notice && !error ? <p className={bar.notice}>{notice}</p> : null}
+      {error ? <p className={bar.error}>{error}</p> : null}
     </section>
   );
 }

@@ -25,14 +25,12 @@ export default function ConnectLiveMonitor({ stamps }: { stamps: LiveStamp[] }) 
         <span className={styles.dot} aria-hidden />
         Live
       </span>
-      <div className={styles.stamps}>
-        {stamps.map((stamp) => (
-          <div key={stamp.label} className={styles.item}>
-            <span className={styles.label}>{stamp.label}</span>
-            <span className={styles.value}>{formatStamp(stamp.at)}</span>
-          </div>
-        ))}
-      </div>
+      {stamps.map((stamp) => (
+        <div key={stamp.label} className={styles.item}>
+          <span className={styles.label}>{stamp.label}</span>
+          <span className={styles.value}>{formatStamp(stamp.at)}</span>
+        </div>
+      ))}
     </div>
   );
 }
