@@ -8,7 +8,9 @@ export type StripeConnectionView = {
   environment: string;
   status: string;
   scope?: string;
-  connected_at?: string;
+  connected_at?: string | null;
+  last_pay_at?: string | null;
+  last_dispute_at?: string | null;
 };
 
 export type ChargebacksConnectionResponse = {
@@ -124,7 +126,8 @@ export type ShopifyConnectionView = {
   environment: string;
   status: string;
   scope?: string;
-  connected_at?: string;
+  connected_at?: string | null;
+  last_order_at?: string | null;
 };
 
 export type ShopifyConnectionResponse = {
@@ -240,25 +243,58 @@ async function getAgentJson<T>(path: string): Promise<T | null> {
   return (await res.json().catch(() => ({}))) as T;
 }
 
+export async function getCustomerContext(caseId: string): Promise<{
+  identity: CustomerIdentityView | null;
+  history: CustomerHistoryView | null;
+  score: CustomerScoreView | null;
+}> {
+  try {
+    const body = await chargebacksJson<{
+      identity?: CustomerIdentityView | null;
+      snapshot?: CustomerHistoryView | null;
+      score?: CustomerScoreView | null;
+    }>(`/integrations/stripe/cases/${encodeURIComponent(caseId)}/customer-context`);
+    if (body?.identity || body?.snapshot || body?.score) {
+      return {
+        identity: body.identity || null,
+        history: body.snapshot || null,
+        score: body.score || null,
+      };
+    }
+  } catch {
+    /* Backend AgentCase may still have it. */
+  }
+  const [identity, history, score] = await Promise.all([
+    getAgentJson<{ identity?: CustomerIdentityView | null }>(
+      `/api/agent/cases/${encodeURIComponent(caseId)}/customer-identity`,
+    ),
+    getAgentJson<{ snapshot?: CustomerHistoryView | null }>(
+      `/api/agent/cases/${encodeURIComponent(caseId)}/customer-history`,
+    ),
+    getAgentJson<{ score?: CustomerScoreView | null }>(
+      `/api/agent/cases/${encodeURIComponent(caseId)}/customer-score`,
+    ),
+  ]);
+  return {
+    identity: identity?.identity || null,
+    history: history?.snapshot || null,
+    score: score?.score || null,
+  };
+}
+
 export async function getCustomerIdentity(caseId: string): Promise<CustomerIdentityView | null> {
-  const body = await getAgentJson<{ identity?: CustomerIdentityView | null }>(
-    `/api/agent/cases/${encodeURIComponent(caseId)}/customer-identity`,
-  );
-  return body?.identity || null;
+  const body = await getCustomerContext(caseId);
+  return body.identity;
 }
 
 export async function getCustomerHistory(caseId: string): Promise<CustomerHistoryView | null> {
-  const body = await getAgentJson<{ snapshot?: CustomerHistoryView | null }>(
-    `/api/agent/cases/${encodeURIComponent(caseId)}/customer-history`,
-  );
-  return body?.snapshot || null;
+  const body = await getCustomerContext(caseId);
+  return body.history;
 }
 
 export async function getCustomerScore(caseId: string): Promise<CustomerScoreView | null> {
-  const body = await getAgentJson<{ score?: CustomerScoreView | null }>(
-    `/api/agent/cases/${encodeURIComponent(caseId)}/customer-score`,
-  );
-  return body?.score || null;
+  const body = await getCustomerContext(caseId);
+  return body.score;
 }
 
 export type HumanQuestionView = {

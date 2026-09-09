@@ -5,32 +5,52 @@ import {
   connectShopify,
   disconnectShopify,
   getShopifyConnection,
+  getStripeConnection,
   readCachedShopifyConnection,
+  readCachedStripeConnection,
   writeCachedShopifyConnection,
   type ShopifyConnectionView,
 } from '../../lib/chargebacksClient';
+import ConnectLiveMonitor from './ConnectLiveMonitor';
+
+const SLOW_POLL_MS = 8000;
+const BURST_POLL_MS = 3000;
+const BURST_FOR_MS = 90_000;
 
 export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => void }) {
   const navigate = useNavigate();
   const cached = readCachedShopifyConnection();
+  const stripeCached = readCachedStripeConnection();
   const [ready, setReady] = useState(Boolean(cached?.connection));
   const [status, setStatus] = useState(cached?.status || 'disconnected');
   const [connection, setConnection] = useState<ShopifyConnectionView | null>(cached?.connection ?? null);
+  const [lastDisputeAt, setLastDisputeAt] = useState<string | null>(stripeCached?.connection?.last_dispute_at ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const onChangedRef = useRef(onChanged);
   onChangedRef.current = onChanged;
   const inFlight = useRef(false);
+  const burstUntil = useRef(0);
+  const lastOrder = useRef(cached?.connection?.last_order_at || '');
+  const lastDispute = useRef(stripeCached?.connection?.last_dispute_at || '');
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const body = await getShopifyConnection();
+      const [shop, stripe] = await Promise.all([getShopifyConnection(), getStripeConnection().catch(() => null)]);
       setReady(true);
-      setStatus(body.status || 'disconnected');
-      setConnection(body.connection);
-      writeCachedShopifyConnection(body);
+      setStatus(shop.status || 'disconnected');
+      setConnection(shop.connection);
+      writeCachedShopifyConnection(shop);
+      const dispute = stripe?.connection?.last_dispute_at || null;
+      setLastDisputeAt(dispute);
+      const order = shop.connection?.last_order_at || '';
+      if (order !== lastOrder.current || (dispute || '') !== lastDispute.current) {
+        lastOrder.current = order;
+        lastDispute.current = dispute || '';
+        onChangedRef.current?.();
+      }
     } catch (err) {
       writeCachedShopifyConnection(null);
       setReady(true);
@@ -42,6 +62,7 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
 
   useEffect(() => {
     const pay = new URLSearchParams(window.location.search).get('pay');
+    if (pay === 'success') burstUntil.current = Date.now() + BURST_FOR_MS;
     void refresh();
     if (pay === 'success') {
       window.setTimeout(() => {
@@ -50,6 +71,27 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
       }, 2000);
     }
   }, [refresh]);
+
+  const connected = status === 'active' && connection;
+
+  useEffect(() => {
+    if (!connected) return;
+    let timer = 0;
+    let stopped = false;
+    const loop = () => {
+      const delay = Date.now() < burstUntil.current ? BURST_POLL_MS : SLOW_POLL_MS;
+      timer = window.setTimeout(async () => {
+        if (stopped) return;
+        await refresh();
+        if (!stopped) loop();
+      }, delay);
+    };
+    loop();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [connected, refresh]);
 
   async function onConnect() {
     if (inFlight.current || busy || !ready) return;
@@ -93,8 +135,6 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
     }
   }
 
-  const connected = status === 'active' && connection;
-
   return (
     <section
       style={{
@@ -120,6 +160,13 @@ export default function ShopifyConnectBar({ onChanged }: { onChanged?: () => voi
         </div>
         {connected ? (
           <>
+            <ConnectLiveMonitor
+              stamps={[
+                { label: 'Shopify connected', at: connection.connected_at },
+                { label: 'Last order', at: connection.last_order_at },
+                { label: 'Dispute raised', at: lastDisputeAt },
+              ]}
+            />
             <button
               type="button"
               onClick={() => navigate('/dashboard/chargebacks/orders')}

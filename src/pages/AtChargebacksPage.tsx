@@ -74,8 +74,8 @@ export default function AtChargebacksPage() {
     setDisputes((prev) => (prev.length ? prev : cached.map(caseToDispute)));
   }, [userId]);
 
-  const refreshDisputes = useCallback(async () => {
-    setLoading(true);
+  const refreshDisputes = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setLoading(true);
     try {
       const listedP = listDisputeCases()
         .then((rows) => {
@@ -89,12 +89,32 @@ export default function AtChargebacksPage() {
         .catch(() => undefined);
       await Promise.all([listedP, connP]);
     } finally {
-      setLoading(false);
+      if (!opts?.quiet) setLoading(false);
     }
   }, [applyCases]);
 
   useEffect(() => {
     void refreshDisputes();
+  }, [refreshDisputes]);
+
+  useEffect(() => {
+    const pay = new URLSearchParams(window.location.search).get('pay');
+    const burstUntil = pay === 'success' ? Date.now() + 90_000 : 0;
+    let timer = 0;
+    let stopped = false;
+    const loop = () => {
+      const delay = Date.now() < burstUntil ? 3000 : 8000;
+      timer = window.setTimeout(async () => {
+        if (stopped) return;
+        await refreshDisputes({ quiet: true });
+        if (!stopped) loop();
+      }, delay);
+    };
+    loop();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
   }, [refreshDisputes]);
 
   return (
@@ -111,8 +131,8 @@ export default function AtChargebacksPage() {
             </div>
           </div>
           <div className={styles.scrollViewport}>
-            <StripeConnectBar onChanged={() => void refreshDisputes()} />
-            <ShopifyConnectBar onChanged={() => void refreshDisputes()} />
+            <StripeConnectBar onChanged={() => void refreshDisputes({ quiet: true })} />
+            <ShopifyConnectBar onChanged={() => void refreshDisputes({ quiet: true })} />
             <DisputeCasesTable cases={cases} loading={loading} onChanged={patchCase} />
             <ChargebacksApp userName={name} disputes={disputes} connected={connected} loading={loading} />
           </div>

@@ -9,6 +9,11 @@ import {
   writeCachedStripeConnection,
   type StripeConnectionView,
 } from '../../lib/chargebacksClient';
+import ConnectLiveMonitor from './ConnectLiveMonitor';
+
+const SLOW_POLL_MS = 8000;
+const BURST_POLL_MS = 3000;
+const BURST_FOR_MS = 90_000;
 
 export default function StripeConnectBar({ onChanged }: { onChanged?: () => void }) {
   const navigate = useNavigate();
@@ -22,6 +27,9 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
   const inFlight = useRef(false);
   const onChangedRef = useRef(onChanged);
   onChangedRef.current = onChanged;
+  const burstUntil = useRef(0);
+  const lastPay = useRef(cached?.connection?.last_pay_at || '');
+  const lastDispute = useRef(cached?.connection?.last_dispute_at || '');
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -31,6 +39,13 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
       setStatus(body.status || 'disconnected');
       setConnection(body.connection);
       writeCachedStripeConnection(body);
+      const pay = body.connection?.last_pay_at || '';
+      const dispute = body.connection?.last_dispute_at || '';
+      if (pay !== lastPay.current || dispute !== lastDispute.current) {
+        lastPay.current = pay;
+        lastDispute.current = dispute;
+        onChangedRef.current?.();
+      }
     } catch (err) {
       if (readCachedStripeConnection()?.connection) {
         setReady(true);
@@ -52,6 +67,7 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
     if (flag === 'error') setNotice('Connect did not finish. Try again.');
     if (pay === 'success') {
       setNotice('Payment received. New disputes show in this table.');
+      burstUntil.current = Date.now() + BURST_FOR_MS;
       window.setTimeout(() => onChangedRef.current?.(), 2000);
     }
     if (pay === 'cancel') setNotice('Payment was cancelled.');
@@ -63,6 +79,27 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
     }
     void refresh();
   }, [refresh]);
+
+  const connected = status === 'active' && connection;
+
+  useEffect(() => {
+    if (!connected) return;
+    let timer = 0;
+    let stopped = false;
+    const loop = () => {
+      const delay = Date.now() < burstUntil.current ? BURST_POLL_MS : SLOW_POLL_MS;
+      timer = window.setTimeout(async () => {
+        if (stopped) return;
+        await refresh();
+        if (!stopped) loop();
+      }, delay);
+    };
+    loop();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [connected, refresh]);
 
   async function onConnect() {
     if (inFlight.current || busy || !ready) return;
@@ -108,8 +145,6 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
     }
   }
 
-  const connected = status === 'active' && connection;
-
   return (
     <section
       style={{
@@ -135,6 +170,13 @@ export default function StripeConnectBar({ onChanged }: { onChanged?: () => void
         </div>
         {connected ? (
           <>
+            <ConnectLiveMonitor
+              stamps={[
+                { label: 'Stripe connected', at: connection.connected_at },
+                { label: 'Last pay', at: connection.last_pay_at },
+                { label: 'Dispute raised', at: connection.last_dispute_at },
+              ]}
+            />
             <button
               type="button"
               onClick={() => navigate('/dashboard/chargebacks/pay')}
