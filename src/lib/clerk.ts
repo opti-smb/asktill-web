@@ -30,18 +30,26 @@ export const CLERK_OAUTH_COMPLETE_PATH = '/login/oauth-complete';
 
 export const isClerkEnabled = () => Boolean(getClerkPublishableKey());
 
-/** Absolute OAuth URLs — must match Clerk Dashboard → Paths / Redirect URLs. */
+/** Relative OAuth paths. Absolute URLs on Vercel made Google reject Clerk's consent request. */
 export function clerkOAuthUrls() {
-  // Prefer the tab's real origin in the browser so localhost vs 127.0.0.1
-  // cannot split sessionStorage / Clerk cookies and look like a cancel.
-  const origin =
-    (typeof window !== 'undefined' ? window.location.origin : '') ||
-    import.meta.env.VITE_APP_ORIGIN?.replace(/\/$/, '') ||
-    '';
   return {
-    redirectUrl: `${origin}${CLERK_OAUTH_REDIRECT_PATH}`,
-    redirectUrlComplete: `${origin}${CLERK_OAUTH_COMPLETE_PATH}`,
+    redirectUrl: CLERK_OAUTH_REDIRECT_PATH,
+    redirectUrlComplete: CLERK_OAUTH_COMPLETE_PATH,
   };
+}
+
+export function clerkAllowedRedirectOrigins(): string[] {
+  const origins = new Set<string>(['https://asktill-web-three.vercel.app']);
+  const appOrigin = import.meta.env.VITE_APP_ORIGIN?.replace(/\/$/, '') || '';
+  if (appOrigin.startsWith('https://')) origins.add(appOrigin);
+  if (import.meta.env.DEV) {
+    origins.add('http://localhost:5173');
+    origins.add('http://127.0.0.1:5173');
+  }
+  if (typeof window !== 'undefined' && window.location.origin) {
+    origins.add(window.location.origin);
+  }
+  return [...origins];
 }
 
 type ClerkClient = {
@@ -253,7 +261,6 @@ export async function startGoogleOAuth(signIn: SignInOAuth, clerk: ClerkClient) 
     strategy: 'oauth_google',
     redirectUrl,
     actionCompleteRedirectUrl: redirectUrlComplete,
-    oidcPrompt: 'select_account',
   });
 
   const external = signIn.firstFactorVerification?.externalVerificationRedirectURL;
@@ -266,7 +273,6 @@ export async function startGoogleOAuth(signIn: SignInOAuth, clerk: ClerkClient) 
     strategy: 'oauth_google',
     redirectUrl,
     redirectUrlComplete,
-    oidcPrompt: 'select_account',
   });
 }
 
@@ -287,7 +293,6 @@ export async function startGoogleOAuthSignUp(signUp: SignUpOAuth, clerk: ClerkCl
     strategy: 'oauth_google',
     redirectUrl,
     redirectUrlComplete,
-    oidcPrompt: 'select_account',
   });
 }
 

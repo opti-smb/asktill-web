@@ -448,7 +448,7 @@ export function readCachedDisputeCases(userId?: string | null): DisputeCaseRow[]
   const id = (userId || '').trim();
   if (!id) return [];
   try {
-    const raw = sessionStorage.getItem(CASES_CACHE_PREFIX + id);
+    const raw = localStorage.getItem(CASES_CACHE_PREFIX + id) || sessionStorage.getItem(CASES_CACHE_PREFIX + id);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -466,10 +466,11 @@ export function writeCachedDisputeCases(userId: string | null | undefined, rows:
   if (!id) return;
   try {
     if (rows.length === 0) {
-      sessionStorage.removeItem(CASES_CACHE_PREFIX + id);
       return;
     }
-    sessionStorage.setItem(CASES_CACHE_PREFIX + id, JSON.stringify(rows));
+    const payload = JSON.stringify(rows);
+    localStorage.setItem(CASES_CACHE_PREFIX + id, payload);
+    sessionStorage.setItem(CASES_CACHE_PREFIX + id, payload);
   } catch {
     /* ignore quota */
   }
