@@ -27,29 +27,33 @@ export const CLERK_PUBLISHABLE_KEY = bakedClerkPublishableKey;
 
 const CLERK_OAUTH_REDIRECT_PATH = '/sso-callback';
 export const CLERK_OAUTH_COMPLETE_PATH = '/login/oauth-complete';
+const VERCEL_APP_ORIGIN = 'https://asktill-web-three.vercel.app';
 
 export const isClerkEnabled = () => Boolean(getClerkPublishableKey());
 
-/** Relative OAuth paths. Absolute URLs on Vercel made Google reject Clerk's consent request. */
+function clerkAppOrigin(): string {
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  const baked = (import.meta.env.VITE_APP_ORIGIN || '').replace(/\/$/, '');
+  if (baked.startsWith('https://')) return baked;
+  return VERCEL_APP_ORIGIN;
+}
+
+/** Absolute OAuth URLs for this app origin only. Relative paths made Google 401 on consent. */
 export function clerkOAuthUrls() {
+  const origin = clerkAppOrigin();
   return {
-    redirectUrl: CLERK_OAUTH_REDIRECT_PATH,
-    redirectUrlComplete: CLERK_OAUTH_COMPLETE_PATH,
+    redirectUrl: `${origin}${CLERK_OAUTH_REDIRECT_PATH}`,
+    redirectUrlComplete: `${origin}${CLERK_OAUTH_COMPLETE_PATH}`,
   };
 }
 
 export function clerkAllowedRedirectOrigins(): string[] {
-  const origins = new Set<string>(['https://asktill-web-three.vercel.app']);
-  const appOrigin = import.meta.env.VITE_APP_ORIGIN?.replace(/\/$/, '') || '';
-  if (appOrigin.startsWith('https://')) origins.add(appOrigin);
   if (import.meta.env.DEV) {
-    origins.add('http://localhost:5173');
-    origins.add('http://127.0.0.1:5173');
+    return ['http://localhost:5173', 'http://127.0.0.1:5173'];
   }
-  if (typeof window !== 'undefined' && window.location.origin) {
-    origins.add(window.location.origin);
-  }
-  return [...origins];
+  return [VERCEL_APP_ORIGIN];
 }
 
 type ClerkClient = {
@@ -252,23 +256,9 @@ type SignInOAuth = {
 /** Start Google OAuth on sign-in (login page). */
 export async function startGoogleOAuth(signIn: SignInOAuth, clerk: ClerkClient) {
   const { redirectUrl, redirectUrlComplete } = clerkOAuthUrls();
-
   if (clerk.session?.id) {
-    await clearClerkSession(clerk);
+    await clearClerkSession(clerk, { stayOnPage: true });
   }
-
-  await signIn.create({
-    strategy: 'oauth_google',
-    redirectUrl,
-    actionCompleteRedirectUrl: redirectUrlComplete,
-  });
-
-  const external = signIn.firstFactorVerification?.externalVerificationRedirectURL;
-  if (external) {
-    window.location.assign(external.href);
-    return;
-  }
-
   await signIn.authenticateWithRedirect({
     strategy: 'oauth_google',
     redirectUrl,
