@@ -80,7 +80,6 @@ export default function AtChargebacksPage() {
     try {
       const listedP = listDisputeCases()
         .then((rows) => {
-          if (!rows.length) return;
           applyCases(rows);
         })
         .catch(() => undefined);

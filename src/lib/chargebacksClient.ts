@@ -442,7 +442,7 @@ export async function listShopifyOrders(): Promise<ShopifyOrderRow[]> {
   return body.items || [];
 }
 
-const CASES_CACHE_PREFIX = 'asktill.chargebacks.cases.v1:';
+const CASES_CACHE_PREFIX = 'asktill.chargebacks.cases.v2:';
 
 export function readCachedDisputeCases(userId?: string | null): DisputeCaseRow[] {
   const id = (userId || '').trim();
@@ -466,6 +466,8 @@ export function writeCachedDisputeCases(userId: string | null | undefined, rows:
   if (!id) return;
   try {
     if (rows.length === 0) {
+      localStorage.removeItem(CASES_CACHE_PREFIX + id);
+      sessionStorage.removeItem(CASES_CACHE_PREFIX + id);
       return;
     }
     const payload = JSON.stringify(rows);
