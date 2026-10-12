@@ -53,7 +53,7 @@ type VersionRow = { version: string; active: boolean; at: string; by: string; ch
 function titleCase(value: string | undefined) {
   const text = (value || '').trim();
   if (!text) return '—';
-  return text.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return text.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 }
 
 function when(value?: string | null) {
@@ -1125,7 +1125,7 @@ function VersionList({ rows: source, onView }: { rows: VersionRow[]; onView: () 
                 <li key={change}>{change}</li>
               ))}
             </ul>
-            <button type="button" className={styles.editBtn} onClick={() => onSection('Reason Rules')}>View</button>
+            <button type="button" className={styles.editBtn} onClick={onView}>View</button>
           </li>
         ))}
       </ol>
