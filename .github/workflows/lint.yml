@@ -1,0 +1,32 @@
+# Lint only. Does not deploy (Vercel/Render unchanged).
+name: lint
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: lint-asktill-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      # Report existing ESLint debt without blocking CI / changing app code.
+      # Tighten later once a11y cleanup is scheduled intentionally.
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        run: npm run lint
