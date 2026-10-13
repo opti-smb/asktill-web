@@ -113,9 +113,9 @@ function money(amountMinor: number, currency = 'USD') {
 }
 
 function when(value?: string | null) {
-  if (!value) return '—';
+  if (!value) return 'No date recorded';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return 'No date recorded';
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -135,10 +135,16 @@ function scoreLine(value: number | null | undefined, orderCount?: number) {
   return `${Math.round(value)} / 100`;
 }
 
+function customerTitle(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed || /#\d+/.test(trimmed) || / order$/i.test(trimmed)) return 'Unknown customer';
+  return trimmed;
+}
+
 function ago(value?: string | null) {
-  if (!value) return '—';
+  if (!value) return 'No purchase recorded';
   const then = new Date(value).getTime();
-  if (Number.isNaN(then)) return '—';
+  if (Number.isNaN(then)) return 'No purchase recorded';
   const days = Math.max(0, Math.round((Date.now() - then) / 86400000));
   if (days < 1) return 'Today';
   if (days === 1) return '1 day ago';
@@ -444,7 +450,7 @@ function Dashboard(props: {
               {props.segments.map((item) => (
                 <li key={item.segment}>
                   <i style={{ background: color(item.segment) }} />
-                  {item.label} {item.share == null ? '—' : `${item.share}%`} ({item.count.toLocaleString()})
+                  {item.label} {item.share == null ? '0%' : `${item.share}%`} ({item.count.toLocaleString()})
                 </li>
               ))}
             </ul>
@@ -452,7 +458,7 @@ function Dashboard(props: {
         </section>
         <section className={styles.panel}>
           <h2>Revenue by Segment</h2>
-          <RevenueChart monthly={props.monthly} currency={props.currency} />
+          <RevenueChart monthly={props.monthly} currency={props.currency} segments={props.segments} />
         </section>
         <section className={styles.panel}>
           <div className={styles.panelTitle}><h2>Top Opportunities</h2></div>
@@ -476,7 +482,7 @@ function Dashboard(props: {
             <CustomerTable rows={props.rows} selectedId={selected?.customerId || ''} onSelect={props.onSelect} onOpen={props.onOpen} />
           )}
         </section>
-        <SideCard row={selected} profile={props.sideProfile} onOpen={props.onOpen} onAct={props.onAct} onDecide={props.onDecide} />
+        <SideCard row={selected} profile={props.sideProfile} onAct={props.onAct} onDecide={props.onDecide} />
       </div>
     </>
   );
@@ -540,10 +546,10 @@ function CustomerTable({
           <tr key={row.customerId} className={row.customerId === selectedId ? styles.selectedRow : undefined} onClick={() => onSelect(row.customerId)}>
             <td>
               <div className={styles.who}>
-                <Avatar name={row.displayName} segment={row.segment} />
+                <Avatar name={customerTitle(row.displayName)} segment={row.segment} />
                 <div>
-                  <strong>{row.displayName}</strong>
-                  <span>{row.email || 'No email on file'}</span>
+                  <strong>{customerTitle(row.displayName)}</strong>
+                  <span>{row.email || 'No email on the payment'}</span>
                   {row.limitedData ? <span>Limited data · {Math.round(row.coverageScore)}% coverage</span> : null}
                 </div>
               </div>
@@ -567,13 +573,11 @@ function CustomerTable({
 function SideCard({
   row,
   profile,
-  onOpen,
   onAct,
   onDecide,
 }: {
   row: CustomerRow | null;
   profile: CustomerProfile | null;
-  onOpen: (id: string) => void;
   onAct: (id: string) => void;
   onDecide: (id: string, status: 'ACCEPTED' | 'DISMISSED') => void;
 }) {
@@ -590,10 +594,10 @@ function SideCard({
   return (
     <section className={`${styles.panel} ${styles.sideCard}`}>
       <div className={styles.sideHead}>
-        <Avatar name={row.displayName} segment={row.segment} />
+        <Avatar name={customerTitle(row.displayName)} segment={row.segment} />
         <div className={styles.previewId}>
-          <strong>{row.displayName}</strong>
-          <span>{row.email || 'No email on file'}</span>
+          <strong>{customerTitle(row.displayName)}</strong>
+          <span>{row.email || 'No email on the payment'}</span>
         </div>
       </div>
       <div className={styles.sideActions}>
@@ -682,11 +686,12 @@ function scoreTone(kind: 'value' | 'friction', score: number | null) {
   return score >= 40 ? styles.scoreBad : styles.scoreGood;
 }
 
-function RevenueChart({ monthly, currency }: { monthly: MonthTotal[]; currency: string }) {
+function RevenueChart({ monthly, currency, segments }: { monthly: MonthTotal[]; currency: string; segments: SegmentRule[] }) {
   const points = monthly.slice(-6);
-  const active = CHART_SEGMENTS.filter((segment) => points.some((point) => (point[segment] || 0) > 0));
+  const held = new Set(segments.filter((item) => item.count > 0).map((item) => item.segment));
+  const active = CHART_SEGMENTS.filter((segment) => held.has(segment) || points.some((point) => (point[segment] || 0) > 0));
   const max = Math.max(1, ...points.flatMap((point) => active.map((segment) => point[segment] || 0)));
-  if (active.length === 0) {
+  if (points.length === 0 || active.length === 0) {
     return <p className={styles.muted}>No recorded order revenue in this chart yet.</p>;
   }
   return (
@@ -698,7 +703,7 @@ function RevenueChart({ monthly, currency }: { monthly: MonthTotal[]; currency: 
         {active.map((segment) => {
           const line = points.map((point, index) => {
             const x = 20 + (index * 280) / Math.max(points.length - 1, 1);
-            const y = 140 - ((point[segment] || 0) / max) * 120;
+            const y = 136 - ((point[segment] || 0) / max) * 116;
             return `${x},${y}`;
           });
           return <polyline key={segment} fill="none" stroke={color(segment)} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={line.join(' ')} />;
@@ -774,15 +779,14 @@ function Profile({
   return (
     <section>
       <p className={styles.crumb}>
-        <button type="button" onClick={onBack}>Customers</button> <span>/ {profile.displayName}</span>
+        <button type="button" onClick={onBack}>Customers</button> <span>/ {customerTitle(profile.displayName)}</span>
       </p>
       <header className={styles.profileTop}>
         <div className={styles.who}>
-          <Avatar name={profile.displayName} segment={profile.segment} />
+          <Avatar name={customerTitle(profile.displayName)} segment={profile.segment} />
           <div>
-            <h1>{profile.displayName}</h1>
-            <p>{profile.email || 'No email on file'}</p>
-            {(profile.orderRefs || []).some(Boolean) ? <p>{(profile.orderRefs || []).filter(Boolean).slice(0, 6).join(', ')}</p> : null}
+            <h1>{customerTitle(profile.displayName)}</h1>
+            <p>{profile.email || 'No email on the payment'}</p>
             <p>Customer since {when(profile.customerSince)}</p>
           </div>
           <b className={`${styles.pill} ${styles[profile.segment]}`}>{profile.segmentLabel}</b>
@@ -791,7 +795,7 @@ function Profile({
           <span><strong>{money(profile.lifetimeValueMinor, profile.currency)}</strong>Lifetime Value</span>
           <span><strong>{profile.orderCount}</strong>Total Orders</span>
           <span><strong>{money(profile.averageOrderValueMinor, profile.currency)}</strong>Average Order Value</span>
-          <span><strong>{profile.daysSinceLastOrder ?? '—'}</strong>Days since last order</span>
+          <span><strong>{profile.daysSinceLastOrder ?? 'No order yet'}</strong>Days since last order</span>
         </div>
       </header>
       <div className={styles.profileTabs}>
@@ -824,7 +828,7 @@ function Profile({
             <section className={styles.panel}>
               <h2>Segment Details</h2>
               <p className={styles.detailRow}><span>Segment</span><b className={styles[profile.segment]}>{profile.segmentLabel}</b></p>
-              <p className={styles.detailRow}><span>Confidence</span><b>{profile.segmentConfidence == null ? '—' : `${Math.round(profile.segmentConfidence)}%`}</b></p>
+              <p className={styles.detailRow}><span>Confidence</span><b>{profile.segmentConfidence == null ? 'Not scored' : `${Math.round(profile.segmentConfidence)}%`}</b></p>
               <p className={styles.detailRow}><span>Why</span><b>{profile.why}</b></p>
             </section>
             <section className={styles.panel}>
@@ -886,7 +890,7 @@ function ActivityTable({ rows }: { rows: Activity[] }) {
             <td>{when(row.at)}</td>
             <td>{row.type}</td>
             <td>{row.detail}</td>
-            <td>{row.amountMinor ? money(row.amountMinor, row.currency) : '—'}</td>
+            <td>{money(row.amountMinor || 0, row.currency)}</td>
           </tr>
         ))}
       </tbody>
@@ -930,7 +934,7 @@ function Rules({ segments, policy, note, onEdit }: { segments: SegmentRule[]; po
             <tr key={rule.segment}>
               <td><span className={`${styles.ruleName} ${styles[rule.segment]}`}><span className={styles.ruleIcon}>{segmentIcon(rule.segment)}</span>{rule.label}</span></td>
               <td>{rule.criteria}</td>
-              <td className={styles.share}>{rule.share == null ? '—' : `${rule.share}%`}</td>
+              <td className={styles.share}>{rule.share == null ? '0%' : `${rule.share}%`}</td>
               <td>{rule.action}</td>
             </tr>
           ))}
