@@ -74,6 +74,13 @@ export default function DashboardNav() {
             </NavLink>
 
             <NavLink
+              to="/dashboard/customers"
+              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
+            >
+              Customers
+            </NavLink>
+
+            <NavLink
               to="/dashboard/sources"
               className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
             >
