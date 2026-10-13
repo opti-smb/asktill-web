@@ -50,7 +50,7 @@ export default function PricingPage() {
             <p className={styles.subtitle}>
               {isAuth
                 ? `You're on ${tierDisplayLabel(user?.tier)}. Upgrade for multi-month uploads.`
-                : 'All plans include the AT Letter and AT Rewards on every analysis.'}
+                : 'All plans include the AT Letter on every analysis.'}
             </p>
           </div>
 

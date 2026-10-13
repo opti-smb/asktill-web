@@ -74,13 +74,6 @@ export default function DashboardNav() {
             </NavLink>
 
             <NavLink
-              to="/dashboard/rewards"
-              className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
-            >
-              Save Money
-            </NavLink>
-
-            <NavLink
               to="/dashboard/sources"
               className={({ isActive }) => `${styles.navTab} ${isActive ? styles.active : ''}`}
             >

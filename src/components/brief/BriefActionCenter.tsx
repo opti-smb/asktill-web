@@ -21,7 +21,7 @@ const ACTIONS = [
     title: 'Review processor fees',
     body: 'See where fees are eating margin.',
     icon: 'ti-receipt',
-    to: '/dashboard/rewards',
+    to: '/dashboard/calculators',
   },
   {
     id: 'tax',

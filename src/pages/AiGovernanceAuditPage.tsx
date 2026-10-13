@@ -33,17 +33,14 @@ import EvidenceRulebookScreens, { RULE_SECTIONS, type RuleSection } from './Evid
 import pageStyles from './AtChargebacksPage.module.css';
 import styles from './AiGovernanceAuditPage.module.css';
 
-type InnerTab = 'cases' | 'inferences' | 'rules' | 'performance' | 'exports';
+type InnerTab = 'cases' | 'rules';
 type RecFilter = 'all' | 'fight' | 'accept' | 'review';
 type OutcomeFilter = 'all' | 'won' | 'lost' | 'accepted' | 'open';
 type OverrideFilter = 'all' | 'yes' | 'no';
 
 const INNER_TABS: { id: InnerTab; label: string }[] = [
   { id: 'cases', label: 'Cases' },
-  { id: 'inferences', label: 'AI Inferences' },
   { id: 'rules', label: 'Rules & Logic' },
-  { id: 'performance', label: 'Model Performance' },
-  { id: 'exports', label: 'Exports' },
 ];
 
 const MISSING = 'Not found';
@@ -388,19 +385,6 @@ export default function AiGovernanceAuditPage() {
                   <EvidenceRulebookScreens section={ruleSection} onSection={setRuleSection} cases={cases} />
                 </div>
               </section>
-            ) : tab !== 'cases' ? (
-              <article className={styles.emptyCard}>
-                <p>
-                  {tab === 'inferences'
-                    ? 'AI Inferences is not live yet. Cases lists live chargeback decisions.'
-                    : tab === 'performance'
-                      ? 'Model Performance is not live yet. Cases lists live chargeback decisions.'
-                      : 'Exports is not live yet. Cases lists live chargeback decisions.'}
-                </p>
-                <button type="button" className={styles.textLink} onClick={() => setTab('cases')}>
-                  Open Cases
-                </button>
-              </article>
             ) : (
               <>
                 <section className={styles.filters} aria-label="Audit filters">

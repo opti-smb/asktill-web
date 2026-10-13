@@ -410,7 +410,7 @@ export default function AtLetterPage() {
           /fee|commission|reconcil/i.test(`${insight.id} ${insight.tag}`)
             ? /reconcil/i.test(`${insight.id} ${insight.tag}`)
               ? '/dashboard/at-ledger/reconciliation'
-              : '/dashboard/rewards'
+              : '/dashboard/calculators'
             : /cash|runway|flow/i.test(`${insight.id} ${insight.tag}`)
               ? '/dashboard/at-ledger/cashflow'
               : '/dashboard/at-ledger/overview',

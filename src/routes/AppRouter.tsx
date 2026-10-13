@@ -18,7 +18,6 @@ import ReconPage from '../pages/ReconPage';
 import AtLetterPage from '../pages/AtLetterPage';
 import ReportsPage from '../pages/ReportsPage';
 import SourcesPage from '../pages/SourcesPage';
-import AtRewardsPage from '../pages/AtRewardsPage';
 import AtChargebacksPage from '../pages/AtChargebacksPage';
 import ProfilePage from '../pages/ProfilePage';
 import AdminHandoffPage from '../pages/AdminHandoffPage';
@@ -132,7 +131,6 @@ function AppRoutes() {
           <Route path="calculators/:slug" element={<CalculatorsPage />} />
           <Route path="chargebacks" element={<AtChargebacksPage />} />
           <Route path="channel-partners/*" element={<ChannelPartnersPage />} />
-          <Route path="rewards" element={<AtRewardsPage />} />
           <Route path="sources" element={<SourcesPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
