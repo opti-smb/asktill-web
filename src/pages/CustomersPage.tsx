@@ -848,7 +848,7 @@ function Profile({
           <div className={styles.lowerGrid}>
             <section className={styles.panel}>
               <h2>Recent Activity</h2>
-              <ActivityTable rows={profile.activity.slice(0, 6)} />
+              <ActivityTable rows={profile.activity} />
             </section>
             <section className={styles.panel}>
               <h2>Purchase History (Last 12 months)</h2>
@@ -880,13 +880,14 @@ function Gauge({ label, score, orderCount, text }: { label: string; score: numbe
 function ActivityTable({ rows }: { rows: Activity[] }) {
   if (rows.length === 0) return <p className={styles.muted}>No records on file for this tab.</p>;
   return (
+    <div className={styles.activityScroll}>
     <table className={styles.table}>
       <thead>
         <tr><th>Date</th><th>Type</th><th>Details</th><th>Amount</th></tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={`${row.type}-${row.at}-${row.detail}`}>
+        {rows.map((row, index) => (
+          <tr key={`${row.type}-${row.at}-${row.detail}-${index}`}>
             <td>{when(row.at)}</td>
             <td>{row.type}</td>
             <td>{row.detail}</td>
@@ -895,6 +896,7 @@ function ActivityTable({ rows }: { rows: Activity[] }) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
 
@@ -906,7 +908,8 @@ function PurchaseChart({ monthly, currency }: { monthly: MonthPoint[]; currency:
     <div className={styles.bars} aria-label={`Purchase history in ${currency}`}>
       {points.map((point) => (
         <span key={point.month} title={`${point.orderCount} orders, ${money(point.revenueMinor, currency)}`}>
-          <i style={{ height: `${Math.max(4, (point.revenueMinor / max) * 100)}%` }} />
+          <i style={{ height: point.revenueMinor > 0 ? `${Math.max(8, (point.revenueMinor / max) * 100)}%` : '0%' }} />
+          <b>{point.revenueMinor > 0 ? money(point.revenueMinor, currency) : ''}</b>
           {monthLabel(point.month)}
         </span>
       ))}

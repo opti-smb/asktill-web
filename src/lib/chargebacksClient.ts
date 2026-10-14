@@ -513,6 +513,7 @@ export type EvidenceRecipe = {
   created_at?: string | null;
   activated_at?: string | null;
   change_reason?: string;
+  revision?: number;
 };
 
 export type EvidencePriorityRule = {
@@ -550,6 +551,26 @@ export async function getEvidenceRulebookCatalog(): Promise<{
     rules: rules.rules || [],
     changes: history.changes || [],
   };
+}
+
+export async function postGovernedRule(path: string, body: unknown, revision?: string) {
+  return chargebacksJson<{
+    ok?: boolean;
+    errors?: string[];
+    detail?: string;
+    rule?: { rule_id?: string; revision?: number; status?: string };
+    override?: { override_id?: string; revision?: number; status?: string };
+  }>(
+    path,
+    {
+      method: path.includes('/provider-rules/') ? 'GET' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(revision ? { 'If-Match': revision } : {}),
+      },
+      body: path.includes('/provider-rules/') ? undefined : JSON.stringify(body),
+    },
+  );
 }
 
 export async function postEvidenceRuleAdmin(

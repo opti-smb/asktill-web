@@ -140,9 +140,11 @@ button:disabled, .primary:disabled { opacity: 1; background: #e2e8f0; color: #64
 .coverage { list-style: none; padding: 0; margin: 0; }
 .coverage li { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
 .connected { color: #16a34a; font-style: normal; font-weight: 650; }
-.bars { display: flex; align-items: flex-end; gap: 6px; height: 140px; }
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 168px; }
 .bars span { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; font-size: 10px; color: #64748b; }
 .bars i { display: block; width: 100%; background: #3b82c4; border-radius: 4px 4px 0 0; }
+.bars b { font-size: 9px; font-weight: 650; color: #334155; min-height: 12px; }
+.activityScroll { max-height: 320px; overflow: auto; }
 
 .actionList { display: grid; gap: 10px; margin-top: 12px; }
 .actionCard { display: flex; justify-content: space-between; gap: 12px; align-items: center; border: 1px solid #e6ebf2; border-radius: 14px; padding: 12px; background: #fff; }

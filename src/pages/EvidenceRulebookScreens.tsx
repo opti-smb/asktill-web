@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, ChevronRight, FileCheck, FileText, Layers, Plus, Search, ShieldCheck, ShoppingBag, Store, X } from 'lucide-react';
+import { Check, ChevronRight, FileCheck, FileText, Layers, Lock, Plus, Search, ShieldCheck, ShoppingBag, Store, X } from 'lucide-react';
 import {
   getEvidenceRulebookCatalog,
   postEvidenceRuleAdmin,
+  postGovernedRule,
   type DisputeCaseRow,
   type EvidenceChange,
   type EvidencePriorityRule,
@@ -21,7 +22,9 @@ export const RULE_SECTIONS = [
   'Rule Testing',
 ] as const;
 
-export type RuleSection = (typeof RULE_SECTIONS)[number];
+export const RULE_SCREENS = ['Create Rule', 'Provider View', 'Add Override', 'Edit Override'] as const;
+
+export type RuleSection = (typeof RULE_SECTIONS)[number] | (typeof RULE_SCREENS)[number];
 
 type ReasonRow = {
   id: string;
@@ -47,7 +50,7 @@ type RequirementRow = {
 
 type EvidenceTypeRow = { name: string; category: string; description: string; sources: string };
 type ClassRow = { type: string; keywords: string; maps: string; confidence: string; status: string };
-type MerchantRow = { type: string; provider: string; reason: string; changes: string; status: string };
+type MerchantRow = { id: string; type: string; provider: string; reason: string; changes: string; status: string; revision: number };
 type VersionRow = { version: string; active: boolean; at: string; by: string; changes: string[]; draftId: string };
 
 function titleCase(value: string | undefined) {
@@ -314,12 +317,14 @@ export default function EvidenceRulebookScreens({
     status: titleCase(rule.status || 'ACTIVE'),
   })), [rules]);
 
-  const merchants = useMemo<MerchantRow[]>(() => recipes.filter((recipe) => recipe.merchant_category).map((recipe) => ({
+  const merchants = useMemo<MerchantRow[]>(() => recipes.filter((recipe) => recipe.merchant_category || ['DRAFT', 'TEST', 'APPROVED'].includes(String(recipe.status || '').toUpperCase())).map((recipe) => ({
+    id: recipe.recipe_id,
     type: titleCase(recipe.merchant_category),
     provider: titleCase(recipe.provider),
     reason: titleCase(recipe.dispute_reason),
     changes: (recipe.requirements || []).map((item) => `${item.display_name || titleCase(item.code)} ${item.priority || ''}`).join('\n'),
     status: titleCase(recipe.status || 'ACTIVE'),
+    revision: Number(recipe.revision || 1),
   })), [recipes]);
 
   const versions = useMemo<VersionRow[]>(() => {
@@ -358,6 +363,16 @@ export default function EvidenceRulebookScreens({
   function openRecipe(id: string) {
     setSelectedId(id);
     onSection('Reason Rules');
+  }
+
+  function openProvider(id: string) {
+    setSelectedId(id);
+    onSection('Provider View');
+  }
+
+  function openOverride(id: string) {
+    setSelectedId(id);
+    onSection('Edit Override');
   }
 
   function openRequirement(row: RequirementRow) {
@@ -424,7 +439,7 @@ export default function EvidenceRulebookScreens({
               <h2>Evidence Rulebook</h2>
               <p>Configure and manage evidence requirements for dispute handling.</p>
             </div>
-            <button type="button" className={styles.primary} onClick={() => onSection('Reason Rules')}>
+            <button type="button" className={styles.primary} onClick={() => onSection('Create Rule')}>
               <Plus size={16} /> Create Rule
             </button>
           </div>
@@ -443,13 +458,19 @@ export default function EvidenceRulebookScreens({
               </button>
             ))}
           </div>
-          {overviewTab === 'Reason Rules' || overviewTab === 'Provider Rules' ? (
+          {overviewTab === 'Reason Rules' ? (
             <>
               <Filters query={query} provider={provider} merchant={merchant} status={status} providers={providerOptions} merchants={merchantOptions} statuses={statusOptions} onQuery={setQuery} onProvider={setProvider} onMerchant={setMerchant} onStatus={setStatus} />
               <ReasonTable rows={reasons} onView={openRecipe} />
             </>
           ) : null}
-          {overviewTab === 'Merchant Type Rules' ? <MerchantPanel rows={merchants} /> : null}
+          {overviewTab === 'Provider Rules' ? (
+            <>
+              <Filters query={query} provider={provider} merchant={merchant} status={status} providers={providerOptions} merchants={merchantOptions} statuses={statusOptions} onQuery={setQuery} onProvider={setProvider} onMerchant={setMerchant} onStatus={setStatus} />
+              <ReasonTable rows={reasons.filter((row) => row.provider !== '—')} onView={openProvider} />
+            </>
+          ) : null}
+          {overviewTab === 'Merchant Type Rules' ? <MerchantPanel rows={merchants} onEdit={openOverride} /> : null}
           {overviewTab === 'Evidence Types' ? <EvidenceCatalog types={evidenceTypes} onEdit={() => evidenceTypes[0] && setModal('evidence')} /> : null}
           {overviewTab === 'Classification Rules' ? <ClassificationPanel rows={classification} /> : null}
         </>
@@ -570,7 +591,7 @@ export default function EvidenceRulebookScreens({
             </div>
           </div>
           <Filters query={query} provider={provider} merchant={merchant} status={status} providers={providerOptions} merchants={merchantOptions} statuses={statusOptions} onQuery={setQuery} onProvider={setProvider} onMerchant={setMerchant} onStatus={setStatus} />
-          <ReasonTable rows={reasons.filter((row) => row.provider !== '—')} onView={openRecipe} />
+          <ReasonTable rows={reasons.filter((row) => row.provider !== '—')} onView={openProvider} />
         </>
       ) : null}
 
@@ -581,11 +602,11 @@ export default function EvidenceRulebookScreens({
               <h2>Merchant Type Overrides</h2>
               <p>Override or customise requirements for specific merchant types.</p>
             </div>
-            <button type="button" className={styles.primary}>
+            <button type="button" className={styles.primary} onClick={() => onSection('Add Override')}>
               <Plus size={16} /> Add Override
             </button>
           </div>
-          <MerchantPanel rows={merchants} />
+          <MerchantPanel rows={merchants} onEdit={openOverride} />
         </>
       ) : null}
 
@@ -654,6 +675,11 @@ export default function EvidenceRulebookScreens({
           {loadError ? <p className={styles.crumb}>{loadError}</p> : null}
         </>
       ) : null}
+
+      {section === 'Create Rule' ? <CreateRuleScreen onBack={() => onSection('Reason Rules')} onSaved={() => void loadCatalog()} /> : null}
+      {section === 'Provider View' ? <ProviderViewScreen recipe={selected} payment={selectedPayment} onBack={() => onSection('Provider Rules')} /> : null}
+      {section === 'Add Override' ? <AddOverrideScreen recipe={selected} onBack={() => onSection('Merchant Types')} onSaved={() => void loadCatalog()} /> : null}
+      {section === 'Edit Override' ? <EditOverrideScreen recipe={selected} row={merchants.find((item) => item.id === selectedRecipeId) || merchants[0]} onBack={() => onSection('Merchant Types')} onSaved={() => void loadCatalog()} /> : null}
 
       {modal === 'requirement' && editing ? <RequirementModal row={editing} provider={titleCase(selected?.provider)} merchant={titleCase(selected?.merchant_category)} reason={titleCase(selected?.dispute_reason)} saving={saving} onClose={() => setModal(null)} onSave={saveRequirement} /> : null}
       {modal === 'evidence' ? <EvidenceTypeModal onClose={() => setModal(null)} /> : null}
@@ -1039,7 +1065,411 @@ function ClassificationPanel({ rows: source }: { rows: ClassRow[] }) {
   );
 }
 
-function MerchantPanel({ rows: source }: { rows: MerchantRow[] }) {
+function leaveScreen(dirty: boolean, onBack: () => void) {
+  if (!dirty || window.confirm('Leave this screen? Unsaved changes will be discarded.')) onBack();
+}
+
+function message(error: unknown) {
+  return error instanceof Error ? error.message : 'The change was not saved.';
+}
+
+function merchantCode(value: string) {
+  if (!value || value === 'All') return '';
+  if (value === 'E-commerce') return 'ecommerce';
+  return value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function CreateRuleScreen({ onBack, onSaved }: { onBack: () => void; onSaved: () => void }) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [changeReason, setChangeReason] = useState('');
+  const [family, setFamily] = useState('SCENARIO');
+  const [provider, setProvider] = useState('STRIPE');
+  const [disputeReason, setDisputeReason] = useState('PRODUCT_NOT_RECEIVED');
+  const [merchant, setMerchant] = useState('');
+  const [fulfilment, setFulfilment] = useState('PHYSICAL_DELIVERY');
+  const [priority, setPriority] = useState('P1');
+  const [strength, setStrength] = useState('HIGH');
+  const [mandatory, setMandatoryFlag] = useState(true);
+  const [manual, setManual] = useState(true);
+  const [ruleId, setRuleId] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [validated, setValidated] = useState(false);
+  const [tested, setTested] = useState(false);
+  const [approved, setApproved] = useState(false);
+  function mark<T>(value: T, apply: (next: T) => void) {
+    apply(value);
+    setDirty(true);
+    setValidated(false);
+    setTested(false);
+    setApproved(false);
+    setNotice('');
+  }
+  function payload() {
+    return {
+      name,
+      description,
+      change_reason: changeReason,
+      rule_family: family,
+      providers: [provider],
+      dispute_reasons: [disputeReason],
+      merchant_types: merchant ? [merchant] : [],
+      fulfilment_models: [fulfilment],
+      requirements: [{
+        requirement_code: 'SCENARIO_EVIDENCE',
+        evidence_type: 'ORDER_RECORD',
+        claim_supported: description,
+        priority,
+        mandatory,
+        expected_strength: strength,
+        accepted_evidence_types: ['ORDER_RECORD'],
+        manual_allowed: manual,
+      }],
+    };
+  }
+  async function saveDraft() {
+    if (!name.trim() || !description.trim() || !changeReason.trim()) {
+      setNotice('Rule name, description, and change reason are required.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const saved = await postGovernedRule('/api/chargebacks/admin/rules', payload());
+      setRuleId(String(saved.rule?.rule_id || ''));
+      setDirty(false);
+      setNotice('Draft saved. Live cases are unchanged.');
+      onSaved();
+    } catch (error) {
+      setNotice(message(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function validate() {
+    if (!ruleId) {
+      setNotice('Save the draft first.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const report = await postGovernedRule(`/api/chargebacks/admin/rules/${encodeURIComponent(ruleId)}/validate`, {});
+      setValidated(Boolean(report.ok));
+      setNotice(report.ok ? 'Validation passed. This draft does not change live cases.' : (report.errors || ['Validation failed.']).join(' '));
+    } catch (error) {
+      setNotice(message(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function run(action: 'test' | 'approve' | 'activate') {
+    setBusy(true);
+    try {
+      const saved = await postGovernedRule(`/api/chargebacks/admin/rules/${encodeURIComponent(ruleId)}/${action}`, {});
+      const status = String(saved.rule?.status || '');
+      if (action === 'test') setTested(status === 'TEST');
+      if (action === 'approve') setApproved(status === 'APPROVED');
+      setNotice(action === 'activate' ? 'The approved version is now active.' : `Status is ${titleCase(status)}. Live cases stay on the previous active version until activation.`);
+      onSaved();
+    } catch (error) {
+      setNotice(message(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <p className={styles.crumb}>Reason Rules <ChevronRight size={12} /> Create Rule</p>
+      <div className={styles.head}>
+        <div>
+          <h2>Create Rule</h2>
+          <p>New reason or scenario rule. Saving keeps a draft and does not activate it.</p>
+        </div>
+      </div>
+      <div className={styles.formGrid}>
+        <label>Rule name<input value={name} onChange={(event) => mark(event.target.value, setName)} /></label>
+        <label>Rule family
+          <select value={family} onChange={(event) => mark(event.target.value, setFamily)}>
+            <option value="SCENARIO">Reason / Scenario</option>
+            <option value="PROVIDER_REASON">Provider + Reason</option>
+            <option value="CONTEXT">Context refinement</option>
+            <option value="FALLBACK">Fallback</option>
+          </select>
+        </label>
+        <label className={styles.wide}>Description<textarea rows={3} value={description} onChange={(event) => mark(event.target.value, setDescription)} /></label>
+        <label>Provider
+          <select value={provider} onChange={(event) => mark(event.target.value, setProvider)}>
+            <option value="STRIPE">Stripe</option>
+            <option value="PAYPAL">PayPal</option>
+            <option value="ALL">All</option>
+          </select>
+        </label>
+        <label>Normalized dispute reason
+          <select value={disputeReason} onChange={(event) => mark(event.target.value, setDisputeReason)}>
+            <option value="PRODUCT_NOT_RECEIVED">Product Not Received</option>
+            <option value="FRAUDULENT">Fraudulent</option>
+            <option value="PRODUCT_UNACCEPTABLE">Product Unacceptable</option>
+          </select>
+        </label>
+        <label>Merchant type
+          <select value={merchant} onChange={(event) => mark(event.target.value, setMerchant)}>
+            <option value="">All</option>
+            <option value="ecommerce">E-commerce</option>
+            <option value="saas">SaaS</option>
+            <option value="travel">Travel</option>
+            <option value="marketplace">Marketplace</option>
+          </select>
+        </label>
+        <label>Fulfilment model
+          <select value={fulfilment} onChange={(event) => mark(event.target.value, setFulfilment)}>
+            <option value="PHYSICAL_DELIVERY">Physical delivery</option>
+            <option value="DIGITAL_DELIVERY">Digital delivery</option>
+            <option value="SERVICE_USE">Service use</option>
+            <option value="PICKUP">Pickup</option>
+          </select>
+        </label>
+        <label>Priority
+          <select value={priority} onChange={(event) => mark(event.target.value, setPriority)} aria-label="Evidence priority">
+            <option value="P0_ASKTILL_CRITICAL">P0 AskTill Critical</option>
+            <option value="P1">P1</option>
+            <option value="P2">P2</option>
+            <option value="P3">P3</option>
+          </select>
+        </label>
+        <label>Expected strength
+          <select value={strength} onChange={(event) => mark(event.target.value, setStrength)}>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="DECISIVE">Decisive</option>
+          </select>
+        </label>
+        <label className={styles.check}><input type="checkbox" checked={mandatory} onChange={(event) => mark(event.target.checked, setMandatoryFlag)} /> Mandatory</label>
+        <label className={styles.check}><input type="checkbox" checked={manual} onChange={(event) => mark(event.target.checked, setManual)} /> Manual evidence allowed</label>
+        <label className={styles.wide}>Change reason<textarea rows={2} value={changeReason} onChange={(event) => mark(event.target.value, setChangeReason)} /></label>
+      </div>
+      {notice ? <p className={styles.crumb}>{notice}</p> : null}
+      <div className={styles.actions}>
+        <button type="button" className={styles.ghost} onClick={() => leaveScreen(dirty, onBack)}>Cancel</button>
+        <button type="button" className={styles.ghost} disabled={busy} onClick={() => void saveDraft()}>Save Draft</button>
+        <button type="button" className={styles.ghost} disabled={busy} onClick={() => void validate()}>Validate</button>
+        <button type="button" className={styles.ghost} disabled={busy || !validated} onClick={() => void run('test')}>Test Rule</button>
+        <button type="button" className={styles.ghost} disabled={busy || !tested} onClick={() => void run('approve')}>Submit for Approval</button>
+        <button type="button" className={styles.primary} disabled={busy || !approved} onClick={() => void run('activate')}>Activate</button>
+      </div>
+    </>
+  );
+}
+
+function ProviderViewScreen({ recipe, payment, onBack }: { recipe?: EvidenceRecipe; payment: string; onBack: () => void }) {
+  const locked = (recipe?.requirements || []).some((item) => item.provider_lock || String(item.priority || '').toUpperCase() === 'P0');
+  return (
+    <>
+      <p className={styles.crumb}>Provider Rules <ChevronRight size={12} /> View</p>
+      <div className={styles.head}>
+        <div>
+          <h2>Provider Rule View {locked ? <Lock size={16} aria-label="Locked" /> : null}</h2>
+          <p>Read-only provider rule. A locked provider requirement cannot be edited here.</p>
+        </div>
+        <button type="button" className={styles.ghost} onClick={onBack}>Back</button>
+      </div>
+      <div className={styles.note}>
+        <span>Identity</span>
+        <p>{recipe?.recipe_id || '—'} · {payment || '—'} · {titleCase(recipe?.dispute_reason)} · {titleCase(recipe?.status || 'ACTIVE')} · {recipe?.recipe_version || '—'}</p>
+        <span>Authority</span>
+        <p>{locked ? 'P0 provider required · locked' : 'AskTill rule · not a locked provider-hard rule'}</p>
+        <span>Requirement mapping</span>
+        <p>{(recipe?.requirements || []).map((item) => `${item.display_name || titleCase(item.code)} → ${titleCase(item.code)}`).join(' · ') || '—'}</p>
+        <span>Version</span>
+        <p>{recipe?.recipe_version || recipe?.recipe_id || '—'} · {when(recipe?.activated_at || recipe?.created_at)}</p>
+      </div>
+      <div className={styles.actions}>
+        <button type="button" className={styles.primary} disabled={locked} title={locked ? 'Locked provider rules cannot be edited in place' : 'Creates a mapping draft'}>Create Mapping Update</button>
+      </div>
+    </>
+  );
+}
+
+function AddOverrideScreen({ recipe, onBack, onSaved }: { recipe?: EvidenceRecipe; onBack: () => void; onSaved: () => void }) {
+  const base = recipe?.requirements?.[0];
+  const baseName = base?.display_name || titleCase(base?.code);
+  const [name, setName] = useState('');
+  const [merchant, setMerchant] = useState('ecommerce');
+  const [provider, setProvider] = useState((recipe?.provider || 'ALL').toUpperCase() || 'ALL');
+  const [accepted, setAccepted] = useState(baseName && baseName !== '—' ? baseName : '');
+  const [reason, setReason] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const locked = Boolean(base?.provider_lock || String(base?.priority || '').toUpperCase() === 'P0');
+  async function save() {
+    if (!reason.trim() || !name.trim()) {
+      setNotice('Override name and a reason are required.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await postGovernedRule('/api/chargebacks/admin/merchant-type-overrides', {
+        name,
+        merchant_type: merchantCode(merchant),
+        provider,
+        dispute_reason: reasonKey(recipe?.dispute_reason),
+        base_rule_id: recipe?.recipe_id,
+        base_rule_version: recipe?.recipe_version,
+        requirement_code: base?.code,
+        changes: locked ? {} : { accepted_evidence_types: accepted.split(',').map((item) => item.trim()).filter(Boolean) },
+        change_reason: reason,
+      });
+      setDirty(false);
+      setNotice('Draft override saved. Live cases are unchanged.');
+      onSaved();
+    } catch (error) {
+      setNotice(message(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <p className={styles.crumb}>Merchant Types <ChevronRight size={12} /> Add Override</p>
+      <div className={styles.head}>
+        <div>
+          <h2>Add Merchant-Type Override</h2>
+          <p>Starts from the base rule. Save keeps a draft and does not change live cases.</p>
+        </div>
+      </div>
+      <div className={styles.compare}>
+        <div>
+          <strong>Base rule</strong>
+          <p>{recipe?.recipe_id || '—'} · {titleCase(recipe?.dispute_reason)}</p>
+          <p>{baseName} · {String(base?.priority || 'P1').toUpperCase()} · Mandatory {base?.mandatory || base?.provider_lock ? 'Yes' : 'No'}</p>
+        </div>
+        <div>
+          <strong>Proposed override</strong>
+          <p>{accepted || 'No change yet'}</p>
+          <p>{locked ? 'Provider hard requirements stay unchanged.' : 'Draft only until approval.'}</p>
+        </div>
+      </div>
+      <div className={styles.formGrid}>
+        <label>Override name<input value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} /></label>
+        <label>Merchant type
+          <select value={merchant} onChange={(event) => { setMerchant(event.target.value); setDirty(true); }}>
+            <option value="ecommerce">E-commerce</option>
+            <option value="saas">SaaS</option>
+            <option value="travel">Travel</option>
+            <option value="marketplace">Marketplace</option>
+            <option value="subscription">Subscription</option>
+            <option value="services">Services</option>
+          </select>
+        </label>
+        <label>Provider scope
+          <select value={provider} onChange={(event) => { setProvider(event.target.value); setDirty(true); }}>
+            <option value="ALL">All</option>
+            <option value="STRIPE">Stripe</option>
+            <option value="PAYPAL">PayPal</option>
+          </select>
+        </label>
+        <label>Dispute reason<input readOnly value={titleCase(recipe?.dispute_reason)} /></label>
+        <label className={styles.wide}>Accepted evidence<textarea rows={2} value={accepted} disabled={locked} onChange={(event) => { setAccepted(event.target.value); setDirty(true); }} /></label>
+        <label className={styles.wide}>Reason for override<textarea rows={2} value={reason} onChange={(event) => { setReason(event.target.value); setDirty(true); }} /></label>
+      </div>
+      {locked ? <p className={styles.crumb}><Lock size={12} /> This base requirement is locked. The override cannot weaken it.</p> : null}
+      {notice ? <p className={styles.crumb}>{notice}</p> : null}
+      <div className={styles.actions}>
+        <button type="button" className={styles.ghost} onClick={() => leaveScreen(dirty, onBack)}>Cancel</button>
+        <button type="button" className={styles.primary} disabled={busy} onClick={() => void save()}>Save Override</button>
+      </div>
+    </>
+  );
+}
+
+function EditOverrideScreen({ recipe, row, onBack, onSaved }: { recipe?: EvidenceRecipe; row?: MerchantRow; onBack: () => void; onSaved: () => void }) {
+  const active = String(row?.status || recipe?.status || '').toLowerCase() === 'active';
+  const base = recipe?.requirements?.[0];
+  const locked = Boolean(base?.provider_lock || String(base?.priority || '').toUpperCase() === 'P0');
+  const [confidence, setConfidence] = useState('0.90');
+  const [reason, setReason] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  async function save() {
+    if (!reason.trim()) {
+      setNotice('A change reason is required.');
+      return;
+    }
+    const confidenceValue = Number(confidence);
+    if (!locked && (Number.isNaN(confidenceValue) || confidenceValue < 0 || confidenceValue > 1)) {
+      setNotice('Confidence must be between 0 and 1.');
+      return;
+    }
+    const changes = locked ? {} : { min_confidence: confidenceValue };
+    setBusy(true);
+    try {
+      if (active) {
+        await postGovernedRule('/api/chargebacks/admin/merchant-type-overrides', {
+          name: row?.type || 'Override',
+          merchant_type: merchantCode(row?.type || ''),
+          provider: (row?.provider || recipe?.provider || 'ALL').toUpperCase(),
+          dispute_reason: reasonKey(recipe?.dispute_reason || row?.reason),
+          base_rule_id: recipe?.recipe_id,
+          requirement_code: base?.code,
+          changes,
+          change_reason: reason,
+        });
+      } else if (row?.id) {
+        await postGovernedRule(`/api/chargebacks/admin/merchant-type-overrides/${encodeURIComponent(row.id)}/versions`, {
+          changes,
+          change_reason: reason,
+        }, String(row.revision || recipe?.revision || ''));
+      }
+      setDirty(false);
+      setNotice(active ? 'A new draft version was saved. The active override was not changed.' : 'Draft version saved.');
+      onSaved();
+    } catch (error) {
+      setNotice(message(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <p className={styles.crumb}>Merchant Types <ChevronRight size={12} /> Edit</p>
+      <div className={styles.head}>
+        <div>
+          <h2>{active ? 'New draft from active override' : 'Edit override draft'}</h2>
+          <p>{row ? `${row.type} · ${row.reason}` : 'Select an override from Merchant Types.'} {active ? 'The active row stays unchanged.' : ''}</p>
+        </div>
+      </div>
+      <div className={styles.compare}>
+        <div>
+          <strong>Current {active ? 'active' : 'draft'}</strong>
+          <p>{base?.display_name || titleCase(base?.code)} · {String(base?.priority || 'P1').toUpperCase()}</p>
+          <p>Confidence 0.90</p>
+        </div>
+        <div>
+          <strong>Proposed draft</strong>
+          <p>Confidence {confidence}</p>
+          <p>{reason || 'Add a change reason before saving.'}</p>
+        </div>
+      </div>
+      <div className={styles.formGrid}>
+        <label>Confidence
+          <input value={confidence} disabled={locked} onChange={(event) => { setConfidence(event.target.value); setDirty(true); }} />
+        </label>
+        <label className={styles.wide}>Change reason<textarea rows={2} value={reason} onChange={(event) => { setReason(event.target.value); setDirty(true); }} /></label>
+      </div>
+      {locked ? <p className={styles.crumb}><Lock size={12} /> Locked provider values stay disabled.</p> : null}
+      {notice ? <p className={styles.crumb}>{notice}</p> : null}
+      <div className={styles.actions}>
+        <button type="button" className={styles.ghost} onClick={() => leaveScreen(dirty, onBack)}>Cancel</button>
+        <button type="button" className={styles.primary} disabled={busy || !row} onClick={() => void save()}>Save Draft Version</button>
+      </div>
+    </>
+  );
+}
+
+function MerchantPanel({ rows: source, onEdit }: { rows: MerchantRow[]; onEdit: (id: string) => void }) {
   const [query, setQuery] = useState('');
   const [providerFilter, setProviderFilter] = useState('All');
   const needle = query.trim().toLowerCase();
@@ -1079,14 +1509,14 @@ function MerchantPanel({ rows: source }: { rows: MerchantRow[] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.type}>
-              <td>{source.findIndex((item) => item.type === row.type && item.reason === row.reason) + 1}</td>
+            <tr key={row.id}>
+              <td>{source.findIndex((item) => item.id === row.id) + 1}</td>
               <td>{row.type}</td>
               <td><ProviderMark name={row.provider} /></td>
               <td>{row.reason}</td>
               <td className={styles.changes}>{row.changes}</td>
               <td>{statusPill(row.status)}</td>
-              <td><button type="button" className={styles.editBtn}>Edit</button></td>
+              <td><button type="button" className={styles.editBtn} onClick={() => onEdit(row.id)}>Edit</button></td>
             </tr>
           ))}
         </tbody>
